@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Env
+.env
+.env.local
+
+# ForgeOS state
+.forgeos/
+
+# OS
+.DS_Store
+.idea/
+.vscode/
