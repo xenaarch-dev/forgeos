@@ -13,7 +13,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from config import LLM
-from agents.base import LLMClient, LLMError, LLMResponse
+from .base import LLMClient, LLMError, LLMResponse
 from .claude import ClaudeClient
 from .deepseek import DeepSeekClient
 from .ollama import OllamaClient
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 
 # Task complexity / type → client preference order.
 # We always try the primary client first, then the fallbacks.
-_HARD_STACK = ("claude", "deepseek", "ollama")
-_MEDIUM_STACK = ("deepseek", "claude", "ollama")
-_LOW_STACK = ("ollama", "deepseek", "claude")
+_HARD_STACK = ("ollama", "claude")
+_MEDIUM_STACK = ("ollama", "claude")
+_LOW_STACK = ("ollama", "claude")
 
 
 def route(task_complexity: str, task_type: str) -> LLMClient:

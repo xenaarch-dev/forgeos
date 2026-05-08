@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from models import ProjectContext, TaskStatus
-from agents.base import BaseAgent
+from .base import BaseAgent
 
 
 _SECRET_PATTERNS = [

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from models import ProjectContext, StackChoice, Task, TaskStatus
-from agents.base import BaseAgent
+from .base import BaseAgent
 
 
 SYSTEM_PROMPT = """\

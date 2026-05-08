@@ -19,14 +19,14 @@ from typing import Any
 
 from config import RUNTIME, TOOLS
 from models import ProjectContext, TaskStatus
-from ..tools import (
+from tools import (
     GitHubClient,
     RailwayClient,
     SentryClient,
     UptimeRobotClient,
     VercelClient,
 )
-from agents.base import BaseAgent
+from .base import BaseAgent
 
 
 class DeployAgent(BaseAgent):

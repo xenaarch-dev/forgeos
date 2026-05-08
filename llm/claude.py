@@ -12,12 +12,12 @@ import json
 from typing import Any
 
 from config import LLM, required
-from agents.base import LLMClient, LLMError, LLMResponse
+from .base import LLMClient, LLMError, LLMResponse
 
 
 class ClaudeClient(LLMClient):
     name = "claude"
-    default_model = "claude-sonnet-4-20250514"
+    default_model = "claude-haiku-4-5"
     api_base = "https://api.anthropic.com/v1"
     api_version = "2023-06-01"
 

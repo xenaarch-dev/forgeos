@@ -132,7 +132,7 @@ class Orchestrator:
         # Optional: feed knowledge base
         if RUNTIME.enable_obsidian:
             try:
-                from .forge_brain import ForgeBrain
+                from forge_brain import ForgeBrain
 
                 brain = ForgeBrain()
                 notes = brain.compile_from(self.context)

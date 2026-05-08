@@ -1,6 +1,6 @@
 """ForgeOS agents."""
 
-from agents.base import BaseAgent
+from .base import BaseAgent
 from .architect import ArchitectAgent
 from .scaffold import ScaffoldAgent
 from .coder import CoderAgent

@@ -12,7 +12,7 @@ import json
 from typing import Any
 
 from config import LLM, required
-from agents.base import LLMClient, LLMError, LLMResponse
+from .base import LLMClient, LLMError, LLMResponse
 
 
 class DeepSeekClient(LLMClient):

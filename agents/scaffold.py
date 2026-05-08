@@ -13,7 +13,7 @@ from textwrap import dedent
 from typing import Any
 
 from models import ProjectContext, TaskStatus
-from agents.base import BaseAgent
+from .base import BaseAgent
 
 
 class ScaffoldAgent(BaseAgent):
@@ -336,7 +336,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
+from .config import settings
 from .routers import billing, health, items
 from .sentry import init_sentry
 
@@ -407,7 +407,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from config import settings
+from .config import settings
 
 engine = create_async_engine(settings.database_url, pool_pre_ping=True, future=True)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -426,7 +426,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError, jwt
 
-from config import settings
+from .config import settings
 
 
 class CurrentUser:
@@ -474,7 +474,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request
 
-from config import settings
+from .config import settings
 
 
 class _InMemoryLimiter:
@@ -594,7 +594,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUserDep
 from ..db import get_session
-from models import Item
+from ..models import Item
 from ..rate_limit import RateLimitDep
 from ..schemas import ItemCreate, ItemRead, ItemUpdate
 
@@ -669,7 +669,7 @@ import json
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
-from config import settings
+from ..config import settings
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -703,7 +703,7 @@ from __future__ import annotations
 
 import sentry_sdk
 
-from config import settings
+from .config import settings
 
 
 def init_sentry() -> None:
@@ -722,7 +722,7 @@ from __future__ import annotations
 
 import httpx
 
-from config import settings
+from .config import settings
 
 
 async def create_checkout(variant_id: str, customer_email: str) -> str:

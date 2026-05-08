@@ -89,7 +89,7 @@ class LLMConfig:
         default_factory=lambda: _get("OLLAMA_BASE_URL", "http://localhost:11434")
     )
     ollama_model: str = field(
-        default_factory=lambda: _get("OLLAMA_MODEL", "qwen2.5-coder:latest")
+        default_factory=lambda: _get("OLLAMA_MODEL", "qwen2.5-coder:7b")
     )
     request_timeout: float = field(default_factory=lambda: _get_float("LLM_TIMEOUT", 120.0))
     max_retries: int = field(default_factory=lambda: _get_int("LLM_MAX_RETRIES", 5))
@@ -191,7 +191,7 @@ MODEL_COST_PER_1K_TOKENS: dict[str, tuple[float, float]] = {
     "claude-opus-4-6": (0.015, 0.075),
     "deepseek/deepseek-chat": (0.00027, 0.0011),
     "deepseek-v3": (0.00027, 0.0011),
-    "qwen2.5-coder:latest": (0.0, 0.0),
+    "qwen2.5-coder:7b": (0.0, 0.0),
     "qwen3-coder-next": (0.0, 0.0),
 }
 

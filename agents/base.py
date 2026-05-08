@@ -19,9 +19,8 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from llm import LLMResponse
 from llm.router import complete as llm_complete
-from models import AgentResult, AgentStatus, ProjectContext
+from models import AgentResult, AgentStatus, LLMResponse, ProjectContext
 
 
 class BaseAgent(abc.ABC):
