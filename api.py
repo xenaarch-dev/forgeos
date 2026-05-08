@@ -253,14 +253,13 @@ async def stream_build(build_id: str) -> StreamingResponse:
 
     async def _events() -> AsyncGenerator[str, None]:
         record = _builds[build_id]
+        SSE_END = "\n\n"  # SSE requires double newline after each event
 
         # Replay existing lines first
         cursor = 0
         for line in record["log"]:
             payload = json.dumps({"type": "log", "text": line})
-            yield f"data: {payload}
-
-"
+            yield "data: " + payload + SSE_END
         cursor = len(record["log"])
 
         # Stream new lines with keepalive heartbeat every 15s
@@ -273,15 +272,11 @@ async def stream_build(build_id: str) -> StreamingResponse:
             if len(log) > cursor:
                 for line in log[cursor:]:
                     payload = json.dumps({"type": "log", "text": line})
-                    yield f"data: {payload}
-
-"
+                    yield "data: " + payload + SSE_END
                 cursor = len(log)
                 ticks_since_data = 0
             elif ticks_since_data >= 30:  # 30 * 0.5s = 15s
-                yield ": keepalive
-
-"
+                yield ": keepalive" + SSE_END
                 ticks_since_data = 0
 
         # Flush any final lines
@@ -289,15 +284,11 @@ async def stream_build(build_id: str) -> StreamingResponse:
         if len(log) > cursor:
             for line in log[cursor:]:
                 payload = json.dumps({"type": "log", "text": line})
-                yield f"data: {payload}
-
-"
+                yield "data: " + payload + SSE_END
 
         # Terminal event
         done_payload = json.dumps({"type": "done", "status": record["status"]})
-        yield f"data: {done_payload}
-
-"
+        yield "data: " + done_payload + SSE_END
 
 
     return StreamingResponse(
