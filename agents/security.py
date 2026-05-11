@@ -43,9 +43,9 @@ class SecurityAgent(BaseAgent):
         findings = self._scan(project_root)
         self._write_policies(project_root)
         self._write_scanner_configs(project_root)
-        sec_md = self._render_security_md(context, findings)
+        sec_md = self._render_security_md(context, findings, project_root)
         self._write(context, "SECURITY.md", sec_md)
-        # Also drop a copy into the project itself
+        # Copy into the project itself so it ships with the generated code.
         (project_root / "SECURITY.md").write_text(sec_md, encoding="utf-8")
 
         # Mark security tasks done
@@ -139,10 +139,18 @@ class SecurityAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _render_security_md(
-        self, context: ProjectContext, findings: list["Finding"]
+        self, context: ProjectContext, findings: list["Finding"], project_root: Path
     ) -> str:
+        def _rel(p: Path) -> str:
+            """Relative path from project root, falling back to filename."""
+            try:
+                return str(p.relative_to(project_root))
+            except ValueError:
+                return p.name
+
         f_table = "\n".join(
-            f"| {f.severity.upper():9} | `{f.path.name}` | {f.message} |" for f in findings
+            f"| {f.severity.upper():9} | `{_rel(f.path)}` | {f.message} |"
+            for f in findings
         ) or "| _none_ | _none_ | No issues detected |"
         owasp = "\n".join(f"- **{k}** — {v}" for k, v in _OWASP_CONTROLS.items())
         return (

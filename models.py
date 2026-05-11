@@ -428,11 +428,29 @@ class ProjectContext:
         agent_results_data = data.pop("agent_results", []) or []
         ledger_data = data.pop("token_ledger", []) or []
 
+        # Discard unknown keys so old context.json files don't crash new versions.
+        known_fields = {f.name for f in ProjectContext.__dataclass_fields__.values()}  # type: ignore[attr-defined]
+        data = {k: v for k, v in data.items() if k in known_fields}
         ctx = cls(**data)
-        ctx.stack = StackChoice(**{k: v for k, v in stack_data.items() if v is not None})
-        ctx.tasks = [Task(**t) for t in tasks_data]
-        ctx.agent_results = [AgentResult(**a) for a in agent_results_data]
-        ctx.token_ledger = [TokenLedgerEntry(**e) for e in ledger_data]
+        ctx.stack = StackChoice(**{k: v for k, v in stack_data.items() if v is not None and hasattr(StackChoice, k)})
+        ctx.tasks = []
+        for t in tasks_data:
+            try:
+                ctx.tasks.append(Task(**t))
+            except TypeError:
+                pass  # skip tasks with unknown fields from newer versions
+        ctx.agent_results = []
+        for a in agent_results_data:
+            try:
+                ctx.agent_results.append(AgentResult(**a))
+            except TypeError:
+                pass
+        ctx.token_ledger = []
+        for e in ledger_data:
+            try:
+                ctx.token_ledger.append(TokenLedgerEntry(**e))
+            except TypeError:
+                pass
         return ctx
 
     # ------------------------------------------------------------------
@@ -480,6 +498,10 @@ class ProjectContext:
 
     def write_artifact(self, name: str, content: str) -> Path:
         path = self.get_artifact_path(name)
+        # Guard against path traversal — ensure the resolved path stays inside workdir.
+        workdir_resolved = Path(self.workdir).resolve()
+        if not path.resolve().is_relative_to(workdir_resolved):
+            raise ValueError(f"Artifact path '{name}' escapes workdir — write denied")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path

@@ -90,7 +90,13 @@ class BaseAgent(abc.ABC):
         )
 
     def _write(self, context: ProjectContext, relpath: str, content: str) -> Path:
-        path = Path(context.workdir) / relpath
+        workdir = Path(context.workdir).resolve()
+        path = (workdir / relpath).resolve()
+        # Guard: never write outside the build's workdir.
+        if not path.is_relative_to(workdir):
+            raise ValueError(
+                f"[{self.name}] _write blocked: '{relpath}' resolves outside workdir"
+            )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path

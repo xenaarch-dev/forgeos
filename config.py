@@ -74,7 +74,7 @@ def _get_bool(name: str, default: bool) -> bool:
 class LLMConfig:
     anthropic_api_key: str = field(default_factory=lambda: _get("ANTHROPIC_API_KEY"))
     anthropic_model: str = field(
-        default_factory=lambda: _get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+        default_factory=lambda: _get("ANTHROPIC_MODEL", "claude-haiku-4-5")
     )
     openrouter_api_key: str = field(default_factory=lambda: _get("OPENROUTER_API_KEY"))
     openrouter_base_url: str = field(
@@ -89,7 +89,7 @@ class LLMConfig:
         default_factory=lambda: _get("OLLAMA_BASE_URL", "http://localhost:11434")
     )
     ollama_model: str = field(
-        default_factory=lambda: _get("OLLAMA_MODEL", "qwen2.5-coder:7b")
+        default_factory=lambda: _get("OLLAMA_MODEL", "qwen2.5-coder:latest")
     )
     request_timeout: float = field(default_factory=lambda: _get_float("LLM_TIMEOUT", 120.0))
     max_retries: int = field(default_factory=lambda: _get_int("LLM_MAX_RETRIES", 5))
@@ -178,6 +178,9 @@ class RuntimeConfig:
         default_factory=lambda: _get_bool("FORGEOS_ENABLE_OBSIDIAN", True)
     )
     dry_run: bool = field(default_factory=lambda: _get_bool("FORGEOS_DRY_RUN", False))
+    api_key: str = field(
+        default_factory=lambda: _get("FORGEOS_API_KEY")
+    )  # Optional Bearer token for the FastAPI server; empty = no auth (dev only)
 
 
 # ---------------------------------------------------------------------------
@@ -186,13 +189,16 @@ class RuntimeConfig:
 
 
 MODEL_COST_PER_1K_TOKENS: dict[str, tuple[float, float]] = {
-    # (input, output)
-    "claude-sonnet-4-20250514": (0.003, 0.015),
-    "claude-opus-4-6": (0.015, 0.075),
-    "deepseek/deepseek-chat": (0.00027, 0.0011),
-    "deepseek-v3": (0.00027, 0.0011),
-    "qwen2.5-coder:7b": (0.0, 0.0),
-    "qwen3-coder-next": (0.0, 0.0),
+    # (input $/1K, output $/1K)
+    "claude-haiku-4-5":        (0.00080, 0.00400),   # primary fallback
+    "claude-sonnet-4-20250514": (0.003,   0.015),
+    "claude-opus-4-6":          (0.015,   0.075),
+    "deepseek/deepseek-chat":   (0.00027, 0.0011),
+    "deepseek-v3":              (0.00027, 0.0011),
+    # Local Ollama models — free
+    "qwen2.5-coder:7b":    (0.0, 0.0),
+    "qwen2.5-coder:latest": (0.0, 0.0),
+    "qwen3-coder-next":     (0.0, 0.0),
 }
 
 

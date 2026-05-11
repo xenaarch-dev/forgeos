@@ -51,6 +51,17 @@ Rules:
 """
 
 
+# Prefixes the LLM sometimes emits literally as the path "tag" — strip them all
+# so files land in the correct relative location inside the project tree.
+_JUNK_PREFIXES: tuple[str, ...] = (
+    "relative/path/from/project/root/",
+    "relative/path/from/project/",
+    "path/from/project/root/",
+    "path/to/file/",
+    "project/root/",
+)
+
+
 class CoderAgent(BaseAgent):
     name = "coder"
     phase = "code"
@@ -142,15 +153,7 @@ class CoderAgent(BaseAgent):
         if not files:
             files = self._fallback_files(task)
 
-        # Prefixes the LLM sometimes emits literally — strip them all.
-        _JUNK_PREFIXES = (
-            "relative/path/from/project/root/",
-            "relative/path/from/project/",
-            "path/from/project/root/",
-            "path/to/file/",
-            "project/root/",
-        )
-
+        project_root_resolved = project_root.resolve()
         written: list[str] = []
         for relpath, content in files.items():
             rel = relpath.strip().lstrip("/")
@@ -159,9 +162,13 @@ class CoderAgent(BaseAgent):
                 if rel.startswith(junk):
                     rel = rel[len(junk):]
                     break
-            if not rel or ".." in rel.split("/"):
+            if not rel:
                 continue
-            target = project_root / rel
+            target = (project_root / rel).resolve()
+            # Guard: never write outside project_root — catches LLM path traversal.
+            if not target.is_relative_to(project_root_resolved):
+                self._log(f"[coder] blocked path traversal attempt: '{rel}'")
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
             written.append(rel)
