@@ -26,6 +26,7 @@ from agents import (
     BaseAgent,
     CoderAgent,
     DeployAgent,
+    GameAgent,
     ScaffoldAgent,
     SecurityAgent,
 )
@@ -109,6 +110,7 @@ class Orchestrator:
         ArchitectAgent,
         ScaffoldAgent,
         CoderAgent,
+        GameAgent,      # self-skips if idea is not game-related
         SecurityAgent,
         DeployAgent,
     ]

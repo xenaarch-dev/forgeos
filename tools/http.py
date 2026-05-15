@@ -44,6 +44,7 @@ def http_request(
 
     body: bytes | None = None
     headers = dict(headers or {})
+    headers.setdefault("User-Agent", "ForgeOS/0.2 (+https://github.com/forgeos)")
     if json_body is not None:
         body = json.dumps(json_body).encode("utf-8")
         headers.setdefault("Content-Type", "application/json")

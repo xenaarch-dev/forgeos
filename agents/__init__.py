@@ -6,6 +6,7 @@ from .scaffold import ScaffoldAgent
 from .coder import CoderAgent
 from .security import SecurityAgent
 from .deploy import DeployAgent
+from .game import GameAgent
 
 __all__ = [
     "BaseAgent",
@@ -14,4 +15,5 @@ __all__ = [
     "CoderAgent",
     "SecurityAgent",
     "DeployAgent",
+    "GameAgent",
 ]

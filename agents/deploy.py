@@ -90,7 +90,9 @@ class DeployAgent(BaseAgent):
         try:
             return fn()
         except Exception as e:
-            self._log(f"[deploy] step '{name}' skipped: {e}")
+            detail = getattr(e, "body", "") or ""
+            msg = str(e) + (f" | {detail[:300]}" if detail else "")
+            self._log(f"[deploy] step '{name}' skipped: {msg}")
             return None
 
     def _derive_repo_name(self, context: ProjectContext) -> str:
@@ -166,7 +168,12 @@ class DeployAgent(BaseAgent):
             name=repo_name,
             description=context.idea[:200],
         )
-        env = client.create_environment(project_id=project["id"], name="production")
+        # Railway auto-creates a "production" environment on project creation.
+        # Fetch it rather than calling environmentCreate (which would 409).
+        envs = client.get_project_environments(project["id"])
+        env = next((e for e in envs if e.get("name") == "production"), None) or (envs[0] if envs else None)
+        if not env:
+            env = client.create_environment(project_id=project["id"], name="production")
         owner = TOOLS.github_owner or GitHubClient().resolve_owner()
         service = client.create_service_from_repo(
             project_id=project["id"], repo=f"{owner}/{repo_name}", branch="main"
@@ -179,12 +186,21 @@ class DeployAgent(BaseAgent):
             raise RuntimeError("VERCEL_TOKEN missing")
         client = VercelClient()
         owner = TOOLS.github_owner or GitHubClient().resolve_owner()
-        project = client.create_project(
-            name=repo_name,
-            framework="nextjs",
-            github_repo=f"{owner}/{repo_name}",
-            root_directory="frontend",
-        )
+        try:
+            project = client.create_project(
+                name=repo_name,
+                framework="nextjs",
+                github_repo=f"{owner}/{repo_name}",
+                root_directory="frontend",
+            )
+        except Exception as e:
+            body = getattr(e, "body", "") or ""
+            if "Login Connection" in body or "login connection" in body.lower():
+                raise RuntimeError(
+                    "Vercel requires GitHub connected: go to vercel.com/account → "
+                    "Git Integrations → Install GitHub App, then re-run deploy."
+                ) from e
+            raise
         client.trigger_deployment(
             project_name=project.get("name", repo_name),
             github_repo=f"{owner}/{repo_name}",

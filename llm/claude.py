@@ -17,7 +17,7 @@ from .base import LLMClient, LLMError, LLMResponse
 
 class ClaudeClient(LLMClient):
     name = "claude"
-    default_model = "claude-haiku-4-5"
+    default_model = "claude-haiku-4-5"  # cheap fallback; override via ANTHROPIC_MODEL
     api_base = "https://api.anthropic.com/v1"
     api_version = "2023-06-01"
 

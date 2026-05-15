@@ -54,6 +54,18 @@ class RailwayClient:
             q, {"input": {"projectId": project_id, "name": name}}
         ).get("environmentCreate", {})
 
+    def get_project_environments(self, project_id: str) -> list[dict[str, Any]]:
+        q = """
+        query project($id: String!) {
+          project(id: $id) {
+            environments { edges { node { id name } } }
+          }
+        }
+        """
+        data = self.query(q, {"id": project_id})
+        edges = data.get("project", {}).get("environments", {}).get("edges", [])
+        return [e["node"] for e in edges]
+
     def create_service_from_repo(
         self,
         project_id: str,

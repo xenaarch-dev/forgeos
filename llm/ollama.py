@@ -16,7 +16,7 @@ from .base import LLMClient, LLMError, LLMResponse
 
 class OllamaClient(LLMClient):
     name = "ollama"
-    default_model = "qwen2.5-coder:7b"
+    default_model = "qwen2.5-coder:latest"
 
     def __init__(self, model: str | None = None) -> None:
         super().__init__(model or LLM.ollama_model or self.default_model)

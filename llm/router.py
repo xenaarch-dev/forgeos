@@ -1,10 +1,12 @@
 """
 LLM router.
 
-Chooses the right model for a given task based on complexity and type.
-Also exposes a `complete()` convenience that automatically threads the
-full ProjectContext as system context, logs token usage, and falls back
-gracefully if the preferred provider is unavailable.
+Routing strategy:
+  Primary  → Ollama (qwen2.5-coder, free, local GPU)
+  Fallback → Claude haiku (cheap, ~$0.01/run, needs ANTHROPIC_API_KEY)
+
+All task types hit Ollama first. Claude is only used when Ollama is
+unreachable or returns an error. DeepSeek can be re-enabled later.
 """
 
 from __future__ import annotations
@@ -15,25 +17,26 @@ from typing import TYPE_CHECKING, Any
 from config import LLM
 from .base import LLMClient, LLMError, LLMResponse
 from .claude import ClaudeClient
-from .deepseek import DeepSeekClient
 from .ollama import OllamaClient
 
 if TYPE_CHECKING:
     from models import ProjectContext
 
 
-# Task complexity / type → client preference order.
-# We always try the primary client first, then the fallbacks.
-_HARD_STACK = ("ollama", "claude")
-_MEDIUM_STACK = ("ollama", "claude")
-_LOW_STACK = ("ollama", "claude")
+# Ollama first for everything — free local GPU.
+# Claude haiku is the only paid fallback (cheap).
+_HARD_STACK   = ("ollama", "claude")   # architect / spec
+_MEDIUM_STACK = ("ollama", "claude")   # review / security
+_LOW_STACK    = ("ollama", "claude")   # code / scaffold
 
 
 def route(task_complexity: str, task_type: str) -> LLMClient:
     """Return the preferred client for a task."""
     chain = _select_chain(task_complexity, task_type)
-    primary = chain[0]
-    return _build(primary)
+    for name in chain:
+        if _is_available(name):
+            return _build(name)
+    raise LLMError("No LLM provider available — start Ollama or set ANTHROPIC_API_KEY")
 
 
 def _select_chain(task_complexity: str, task_type: str) -> tuple[str, ...]:
@@ -47,8 +50,6 @@ def _select_chain(task_complexity: str, task_type: str) -> tuple[str, ...]:
 def _build(name: str) -> LLMClient:
     if name == "claude":
         return ClaudeClient()
-    if name == "deepseek":
-        return DeepSeekClient(via="openrouter")
     if name == "ollama":
         return OllamaClient()
     raise ValueError(f"Unknown LLM provider: {name}")
@@ -57,11 +58,8 @@ def _build(name: str) -> LLMClient:
 def _is_available(client_name: str) -> bool:
     if client_name == "claude":
         return bool(LLM.anthropic_api_key)
-    if client_name == "deepseek":
-        return bool(LLM.openrouter_api_key)
     if client_name == "ollama":
-        # Always assume local Ollama is reachable; a runtime error will
-        # demote it on actual failure.
+        # Always try Ollama; connection errors demote it at runtime.
         return True
     return False
 
@@ -80,8 +78,8 @@ def complete(
 ) -> LLMResponse:
     """Run a chat completion with automatic routing and ledger logging.
 
-    The full project context (if any) is rendered into the system prompt
-    so the model always reasons over the latest state.
+    Full project context (if any) is rendered into the system prompt so
+    the model always reasons over the latest state.
     """
     chain = _select_chain(task_complexity, task_type)
     system = _build_system_prompt(context, system_extra)
@@ -112,17 +110,16 @@ def complete(
         except LLMError as e:
             last_err = e
             continue
-        except Exception as e:  # network/key/etc
+        except Exception as e:
             last_err = e
             continue
+
     if last_err:
         raise LLMError(f"All LLM providers failed: {last_err}") from last_err
     raise LLMError("No LLM provider was available")
 
 
-def _build_system_prompt(
-    context: "ProjectContext | None", extra: str
-) -> str:
+def _build_system_prompt(context: "ProjectContext | None", extra: str) -> str:
     base = (
         "You are an agent in ForgeOS, an autonomous multi-agent product factory. "
         "You produce production-quality output without placeholders, TODOs, or "
@@ -138,7 +135,6 @@ def _build_system_prompt(
 
 
 def _safe_summary(ctx: "ProjectContext") -> dict[str, Any]:
-    # Avoid stuffing huge agent_results / token_ledger into the system prompt.
     return {
         "project_id": ctx.project_id,
         "idea": ctx.idea,
