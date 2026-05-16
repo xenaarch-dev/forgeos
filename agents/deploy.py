@@ -21,7 +21,7 @@ from config import RUNTIME, TOOLS
 from models import ProjectContext, TaskStatus
 from tools import (
     GitHubClient,
-    RailwayClient,
+    RenderClient,
     SentryClient,
     UptimeRobotClient,
     VercelClient,
@@ -51,7 +51,7 @@ class DeployAgent(BaseAgent):
         if result["repo_url"]:
             context.repo_url = result["repo_url"]
 
-        result["backend_url"] = self._step("railway", lambda: self._step_railway(context, repo_name)) or ""
+        result["backend_url"] = self._step("render", lambda: self._step_render(context, repo_name)) or ""
         if result["backend_url"]:
             context.backend_url = result["backend_url"]
 
@@ -160,26 +160,21 @@ class DeployAgent(BaseAgent):
             time.sleep(15)
         raise TimeoutError("CI did not complete in time")
 
-    def _step_railway(self, context: ProjectContext, repo_name: str) -> str:
-        if not TOOLS.railway_token:
-            raise RuntimeError("RAILWAY_TOKEN missing")
-        client = RailwayClient()
-        project = client.create_project(
+    def _step_render(self, context: ProjectContext, repo_name: str) -> str:
+        if not TOOLS.render_api_key:
+            raise RuntimeError("RENDER_API_KEY missing")
+        client = RenderClient()
+        owner_id = TOOLS.render_owner_id or client.get_owner_id()
+        github_owner = TOOLS.github_owner or GitHubClient().resolve_owner()
+        repo_url = f"https://github.com/{github_owner}/{repo_name}"
+        service = client.create_web_service(
             name=repo_name,
-            description=context.idea[:200],
+            repo_url=repo_url,
+            branch="main",
+            root_dir="backend",
         )
-        # Railway auto-creates a "production" environment on project creation.
-        # Fetch it rather than calling environmentCreate (which would 409).
-        envs = client.get_project_environments(project["id"])
-        env = next((e for e in envs if e.get("name") == "production"), None) or (envs[0] if envs else None)
-        if not env:
-            env = client.create_environment(project_id=project["id"], name="production")
-        owner = TOOLS.github_owner or GitHubClient().resolve_owner()
-        service = client.create_service_from_repo(
-            project_id=project["id"], repo=f"{owner}/{repo_name}", branch="main"
-        )
-        client.deploy_service(service_id=service["id"], environment_id=env["id"])
-        return f"https://railway.app/project/{project['id']}"
+        service_id = service.get("id") or service.get("service", {}).get("id", "")
+        return f"https://{repo_name}.onrender.com"
 
     def _step_vercel(self, context: ProjectContext, repo_name: str) -> str:
         if not TOOLS.vercel_token:
@@ -284,7 +279,7 @@ class DeployAgent(BaseAgent):
             f"{json.dumps(result.get('smoke', {}), indent=2)}\n"
             "```\n\n"
             "## Runbook\n\n"
-            "1. **Rollback (backend):** trigger `serviceInstanceRedeploy` on the previous Railway deployment ID.\n"
+            "1. **Rollback (backend):** open the Render dashboard, navigate to the service, and redeploy a previous commit.\n"
             "2. **Rollback (frontend):** in Vercel, promote the previous deployment to production.\n"
             "3. **Rotate secrets:** update Doppler config + redeploy backend + frontend.\n"
             "4. **Investigate errors:** open the Sentry project link above; the healer service may already have opened a PR.\n"

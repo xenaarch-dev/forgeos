@@ -1,254 +1,268 @@
-# ForgeOS
+﻿# ForgeOS V2
 
 > **One English sentence → a built, tested, secured, and deployed full-stack SaaS.**
 
-ForgeOS is a fully autonomous, multi-agent product factory that runs locally on consumer hardware. Type an idea; five specialised AI agents collaborate to produce a complete codebase with architecture docs, security audit, GitHub repo, and cloud deployment.
+ForgeOS is a fully autonomous, multi-agent product factory. Give it an idea; 18 pipeline stages — gated by LLM-powered quality checks — return a complete, production-ready codebase with architecture docs, security audit, GitHub repo, and cloud deployment.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org)
-[![Ollama](https://img.shields.io/badge/LLM-Ollama%20%7C%20Claude-brightgreen.svg)](https://ollama.ai)
-[![Version](https://img.shields.io/badge/version-0.1-violet.svg)](CHANGELOG.md)
+[![Hermes Agent](https://img.shields.io/badge/Hermes-v0.13.0-purple.svg)](https://hermes-agent.nousresearch.com)
+[![Version](https://img.shields.io/badge/version-2.0-violet.svg)](CHANGELOG.md)
 
 ---
 
 ## What it does
 
 ```
-"Build a habit tracker SaaS with daily streaks and a dashboard"
-                          ↓  ~25 minutes
-  ✅ SPEC.md + ARCH.md + TASKS.json
+"Build ContractForge — AI contract generator SaaS at $29/mo"
+                          ↓  ~30–45 minutes
+  ✅ Market viability + strategic alignment gates
+  ✅ SPEC.md + ARCH.md + TASKS.json + ValidationContract
   ✅ Full Next.js 14 + FastAPI + Supabase scaffold
-  ✅ All endpoints, pages, and tests implemented
-  ✅ OWASP security audit + RLS policies
-  ✅ GitHub repo created + Railway + Vercel deployed
+  ✅ Feature-by-feature implementation (Claude Code CLI)
+  ✅ Adversarial code review + quality score gate (≥7/10)
+  ✅ OWASP security audit + RLS policies + CSO sign-off
+  ✅ GitHub repo created + Render (backend) + Vercel (frontend)
+  ✅ Telegram/Discord build notifications via Hermes Agent
 ```
 
 ---
 
-## Architecture
+## V2 Architecture — Three Layers
 
-Five specialised agents run in a fixed pipeline. Each writes its output to
-`builds/<id>/` and updates `context.json` before the next agent starts.
+### Layer 1: GStack Quality Gates
 
-```
-Idea ──▶ ArchitectAgent ──▶ ScaffoldAgent ──▶ CoderAgent
-                                                   │
-              ForgeBrain ◀── DeployAgent ◀── SecurityAgent
-```
+9 LLM-powered gates are woven into the pipeline. Each gate calls an LLM with a specialised prompt, parses `PASS/FAIL` + `SCORE: N/10`, and **blocks the pipeline** if the bar isn't met.
 
-| # | Agent | What it produces |
-|---|-------|-----------------|
-| 1 | **ArchitectAgent** | `SPEC.md`, `ARCH.md`, `STACK.json`, `TASKS.json` |
-| 2 | **ScaffoldAgent** | Full project tree — Next.js 14 + FastAPI + Supabase |
-| 3 | **CoderAgent** | All tasks implemented with tests; self-reviews every file |
-| 4 | **SecurityAgent** | `SECURITY.md`, OWASP audit, Supabase RLS policies |
-| 5 | **DeployAgent** | GitHub repo, Railway (backend), Vercel (frontend) |
+| Gate | Phase | Min Score | Blocking |
+|------|-------|-----------|----------|
+| `office_hours` | planning | — | yes |
+| `ceo_review` | planning | — | yes |
+| `eng_review` | design | — | yes |
+| `design_shotgun` | design | — | no |
+| `review` | code | 7.0 | yes |
+| `adversarial` | code | — | yes |
+| `score` | code | 7.0 | yes |
+| `cso` | security | — | yes |
+| `qa` | qa | 7.0 | yes |
+| `ship` | deploy | — | yes |
 
-After each build, **ForgeBrain** distils patterns into your Obsidian vault.
-**Healer** runs as a daemon watching Sentry + Uptime Robot for auto-PR fixes.
+### Layer 2: Missions (serial feature execution)
 
----
+Replaces the monolithic `CoderAgent` with structured, git-committed feature delivery:
 
-## Hardware & LLM
+1. `MissionOrchestrator` writes a **ValidationContract** (acceptance assertions) before any code
+2. `MissionWorkerLoop` implements features one at a time — tries Claude Code CLI first, falls back to direct LLM
+3. Each feature lands in its own git commit
+4. `MissionValidator` runs adversarial checks against the contract after all features ship
 
-Designed to run on a single consumer GPU — no cloud LLM required for
-development.
+### Layer 3: Hermes Orchestrator
 
-| Provider | Role | Cost |
-|----------|------|------|
-| **Ollama** `qwen2.5-coder:7b` | Primary — all tasks | Free, local |
-| **Claude** `claude-haiku-4-5` | Fallback if Ollama is unreachable | ~$0.01/build |
+Top-level coordinator wrapping the full 18-stage pipeline:
 
-The LLM router tries Ollama first; if the service is not running on port
-11434 it automatically falls back to Claude. Both providers are optional —
-if neither responds, agents use deterministic scaffold templates to guarantee
-forward progress.
+- **Telegram / Discord notifications** at every gate and build event (via Hermes Agent v0.13.0)
+- **Obsidian knowledge base** writes after every build
+- **Dataset flywheel** — appends structured build metadata to `~/.forgeos/dataset.jsonl`
 
 ---
 
-## Quick start
+## Pipeline (18 stages)
+
+```
+office_hours(G) → ceo_review(G) → architect →
+eng_review(G) → design_shotgun →
+mission_plan → scaffold → game →
+mission_work →
+review(G) → adversarial(G) → score(G) →
+security → cso(G) → qa(G) →
+validator → ship(G) → deploy
+```
+
+`(G)` = blocking gate
+
+---
+
+## LLM Routing (V2)
+
+| Task type | Provider chain |
+|-----------|---------------|
+| Architecture / planning | Ollama → Claude Sonnet 4 |
+| Code review / gates | Ollama → Claude Haiku 4.5 |
+| Scaffolding / formatting | Ollama → Claude Haiku 4.5 |
+| Code generation | Claude Code CLI → LLM fallback |
+
+Ollama (`qwen2.5-coder:7b`) is tried first — free and GPU-accelerated on the RTX 4050. Claude is the cloud fallback (~$0.01–0.05/build).
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
 - WSL2 (Ubuntu 22.04) + Python 3.11+
+- `ANTHROPIC_API_KEY` in `.env` (required for gates)
+- [Ollama](https://ollama.ai) with `qwen2.5-coder:7b` (optional — free local LLM)
 - Node 20+ for the UI
-- [Ollama](https://ollama.ai) with `qwen2.5-coder:7b` pulled (optional but recommended)
-- `ANTHROPIC_API_KEY` in `.env` (free-tier fallback)
+- [Hermes Agent](https://hermes-agent.nousresearch.com) for notifications (optional)
 
 ### Install
 
 ```bash
-# Clone
-git clone https://github.com/<your-username>/forgeos
+git clone https://github.com/padmajakotoky73-hash/forgeos
 cd forgeos
-
-# Python engine (WSL2)
-pip install -e ".[all]"
 cp .env.example .env
 # Edit .env — add ANTHROPIC_API_KEY at minimum
-
-# UI
-cd forgeos-ui && npm install
 ```
 
-### Run
+### Run a build
 
 ```bash
-# Terminal 1 — start Ollama (skip if using Claude only)
-ollama serve
+# V2 pipeline (default)
+PYTHONPATH=. python3 orchestrator.py --idea "Build ContractForge — AI contract generator SaaS at $29/mo"
 
-# Terminal 2 — ForgeOS API (WSL2, inside forgeos/)
-PYTHONPATH=. python3 -m uvicorn api:app --host 0.0.0.0 --port 8000 \
-  --reload-dir agents --reload-dir llm --reload-dir tools
+# Legacy V1 pipeline
+PYTHONPATH=. python3 orchestrator.py --idea "..." --legacy
 
-# Terminal 3 — ForgeOS UI
+# Resume an interrupted build
+PYTHONPATH=. python3 orchestrator.py --idea "<same idea>" --workdir builds/<id>
+```
+
+### Start the UI + API
+
+```bash
+# Terminal 1 — ForgeOS API (port 8000)
+PYTHONPATH=. python3 api.py
+
+# Terminal 2 — Next.js dashboard (port 3000)
 cd forgeos-ui && npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), type your idea, click **Forge**.
-
-### Or run headless
-
-```bash
-PYTHONPATH=. python3 orchestrator.py --idea "Build a SaaS that turns voice notes into tasks"
-```
-
 ---
 
-## UI
-
-The Next.js 14 dashboard streams agent progress in real-time via SSE:
-
-- **3D hero scene** — React Three Fiber, five orbiting agent nodes, mouse tracking
-- **Live build log** — agent cards update as each phase completes
-- **Build history** — sidebar lists all past builds with status
-- **One-click resume** — pick up a failed build exactly where it stopped
-
----
-
-## File layout
+## File Layout
 
 ```
 forgeos/
-├── orchestrator.py        # entry point, runs the agent pipeline
-├── api.py                 # FastAPI server + SSE streaming (/builds/{id}/stream)
-├── models.py              # LLMClient, ProjectContext, Task (canonical types)
-├── config.py              # LLM routing, stack, deploy config
+├── orchestrator.py        # entry point — HermesOrchestrator (V2) or legacy
+├── api.py                 # FastAPI + SSE streaming
+├── models.py              # LLMClient, ProjectContext, GateResult, ValidationContract
+├── config.py              # LLM, Tool, Runtime config + cost table
 ├── forge_brain.py         # Obsidian knowledge accumulation
-├── healer.py              # self-healing daemon (Sentry + Uptime Robot)
+├── healer.py              # self-healing daemon (Sentry + UptimeRobot)
 ├── agents/
 │   ├── base.py            # BaseAgent ABC
-│   ├── architect.py       # spec + task decomposition
-│   ├── scaffold.py        # full project tree + config files
-│   ├── coder.py           # implements every task + self-review pass
-│   ├── game.py            # Three.js / Phaser / Godot (auto-skipped for non-games)
-│   ├── security.py        # OWASP audit, RLS policies
-│   └── deploy.py          # GitHub + Railway + Vercel
+│   ├── architect.py       # ArchitectAgent — SPEC/ARCH/TASKS/STACK
+│   ├── scaffold.py        # ScaffoldAgent — full project tree
+│   ├── coder.py           # CoderAgent (V1 legacy)
+│   ├── game.py            # GameAgent — Three.js / Phaser / Godot
+│   ├── security.py        # SecurityAgent — OWASP + RLS
+│   ├── deploy.py          # DeployAgent — GitHub + Render + Vercel
+│   ├── gstack.py          # GStack quality gates (9 gates)
+│   ├── mission.py         # MissionOrchestrator, MissionWorkerLoop, MissionValidator
+│   └── hermes.py          # HermesOrchestrator, HermesGateway, TelegramNotifier
 ├── llm/
-│   ├── router.py          # Ollama → Claude fallback chain
+│   ├── router.py          # route() — Ollama → Claude Sonnet → Claude Haiku
 │   ├── ollama.py          # OllamaClient
-│   └── claude.py          # ClaudeClient (haiku-4-5 default)
+│   └── claude.py          # ClaudeClient
 ├── tools/
-│   ├── github.py          # repo creation via GitHub API
-│   ├── railway.py         # Railway deploy
-│   ├── vercel.py          # Vercel deploy
-│   └── supabase_admin.py  # service-role Supabase client
-├── forgeos-ui/            # Next.js 14 App Router dashboard
-│   ├── app/page.tsx       # main page — 3D hero + build view
-│   ├── components/3d/     # React Three Fiber hero scene
-│   └── hooks/useStream.ts # SSE client with reconnection
+│   ├── github.py          # GitHub API
+│   ├── render.py          # Render deploy API
+│   ├── vercel.py          # Vercel deploy API
+│   ├── supabase_admin.py  # Supabase service-role client
+│   ├── sentry.py          # Sentry issue watcher
+│   └── uptimerobot.py     # Uptime monitor
 └── builds/                # runtime output — one folder per build
     └── <id>/
-        ├── context.json   # full pipeline state
-        ├── SPEC.md
-        ├── ARCH.md
-        ├── TASKS.json
-        ├── STACK.json
+        ├── context.json
+        ├── SPEC.md  ARCH.md  TASKS.json  STACK.json
+        ├── VALIDATION_CONTRACT.json
         ├── SECURITY.md
-        └── project/       # the generated codebase
+        └── project/        # the generated codebase
 ```
 
 ---
 
-## Generated stack
-
-Every ForgeOS build produces a project using this default stack:
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14 App Router + TypeScript + Tailwind CSS |
-| Backend | FastAPI + Pydantic v2 + SQLAlchemy |
-| Database | Supabase (Postgres + Auth + Storage + RLS) |
-| Deploy | GitHub → Railway (API) + Vercel (UI) |
-| Tests | pytest (backend) + Vitest (frontend) |
-| CI/CD | GitHub Actions |
-| Monitoring | Sentry + Uptime Robot |
-
----
-
-## Environment variables
+## Environment Variables
 
 ```bash
-# Minimum to run (one of these must be set)
-ANTHROPIC_API_KEY=sk-ant-...      # Claude haiku-4-5 fallback
+# Required
+ANTHROPIC_API_KEY=sk-ant-...        # Claude — required for GStack gates
 
 # Optional LLM
-OLLAMA_MODEL=qwen2.5-coder:7b    # default model for Ollama
+OLLAMA_MODEL=qwen2.5-coder:7b      # default Ollama model (free, local)
+ANTHROPIC_MODEL=claude-haiku-4-5   # Claude model override
 
-# Deploy (agents degrade gracefully without these)
+# Notifications (Hermes Agent)
+TELEGRAM_BOT_TOKEN=...              # or use Discord via hermes gateway setup
+TELEGRAM_CHAT_ID=...
+
+# Deploy
 GITHUB_TOKEN=ghp_...
-RAILWAY_TOKEN=...
 VERCEL_TOKEN=...
+RENDER_API_KEY=...
+RENDER_OWNER_ID=...
 
 # Supabase (for generated projects)
 SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_ACCESS_TOKEN=...
 
-# Monitoring (optional)
-SENTRY_DSN=...
+# Monitoring
+SENTRY_AUTH_TOKEN=...
 UPTIMEROBOT_API_KEY=...
+
+# GStack tuning
+GSTACK_MIN_SCORE=7.0               # gate pass threshold (default 7.0)
+MISSION_MAX_FEATURES=12            # max features per build
 ```
 
 ---
 
-## Tests
+## Notifications
+
+ForgeOS uses **[Hermes Agent v0.13.0](https://hermes-agent.nousresearch.com)** for build notifications. Hermes supports Telegram, Discord, Slack, WhatsApp, and more — no Composio needed.
 
 ```bash
-pip install -e ".[dev]"
-PYTHONPATH=. python3 -m pytest tests/ -v
+# Install Hermes (WSL2)
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+
+# Set up Discord (or Telegram / Slack)
+hermes gateway setup
+
+# Run the gateway (receives commands, sends notifications)
+hermes gateway run
 ```
 
-Unit tests mock all LLM calls. Agents fall back to deterministic scaffold
-templates when no LLM is configured, so the suite passes without API keys.
+Once the gateway runs, you can trigger ForgeOS builds from Discord:
+> "build ContractForge — AI contract generator SaaS at $29/mo"
 
 ---
 
-## Build resumption
+## Generated Stack
 
-If a build is interrupted, resume from exactly where it stopped:
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 14 App Router + TypeScript + Tailwind CSS |
+| Backend | FastAPI + Pydantic v2 |
+| Database | Supabase (Postgres + Auth + RLS) |
+| Payments | Lemon Squeezy (never Stripe) |
+| Secrets | Doppler (prod) |
+| Deploy | GitHub → Render (API) + Vercel (UI) |
+| Tests | pytest + Vitest |
+| Monitoring | Sentry + UptimeRobot |
+
+---
+
+## First Product
+
+**ContractForge** — AI contract generator SaaS at $29/mo
 
 ```bash
-# Find the build ID
-ls builds/
-
-# Resume (completed agents are auto-skipped)
 PYTHONPATH=. python3 orchestrator.py \
-  --idea "Build a habit tracker with daily streaks" \
-  --workdir builds/<id>
+  --idea "Build ContractForge — AI contract generator SaaS at $29/mo"
 ```
-
----
-
-## Roadmap
-
-- [ ] Multi-tenancy (per-user build isolation)
-- [ ] Plugin system for custom agent steps
-- [ ] Mobile scaffold (React Native + Expo)
-- [ ] Streaming diff view (see files being written live)
-- [ ] DeepSeek / Gemini LLM provider support
-- [ ] Obsidian ForgeBrain auto-publish
 
 ---
 
@@ -258,4 +272,4 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-*Built with ForgeOS v0.1 · Runs locally on an ASUS TUF + RTX 4050*
+*ForgeOS V2 · RTX 4050 · WSL2 Ubuntu 22.04 · Hermes Agent v0.13.0*
