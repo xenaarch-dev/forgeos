@@ -1,0 +1,17 @@
+{
+  "frontend": "Next.js 14 (App Router) + Tailwind + Shadcn/ui",
+  "backend": "FastAPI",
+  "database": "Supabase (Postgres)",
+  "cache": "Upstash Redis",
+  "queue": "Upstash Kafka",
+  "auth": "Supabase Auth",
+  "payments": "Lemon Squeezy",
+  "email": "Resend",
+  "monitoring": "Sentry + Uptime Robot",
+  "ci_cd": "GitHub Actions",
+  "deployment": "Railway (backend) + Vercel (frontend)",
+  "extras": {
+    "ml_service": "FastAPI inference + MLflow + Great Expectations",
+    "gpu": "modal.com"
+  }
+}

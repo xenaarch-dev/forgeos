@@ -1,0 +1,73 @@
+{
+  "project_id": "proj_689bacec6414",
+  "idea": "ContractForge \u2014 AI contract and proposal generator for Indian freelancers. GST-compliant contracts, NDA templates, SOW generation. PDF export with e-signature flow. INR pricing at Rs2499/month via Lemon Squeezy. Next.js 14 + FastAPI + Supabase.",
+  "workdir": "/home/padmaja/forge/forgeos/builds/contractforge-ai-contract-and-pr-1779643965",
+  "started_at": "2026-05-24T17:32:45.618158+00:00",
+  "updated_at": "2026-05-24T17:33:55.535050+00:00",
+  "spec": "",
+  "architecture": "",
+  "stack": {
+    "frontend": "",
+    "backend": "",
+    "database": "",
+    "cache": "",
+    "queue": "",
+    "auth": "",
+    "payments": "",
+    "email": "",
+    "monitoring": "",
+    "ci_cd": "",
+    "deployment": "",
+    "extras": {}
+  },
+  "tasks": [],
+  "agent_results": [
+    {
+      "agent": "office_hours_gate",
+      "status": "failed",
+      "started_at": "2026-05-24T17:33:16.374377+00:00",
+      "finished_at": "2026-05-24T17:33:55.534911+00:00",
+      "duration_seconds": 39.160534,
+      "output": {},
+      "artifacts": [],
+      "log": [
+        "Traceback (most recent call last):\n  File \"/home/padmaja/forge/forgeos/agents/base.py\", line 39, in run\n    output = self._execute(context) or {}\n  File \"/home/padmaja/forge/forgeos/agents/gstack.py\", line 58, in _execute\n    raise RuntimeError(\nRuntimeError: Gate 'office_hours' blocked pipeline (score=6.0 < 6.0): ### Evaluation: 1. **Market Demand**: - There is a real problem being solved in India, where freelancers often struggle to create professional contracts that are compliant with GST regulations and other legal requirements. The need for NDA templates and Statement of Work (SOW) generation is also sig\n"
+      ],
+      "error": "RuntimeError: Gate 'office_hours' blocked pipeline (score=6.0 < 6.0): ### Evaluation: 1. **Market Demand**: - There is a real problem being solved in India, where freelancers often struggle to create professional contracts that are compliant with GST regulations and other legal requirements. The need for NDA templates and Statement of Work (SOW) generation is also sig",
+      "retries": 0
+    }
+  ],
+  "current_phase": "planning",
+  "repo_url": "",
+  "backend_url": "",
+  "frontend_url": "",
+  "monitoring_urls": {},
+  "token_ledger": [
+    {
+      "timestamp": "2026-05-24T17:33:55.532547+00:00",
+      "model": "qwen2.5-coder:7b",
+      "purpose": "gate.office_hours",
+      "prompt_tokens": 507,
+      "completion_tokens": 394,
+      "cost_usd": 0.0
+    }
+  ],
+  "failures": [
+    {
+      "agent": "office_hours_gate",
+      "error": "RuntimeError: Gate 'office_hours' blocked pipeline (score=6.0 < 6.0): ### Evaluation: 1. **Market Demand**: - There is a real problem being solved in India, where freelancers often struggle to create professional contracts that are compliant with GST regulations and other legal requirements. The need for NDA templates and Statement of Work (SOW) generation is also sig",
+      "at": "2026-05-24T17:33:55.534911+00:00"
+    }
+  ],
+  "metadata": {
+    "gates": [
+      {
+        "gate": "office_hours",
+        "passed": false,
+        "score": 6.0,
+        "feedback": "### Evaluation: 1. **Market Demand**: - There is a real problem being solved in India, where freelancers often struggle to create professional contracts that are compliant with GST regulations and other legal requirements. The need for NDA templates and Statement of Work (SOW) generation is also significant. - **Verdict**: PASS 2. **Monetization**: - The idea can charge money through a subscription model via Lemon Squeezy, targeting Indian freelancers who are willing to pay for professional cont",
+        "timestamp": "2026-05-24T17:33:55.534088+00:00"
+      }
+    ]
+  }
+}

@@ -1,0 +1,207 @@
+[
+  {
+    "id": "task_6d02ff3816dc",
+    "title": "Generate project skeleton + configs",
+    "agent": "scaffold",
+    "phase": "scaffold",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_b72278557036",
+    "title": "Apply Supabase schema + RLS placeholders",
+    "agent": "scaffold",
+    "phase": "scaffold",
+    "depends_on": [
+      "task_6d02ff3816dc"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_211ac3238e03",
+    "title": "Backend: healthz + auth exchange + base middleware",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_b72278557036"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_e4092813be16",
+    "title": "Backend: items CRUD endpoints with Pydantic models",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_211ac3238e03"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_574479ba82ec",
+    "title": "Backend: LemonSqueezy webhook handler",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_211ac3238e03"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_d228dea9ecff",
+    "title": "Frontend: app shell + auth flow",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_211ac3238e03"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_d69af3f95969",
+    "title": "Frontend: items dashboard + forms",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_d228dea9ecff",
+      "task_e4092813be16"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_b8044250148c",
+    "title": "Frontend: pricing + checkout link",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_d228dea9ecff",
+      "task_574479ba82ec"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_ab7937400024",
+    "title": "Tests: backend pytest + frontend vitest (>=80%)",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_e4092813be16",
+      "task_d69af3f95969"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_50d85c0e0062",
+    "title": "Security: OWASP audit + RLS + rate limits",
+    "agent": "security",
+    "phase": "security",
+    "depends_on": [
+      "task_ab7937400024"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_c5af627e7750",
+    "title": "Deploy: GitHub repo, Railway, Vercel, monitoring",
+    "agent": "deploy",
+    "phase": "deploy",
+    "depends_on": [
+      "task_50d85c0e0062"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_02408a84de6d",
+    "title": "ML: training script + inference endpoint + MLflow",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [
+      "task_211ac3238e03"
+    ],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_626c4a02bd19",
+    "title": "Create Next.js 14 App Router project structure",
+    "agent": "scaffold",
+    "phase": "scaffold",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_47f173d4e9d4",
+    "title": "Set up Tailwind CSS and Shadcn/ui for styling",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_f3232e2ac5d5",
+    "title": "Develop backend API with FastAPI",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_58b05816305d",
+    "title": "Integrate Supabase for database operations",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_31730eba757d",
+    "title": "Set up Upstash Redis and Kafka for caching and messaging",
+    "agent": "scaffold",
+    "phase": "scaffold",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  },
+  {
+    "id": "task_3b28c9bfa048",
+    "title": "Configure Lemon Squeezy for payments",
+    "agent": "coder",
+    "phase": "code",
+    "depends_on": [],
+    "status": "pending",
+    "notes": "",
+    "artifacts": []
+  }
+]

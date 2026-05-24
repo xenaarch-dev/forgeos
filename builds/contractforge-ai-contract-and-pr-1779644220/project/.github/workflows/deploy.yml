@@ -1,0 +1,32 @@
+\
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Render deploy
+        if: \${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        run: |
+          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Vercel deploy
+        if: \${{ secrets.VERCEL_TOKEN != '' }}
+        run: |
+          curl -fsSL -X POST -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            https://api.vercel.com/v13/deployments \
+            -d "{"name":"frontend","target":"production","gitSource":{"type":"github","ref":"main"}}"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

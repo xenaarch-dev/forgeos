@@ -1,0 +1,127 @@
+{
+  "project_id": "proj_a3425ae5974c",
+  "assertions": [
+    {
+      "description": "GET /healthz returns 200 with 'OK'",
+      "category": "infra"
+    },
+    {
+      "description": "POST /auth/signup creates a new user",
+      "category": "auth"
+    },
+    {
+      "description": "POST /auth/login authenticates an existing user",
+      "category": "auth"
+    },
+    {
+      "description": "GET /items returns 200 with empty list for unauthenticated user",
+      "category": "api"
+    },
+    {
+      "description": "POST /items creates a new item",
+      "category": "api"
+    },
+    {
+      "description": "GET /items/{item_id} returns 200 with correct item details",
+      "category": "api"
+    },
+    {
+      "description": "PUT /items/{item_id} updates an existing item",
+      "category": "api"
+    },
+    {
+      "description": "DELETE /items/{item_id} deletes an existing item",
+      "category": "api"
+    },
+    {
+      "description": "POST /webhook/lemonsqueezy handles webhook events",
+      "category": "infra"
+    },
+    {
+      "description": "PDF export with e-signature flow is available in the frontend",
+      "category": "ui"
+    },
+    {
+      "description": "Lemon Squeezy payment gateway is configured correctly",
+      "category": "payments"
+    },
+    {
+      "description": "User satisfaction scores from surveys are collected and stored",
+      "category": "data"
+    },
+    {
+      "description": "Number of contracts generated per month is tracked",
+      "category": "data"
+    },
+    {
+      "description": "Conversion rate from contract generation to payment is calculated",
+      "category": "data"
+    },
+    {
+      "description": "Tailwind CSS and Shadcn/ui are correctly set up for styling",
+      "category": "ui"
+    },
+    {
+      "description": "FastAPI backend API endpoints are tested with pytest (>=80%)",
+      "category": "perf"
+    },
+    {
+      "description": "Frontend vitest tests cover >=80% of the codebase",
+      "category": "perf"
+    },
+    {
+      "description": "MLflow is configured for model training and inference",
+      "category": "ml_service"
+    },
+    {
+      "description": "GET / returns 200 with app name and version",
+      "category": "api"
+    },
+    {
+      "description": "GET /healthz returns 200 with status healthy",
+      "category": "api"
+    },
+    {
+      "description": "POST /api/auth/signup creates user and returns token",
+      "category": "auth"
+    },
+    {
+      "description": "POST /api/auth/login with valid creds returns JWT",
+      "category": "auth"
+    },
+    {
+      "description": "GET /api/items without auth returns 401",
+      "category": "auth"
+    },
+    {
+      "description": "POST /api/items with auth creates item",
+      "category": "api"
+    },
+    {
+      "description": "GET /api/items returns list of user items",
+      "category": "api"
+    },
+    {
+      "description": "PATCH /api/items/{id} updates item data",
+      "category": "api"
+    },
+    {
+      "description": "DELETE /api/items/{id} removes item",
+      "category": "api"
+    },
+    {
+      "description": "Frontend root page loads without JS errors",
+      "category": "ui"
+    },
+    {
+      "description": "Frontend auth page has signup and login forms",
+      "category": "ui"
+    },
+    {
+      "description": "Frontend dashboard shows items list",
+      "category": "ui"
+    }
+  ],
+  "acceptance_threshold": 0.9,
+  "created_before_code": true
+}

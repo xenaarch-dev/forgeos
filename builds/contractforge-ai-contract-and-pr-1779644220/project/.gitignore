@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+
+# Env
+.env
+.env.local
+.env.production
+.env.development
+.env.example.bak
+
+# Misc
+.DS_Store
+.idea/
+.vscode/
+*.log
