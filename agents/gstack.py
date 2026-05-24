@@ -135,7 +135,7 @@ class CEOReviewGate(GStackGate):
     name = "ceo_review_gate"
     gate_name = "ceo_review"
     phase = "planning"
-    min_score = 6.0
+    min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         spec = context.spec or "(no spec yet — evaluating idea only)"
@@ -155,7 +155,7 @@ Assess:
 4. Scope — is it too big to ship in one sprint?
 5. Missing — what critical feature is absent?
 
-Score 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
+Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
 End with SCORE: N/10 and PASS or FAIL.""",
         )
 
@@ -191,7 +191,7 @@ Assess:
 4. Gaps — what critical system component is missing?
 5. Risk — highest technical risk?
 
-Score 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
+Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
 End with SCORE: N/10 and PASS or FAIL.""",
         )
 
@@ -265,7 +265,7 @@ Review for:
 4. Security — obvious vulnerabilities?
 5. Production readiness — will this actually run without modification?
 
-Score 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
+Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
         )
