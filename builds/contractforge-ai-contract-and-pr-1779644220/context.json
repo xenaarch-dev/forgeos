@@ -3,15 +3,15 @@
   "idea": "ContractForge \u2014 AI contract and proposal generator for Indian freelancers. GST-compliant contracts, NDA templates, SOW generation. PDF export with e-signature flow. INR pricing at Rs2499/month via Lemon Squeezy. Next.js 14 + FastAPI + Supabase.",
   "workdir": "/home/padmaja/forge/forgeos/builds/contractforge-ai-contract-and-pr-1779644220",
   "started_at": "2026-05-24T17:44:56.343120+00:00",
-  "updated_at": "2026-05-24T18:34:12.234380+00:00",
-  "spec": "# ContractForge Specification\n\n## Problem\nFreelancers in India often struggle to create professional and compliant contracts. The process is time-consuming and error-prone.\n\n## Target Users\n- Freelancers in India looking for a reliable platform to generate professional contracts.\n- Clients seeking to hire freelancers with legally binding agreements.\n\n## Core Features\n1. **AI Contract Generation**: Generate GST-compliant contracts using AI.\n2. **NDA Templates**: Create non-disclosure agreements (NDAs) quickly and easily.\n3. **Statement of Work (SOW)**: Generate detailed SOWs for projects.\n4. **PDF Export with E-Signature Flow**: Easily export contracts to PDF and allow e-signatures.\n\n## Non-Features\n- Real-time collaboration on documents.\n- Custom contract templates beyond the provided AI-generated ones.\n- Advanced legal consultation services.\n\n## Success Metrics\n1. Number of contracts generated per month.\n2. User satisfaction scores from surveys.\n3. Conversion rate from contract generation to payment.",
-  "architecture": "# ContractForge Architecture\n\n## Stack Justification\n- **Frontend**: Next.js 14 (App Router) + Tailwind + Shadcn/ui - Provides a modern, performant, and scalable frontend with a rich UI/UX.\n- **Backend**: FastAPI - Offers high performance and easy-to-use asynchronous APIs for handling business logic.\n- **Database**: Supabase (Postgres) - A powerful database service that integrates well with the other tools in the stack.\n- **Cache**: Upstash Redis - Provides fast read/write access to cache data, improving application performance.\n- **Queue**: Upstash Kafka - Enables real-time messaging and processing of asynchronous tasks.\n- **Auth**: Supabase Auth - Handles user authentication and authorization securely.\n- **Payments**: Lemon Squeezy - A simple and secure payment gateway for recurring billing.\n- **Email**: Resend - Reliable email delivery with transactional capabilities.\n- **Monitoring**: Sentry + Uptime Robot - Ensures the application is always up and running, with detailed error tracking.\n- **CI/CD**: GitHub Actions - Automates testing and deployment processes.\n- **Deployment**: Railway (backend) + Vercel (frontend) - Provides a seamless and scalable deployment experience.\n\n## System Diagram",
+  "updated_at": "2026-05-24T18:35:47.374418+00:00",
+  "spec": "# ContractForge Specification\n\n## Problem\nFreelancers in India face significant friction when creating professional, legally compliant contracts. Manual drafting is time-consuming, error-prone, and often results in non-compliant agreements that expose both parties to legal risk. GST compliance adds another layer of complexity that most freelancers lack expertise in. Existing solutions are either too generic (missing Indian-specific requirements) or too expensive (legal consultation fees).\n\n## Target Users\n1. **Freelancers in India** (primary): Solo practitioners, consultants, and small agencies needing to generate contracts for client engagements.\n2. **Small business owners**: Entrepreneurs hiring freelancers and needing standardized, compliant agreements.\n3. **Agencies**: Teams managing multiple freelancer relationships and requiring consistent contract templates.\n\n## Core Features\n\n1. **AI-Powered Contract Generation**\n   - Generate GST-compliant contracts using LLM inference (Claude/GPT via modal.com).\n   - Input: project scope, duration, rate, client details, deliverables.\n   - Output: production-ready contract in Markdown, stored in Supabase.\n   - State-specific GST rate injection (JSON columns in Postgres).\n\n2. **NDA Template Library**\n   - Pre-built, India-compliant NDA templates (unilateral and mutual).\n   - Customizable fields: party names, confidentiality period, jurisdiction.\n   - One-click generation with auto-fill from user profile.\n\n3. **Statement of Work (SOW) Generation**\n   - AI-assisted SOW creation with sections: scope, deliverables, timeline, payment terms, acceptance criteria.\n   - Linked to contract for consistency.\n   - Milestone-based breakdown for phased projects.\n\n4. **PDF Export with E-Signature Flow**\n   - Convert generated contracts to PDF (via Puppeteer or WeasyPrint).\n   - Store PDFs in Supabase Storage (S3-compatible).\n   - E-signature integration (placeholder for DocuSign/Signzy API).\n   - Audit trail: track signature status, timestamps, IP addresses.\n\n5. **Subscription & Payment Management**\n   - Monthly subscription at Rs2499 via Lemon Squeezy.\n   - Usage tracking: contracts generated per month (PostHog analytics).\n   - Soft limits: free tier (3 contracts/month), paid tier (unlimited).\n\n6. **User Authentication & Profile**\n   - Supabase Auth (email/password, optional Google OAuth).\n   - User profile: name, GST number, business address, bank details (for invoicing).\n   - Subscription status and billing history.\n\n## Non-Features (Out of Scope)\n\n- **Real-time collaborative editing** on contracts.\n- **Custom contract templates** beyond AI-generated and pre-built NDAs/SOWs.\n- **Advanced legal consultation services** or lawyer-on-demand.\n- **Multi-language support** (English only, with Hindi UI labels optional).\n- **Blockchain-based contract verification** or smart contracts.\n- **Integration with accounting software** (Tally, QuickBooks) in MVP.\n- **Mobile app** (web-responsive only for MVP).\n\n## Success Metrics\n\n1. **Adoption**: 500+ active users within 3 months of launch.\n2. **Engagement**: Average 5+ contracts generated per paying user per month.\n3. **Conversion**: 15%+ free-to-paid conversion rate.\n4. **Retention**: 70%+ monthly retention for paid users.\n5. **Satisfaction**: NPS \u2265 40 from user surveys.\n6. **Revenue**: Rs50,000+ MRR by month 6.",
+  "architecture": "# ContractForge Architecture\n\n## Stack Justification\n\n### Frontend: Next.js 14 (App Router) + Tailwind + Shadcn/ui\n**Why**: Next.js 14 provides server-side rendering, API routes, and incremental static regeneration\u2014critical for SEO and fast contract preview rendering. App Router enables nested layouts for multi-step contract generation flows. Tailwind + Shadcn/ui deliver production-grade UI components (forms, modals, tables) without bloat, essential for a document-heavy SaaS. Vercel deployment ensures zero-config CI/CD.\n\n### Backend: FastAPI\n**Why**: FastAPI's async-first design handles concurrent PDF generation and LLM inference calls efficiently. Built-in OpenAPI docs reduce onboarding friction. Pydantic validation ensures type-safe contract data. Modal.com integration for GPU-accelerated LLM inference is seamless via FastAPI endpoints. APScheduler for cron jobs (subscription reminders) runs natively.\n\n### Database: Supabase (Postgres)\n**Why**: Postgres's JSONB columns store state-specific GST rules and contract metadata without schema bloat. Row-level security (RLS) enforces multi-tenant isolation. Supabase Storage (S3-compatible) eliminates separate file storage infrastructure. Realtime subscriptions (unused in MVP but available for future collaboration). Native UUID support for contract IDs.\n\n### Cache: Upstash Redis\n**Why**: Serverless Redis (no infrastructure management). Sliding-window rate limiting prevents abuse (e.g., 100 contract generations/hour per user). Session caching for LLM inference results (avoid re-generating identical contracts). Upstash's REST API works in edge functions (Vercel).\n\n### Queue: Upstash Redis Streams\n**Why**: Lightweight alternative to Kafka for this scale. Handles async tasks: PDF generation, e-signature webhooks, email notifications. Streams provide ordering guarantees for audit trails. No separate infrastructure.\n\n### Auth: Supabase Auth\n**Why**: Built-in JWT support integrates seamlessly with FastAPI (Bearer token validation). Email verification out-of-the-box. Row-level security policies tied to `auth.uid()`. No third-party auth service overhead.\n\n### Payments: Lemon Squeezy\n**Why**: Handles INR pricing natively (avoids currency conversion fees). Recurring billing for subscriptions. Webhook support for subscription status changes (new_subscription, subscription_updated, subscription_cancelled). Lower fees than Stripe for India-focused SaaS.\n\n### Email: Resend\n**Why**: Transactional email for contract delivery, signature reminders, subscription confirmations. High deliverability in India. Simple API, no SMTP configuration. Supports email templates (Markdown-to-HTML).\n\n### Monitoring: Sentry + Uptime Robot\n**Why**: Sentry captures FastAPI exceptions, LLM inference failures, PDF generation errors. Uptime Robot monitors endpoint health (Railway backend, Vercel frontend). Alerts via Slack for critical failures.\n\n### CI/CD: GitHub Actions\n**Why**: Native GitHub integration. Workflows for: linting (Ruff), type checking (mypy), testing (pytest + Jest), building Docker images for Railway, deploying to Vercel. No external CI/CD cost.\n\n### Deployment: Railway (backend) + Vercel (frontend)\n**Why**: Railway provides managed PostgreSQL, Redis, and FastAPI hosting in one dashboard. Vercel optimizes Next.js builds and edge functions. Both support GitHub auto-deploy on push. Railway's pricing is transparent for Indian startups.\n\n### ML Service: FastAPI Inference + MLflow + Great Expectations\n**Why**: FastAPI endpoint (`POST /api/contracts/generate`) calls modal.com GPU for LLM inference. MLflow tracks model versions and inference metrics. Great Expectations validates contract JSON schema before storage (e.g., all required fields present, GST number format valid). Prevents garbage-in-garbage-out.\n\n### GPU: modal.com\n**Why**: Serverless GPU for LLM inference (Claude via Anthropic API or open-source Llama via Replicate). No GPU infrastructure to manage. Pay-per-inference. Scales to zero when idle.\n\n### GST Compliance DB: Hardcoded Rules + Supabase JSON Columns\n**Why**: GST rates are static (5%, 12%, 18%, 28% for most services). Store as JSON in `contracts.gst_config` column: `{\"state\": \"Karnataka\", \"rate\": 18, \"effective_date\": \"2024-01-01\"}`. Hardcoded rules in FastAPI (e.g., \"Software services \u2192 18%\"). Avoids external API calls. Updates via schema migration (quarterly).\n\n### Document Storage: Supabase Storage\n**Why**: S3-compatible, no separate AWS account. Signed URLs for secure PDF downloads. Audit logs built-in. Integrates with Postgres (foreign keys to `contracts.pdf_path`).\n\n### Rate Limiting: Upstash Redis (Sliding Window)\n**Why**: Prevent abuse: 100 contract generations/hour per user, 1000/day per IP. Sliding window (not fixed) ensures fairness. Upstash REST API works in FastAPI middleware.\n\n### Analytics: PostHog\n**Why**: Event tracking for: contract generation, PDF export, e-signature completion, subscription upgrade. Cohort analysis (free \u2192 paid conversion). Session replay for UX debugging. Self-hostable if needed.\n\n### Cron Jobs: APScheduler (FastAPI)\n**Why**: Subscription renewal reminders (7 days before expiry). Runs in FastAPI background tasks. Triggers Resend email. No external cron service.\n\n---\n\n## System Diagram",
   "stack": {
     "frontend": "Next.js 14 (App Router) + Tailwind + Shadcn/ui",
     "backend": "FastAPI",
     "database": "Supabase (Postgres)",
     "cache": "Upstash Redis",
-    "queue": "Upstash Kafka",
+    "queue": "Upstash Redis (Streams)",
     "auth": "Supabase Auth",
     "payments": "Lemon Squeezy",
     "email": "Resend",
@@ -20,12 +20,17 @@
     "deployment": "Railway (backend) + Vercel (frontend)",
     "extras": {
       "ml_service": "FastAPI inference + MLflow + Great Expectations",
-      "gpu": "modal.com"
+      "gpu": "modal.com",
+      "gst_compliance_db": "Hardcoded GST rules + Supabase JSON columns for state-specific rates",
+      "document_storage": "Supabase Storage (S3-compatible) for PDFs and signed contracts",
+      "rate_limiting": "Upstash Redis (sliding window)",
+      "analytics": "PostHog (usage tracking for contract generation)",
+      "cron_jobs": "APScheduler (FastAPI) for subscription renewal reminders via Resend"
     }
   },
   "tasks": [
     {
-      "id": "task_6d02ff3816dc",
+      "id": "task_e3487284a239",
       "title": "Generate project skeleton + configs",
       "agent": "scaffold",
       "phase": "scaffold",
@@ -35,142 +40,142 @@
       "artifacts": []
     },
     {
-      "id": "task_b72278557036",
+      "id": "task_f93decf1ab60",
       "title": "Apply Supabase schema + RLS placeholders",
       "agent": "scaffold",
       "phase": "scaffold",
       "depends_on": [
-        "task_6d02ff3816dc"
+        "task_e3487284a239"
       ],
       "status": "done",
       "notes": "",
       "artifacts": []
     },
     {
-      "id": "task_211ac3238e03",
+      "id": "task_53cd642bf447",
       "title": "Backend: healthz + auth exchange + base middleware",
       "agent": "coder",
       "phase": "code",
       "depends_on": [
-        "task_b72278557036"
-      ],
-      "status": "done",
-      "notes": "",
-      "artifacts": []
-    },
-    {
-      "id": "task_e4092813be16",
-      "title": "Backend: items CRUD endpoints with Pydantic models",
-      "agent": "coder",
-      "phase": "code",
-      "depends_on": [
-        "task_211ac3238e03"
-      ],
-      "status": "done",
-      "notes": "",
-      "artifacts": []
-    },
-    {
-      "id": "task_574479ba82ec",
-      "title": "Backend: LemonSqueezy webhook handler",
-      "agent": "coder",
-      "phase": "code",
-      "depends_on": [
-        "task_211ac3238e03"
-      ],
-      "status": "done",
-      "notes": "",
-      "artifacts": []
-    },
-    {
-      "id": "task_d228dea9ecff",
-      "title": "Frontend: app shell + auth flow",
-      "agent": "coder",
-      "phase": "code",
-      "depends_on": [
-        "task_211ac3238e03"
-      ],
-      "status": "done",
-      "notes": "",
-      "artifacts": []
-    },
-    {
-      "id": "task_d69af3f95969",
-      "title": "Frontend: items dashboard + forms",
-      "agent": "coder",
-      "phase": "code",
-      "depends_on": [
-        "task_d228dea9ecff",
-        "task_e4092813be16"
-      ],
-      "status": "done",
-      "notes": "",
-      "artifacts": []
-    },
-    {
-      "id": "task_b8044250148c",
-      "title": "Frontend: pricing + checkout link",
-      "agent": "coder",
-      "phase": "code",
-      "depends_on": [
-        "task_d228dea9ecff",
-        "task_574479ba82ec"
-      ],
-      "status": "done",
-      "notes": "",
-      "artifacts": []
-    },
-    {
-      "id": "task_ab7937400024",
-      "title": "Tests: backend pytest + frontend vitest (>=80%)",
-      "agent": "coder",
-      "phase": "code",
-      "depends_on": [
-        "task_e4092813be16",
-        "task_d69af3f95969"
+        "task_f93decf1ab60"
       ],
       "status": "in_progress",
       "notes": "",
       "artifacts": []
     },
     {
-      "id": "task_50d85c0e0062",
+      "id": "task_e1a603eea042",
+      "title": "Backend: items CRUD endpoints with Pydantic models",
+      "agent": "coder",
+      "phase": "code",
+      "depends_on": [
+        "task_53cd642bf447"
+      ],
+      "status": "pending",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "task_c8c11c45ddf9",
+      "title": "Backend: LemonSqueezy webhook handler",
+      "agent": "coder",
+      "phase": "code",
+      "depends_on": [
+        "task_53cd642bf447"
+      ],
+      "status": "pending",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "task_3a5f1ce0600e",
+      "title": "Frontend: app shell + auth flow",
+      "agent": "coder",
+      "phase": "code",
+      "depends_on": [
+        "task_53cd642bf447"
+      ],
+      "status": "pending",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "task_5ef4cef64923",
+      "title": "Frontend: items dashboard + forms",
+      "agent": "coder",
+      "phase": "code",
+      "depends_on": [
+        "task_3a5f1ce0600e",
+        "task_e1a603eea042"
+      ],
+      "status": "pending",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "task_4862613086a6",
+      "title": "Frontend: pricing + checkout link",
+      "agent": "coder",
+      "phase": "code",
+      "depends_on": [
+        "task_3a5f1ce0600e",
+        "task_c8c11c45ddf9"
+      ],
+      "status": "pending",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "task_d7c7c4f4ee92",
+      "title": "Tests: backend pytest + frontend vitest (>=80%)",
+      "agent": "coder",
+      "phase": "code",
+      "depends_on": [
+        "task_e1a603eea042",
+        "task_5ef4cef64923"
+      ],
+      "status": "pending",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "task_c9edefefab93",
       "title": "Security: OWASP audit + RLS + rate limits",
       "agent": "security",
       "phase": "security",
       "depends_on": [
-        "task_ab7937400024"
+        "task_d7c7c4f4ee92"
       ],
       "status": "pending",
       "notes": "",
       "artifacts": []
     },
     {
-      "id": "task_c5af627e7750",
+      "id": "task_3e8b35388e29",
       "title": "Deploy: GitHub repo, Railway, Vercel, monitoring",
       "agent": "deploy",
       "phase": "deploy",
       "depends_on": [
-        "task_50d85c0e0062"
+        "task_c9edefefab93"
       ],
       "status": "pending",
       "notes": "",
       "artifacts": []
     },
     {
-      "id": "task_02408a84de6d",
+      "id": "task_39a367bd6ee2",
       "title": "ML: training script + inference endpoint + MLflow",
       "agent": "coder",
       "phase": "code",
       "depends_on": [
-        "task_211ac3238e03"
+        "task_53cd642bf447"
       ],
       "status": "pending",
       "notes": "",
       "artifacts": []
     },
     {
-      "id": "task_626c4a02bd19",
+      "id": "task_a5f9ec4da6c7",
       "title": "Create Next.js 14 App Router project structure",
       "agent": "scaffold",
       "phase": "scaffold",
@@ -180,8 +185,8 @@
       "artifacts": []
     },
     {
-      "id": "task_47f173d4e9d4",
-      "title": "Set up Tailwind CSS and Shadcn/ui for styling",
+      "id": "task_eee6edf3477f",
+      "title": "Set up Tailwind CSS and Shadcn/ui components",
       "agent": "coder",
       "phase": "code",
       "depends_on": [],
@@ -190,8 +195,8 @@
       "artifacts": []
     },
     {
-      "id": "task_f3232e2ac5d5",
-      "title": "Develop backend API with FastAPI",
+      "id": "task_5e9744e69e5a",
+      "title": "Develop FastAPI backend with contract generation endpoints",
       "agent": "coder",
       "phase": "code",
       "depends_on": [],
@@ -200,7 +205,7 @@
       "artifacts": []
     },
     {
-      "id": "task_58b05816305d",
+      "id": "task_d501e1140893",
       "title": "Integrate Supabase for database operations",
       "agent": "coder",
       "phase": "code",
@@ -210,20 +215,20 @@
       "artifacts": []
     },
     {
-      "id": "task_31730eba757d",
-      "title": "Set up Upstash Redis and Kafka for caching and messaging",
-      "agent": "scaffold",
-      "phase": "scaffold",
+      "id": "task_aa72476a86ea",
+      "title": "Implement GST compliance logic in backend",
+      "agent": "coder",
+      "phase": "code",
       "depends_on": [],
-      "status": "done",
+      "status": "pending",
       "notes": "",
       "artifacts": []
     },
     {
-      "id": "task_3b28c9bfa048",
-      "title": "Configure Lemon Squeezy for payments",
-      "agent": "coder",
-      "phase": "code",
+      "id": "task_8d76ece99112",
+      "title": "Deploy Next.js frontend and FastAPI backend using Railway and Vercel",
+      "agent": "deploy",
+      "phase": "deploy",
       "depends_on": [],
       "status": "pending",
       "notes": "",
@@ -451,6 +456,164 @@
       "log": [],
       "error": null,
       "retries": 0
+    },
+    {
+      "agent": "architect",
+      "status": "success",
+      "started_at": "2026-05-24T18:22:01.339301+00:00",
+      "finished_at": "2026-05-24T18:27:38.742419+00:00",
+      "duration_seconds": 337.403118,
+      "output": {
+        "stack": {
+          "frontend": "Next.js 14 (App Router) + Tailwind + Shadcn/ui",
+          "backend": "FastAPI",
+          "database": "Supabase (Postgres)",
+          "cache": "Upstash Redis",
+          "queue": "Upstash Redis (Streams)",
+          "auth": "Supabase Auth",
+          "payments": "Lemon Squeezy",
+          "email": "Resend",
+          "monitoring": "Sentry + Uptime Robot",
+          "ci_cd": "GitHub Actions",
+          "deployment": "Railway (backend) + Vercel (frontend)",
+          "extras": {
+            "ml_service": "FastAPI inference + MLflow + Great Expectations",
+            "gpu": "modal.com",
+            "gst_compliance_db": "Hardcoded GST rules + Supabase JSON columns for state-specific rates",
+            "document_storage": "Supabase Storage (S3-compatible) for PDFs and signed contracts",
+            "rate_limiting": "Upstash Redis (sliding window)",
+            "analytics": "PostHog (usage tracking for contract generation)",
+            "cron_jobs": "APScheduler (FastAPI) for subscription renewal reminders via Resend"
+          }
+        },
+        "spec_path": "SPEC.md",
+        "arch_path": "ARCH.md",
+        "tasks_path": "TASKS.json",
+        "task_count": 18,
+        "forgeos_dir": "/home/padmaja/forge/forgeos/builds/contractforge-ai-contract-and-pr-1779644220/.forgeos"
+      },
+      "artifacts": [],
+      "log": [],
+      "error": null,
+      "retries": 0
+    },
+    {
+      "agent": "mission_orchestrator",
+      "status": "success",
+      "started_at": "2026-05-24T18:27:38.745727+00:00",
+      "finished_at": "2026-05-24T18:33:32.754282+00:00",
+      "duration_seconds": 354.008555,
+      "output": {
+        "features": [
+          "Backend: healthz + auth exchange + base middleware",
+          "Backend: items CRUD endpoints with Pydantic models",
+          "Backend: LemonSqueezy webhook handler",
+          "Frontend: app shell + auth flow",
+          "Frontend: items dashboard + forms",
+          "Frontend: pricing + checkout link",
+          "Tests: backend pytest + frontend vitest (>=80%)",
+          "ML: training script + inference endpoint + MLflow",
+          "Set up Tailwind CSS and Shadcn/ui components",
+          "Develop FastAPI backend with contract generation endpoints",
+          "Integrate Supabase for database operations",
+          "Implement GST compliance logic in backend"
+        ],
+        "assertion_count": 22,
+        "contract_path": "/home/padmaja/forge/forgeos/builds/contractforge-ai-contract-and-pr-1779644220/VALIDATION_CONTRACT.json"
+      },
+      "artifacts": [],
+      "log": [],
+      "error": null,
+      "retries": 0
+    },
+    {
+      "agent": "scaffold",
+      "status": "success",
+      "started_at": "2026-05-24T18:33:32.756328+00:00",
+      "finished_at": "2026-05-24T18:33:32.771902+00:00",
+      "duration_seconds": 0.015574,
+      "output": {
+        "project_root": "project",
+        "files": [
+          ".gitignore",
+          ".env.example",
+          "pyproject.toml",
+          "package.json",
+          "backend/__init__.py",
+          "backend/app/__init__.py",
+          "backend/app/main.py",
+          "backend/app/config.py",
+          "backend/app/db.py",
+          "backend/app/auth.py",
+          "backend/app/rate_limit.py",
+          "backend/app/models.py",
+          "backend/app/schemas.py",
+          "backend/app/routers/__init__.py",
+          "backend/app/routers/health.py",
+          "backend/app/routers/items.py",
+          "backend/app/routers/billing.py",
+          "backend/app/sentry.py",
+          "backend/alembic.ini",
+          "backend/migrations/env.py",
+          "backend/migrations/versions/0001_baseline.py",
+          "backend/tests/__init__.py",
+          "backend/tests/conftest.py",
+          "backend/tests/test_health.py",
+          "backend/tests/test_items.py",
+          "frontend/package.json",
+          "frontend/next.config.mjs",
+          "frontend/tsconfig.json",
+          "frontend/tailwind.config.ts",
+          "frontend/postcss.config.js",
+          "frontend/app/globals.css",
+          "frontend/app/layout.tsx",
+          "frontend/app/page.tsx",
+          "frontend/app/dashboard/page.tsx",
+          "frontend/lib/supabase.ts",
+          "frontend/lib/api.ts",
+          "frontend/lib/sentry.ts",
+          "frontend/components/ItemForm.tsx",
+          "frontend/components/ItemList.tsx",
+          "frontend/vitest.config.ts",
+          "frontend/tests/setup.ts",
+          "frontend/tests/items.test.tsx",
+          "frontend/vercel.json",
+          "supabase/schema.sql",
+          "supabase/policies.sql",
+          "docker-compose.yml",
+          "backend/Dockerfile",
+          "frontend/Dockerfile",
+          ".dockerignore",
+          ".github/workflows/ci.yml",
+          ".github/workflows/deploy.yml",
+          "doppler.yaml",
+          "backend/app/lemon.py",
+          "monitoring/sentry.md",
+          "README.md",
+          "ml/train.py",
+          "ml/inference.py",
+          "ml/data_validation.py"
+        ]
+      },
+      "artifacts": [],
+      "log": [],
+      "error": null,
+      "retries": 0
+    },
+    {
+      "agent": "game",
+      "status": "success",
+      "started_at": "2026-05-24T18:33:32.774269+00:00",
+      "finished_at": "2026-05-24T18:33:32.774334+00:00",
+      "duration_seconds": 6.5e-05,
+      "output": {
+        "skipped": true,
+        "reason": "not a game idea"
+      },
+      "artifacts": [],
+      "log": [],
+      "error": null,
+      "retries": 0
     }
   ],
   "current_phase": "code",
@@ -564,19 +727,43 @@
       "cost_usd": 0.0
     },
     {
-      "timestamp": "2026-05-24T18:27:07.256006+00:00",
+      "timestamp": "2026-05-24T18:24:08.652027+00:00",
+      "model": "claude-haiku-4-5",
+      "purpose": "architect.stack",
+      "prompt_tokens": 1550,
+      "completion_tokens": 715,
+      "cost_usd": 0.0041
+    },
+    {
+      "timestamp": "2026-05-24T18:26:52.412877+00:00",
+      "model": "claude-haiku-4-5",
+      "purpose": "architect.spec_arch",
+      "prompt_tokens": 1904,
+      "completion_tokens": 4541,
+      "cost_usd": 0.019687
+    },
+    {
+      "timestamp": "2026-05-24T18:27:38.737059+00:00",
       "model": "qwen2.5-coder:7b",
-      "purpose": "worker.5",
-      "prompt_tokens": 1332,
-      "completion_tokens": 6000,
+      "purpose": "architect.tasks",
+      "prompt_tokens": 1735,
+      "completion_tokens": 294,
       "cost_usd": 0.0
     },
     {
-      "timestamp": "2026-05-24T18:34:12.234352+00:00",
+      "timestamp": "2026-05-24T18:33:32.749164+00:00",
+      "model": "claude-haiku-4-5",
+      "purpose": "mission.contract",
+      "prompt_tokens": 1645,
+      "completion_tokens": 2000,
+      "cost_usd": 0.009316
+    },
+    {
+      "timestamp": "2026-05-24T18:35:47.374379+00:00",
       "model": "qwen2.5-coder:7b",
-      "purpose": "worker.6",
-      "prompt_tokens": 1338,
-      "completion_tokens": 1543,
+      "purpose": "worker.0",
+      "prompt_tokens": 1592,
+      "completion_tokens": 896,
       "cost_usd": 0.0
     }
   ],
@@ -615,78 +802,6 @@
     "validation_contract": {
       "project_id": "proj_a3425ae5974c",
       "assertions": [
-        {
-          "description": "GET /healthz returns 200 with 'OK'",
-          "category": "infra"
-        },
-        {
-          "description": "POST /auth/signup creates a new user",
-          "category": "auth"
-        },
-        {
-          "description": "POST /auth/login authenticates an existing user",
-          "category": "auth"
-        },
-        {
-          "description": "GET /items returns 200 with empty list for unauthenticated user",
-          "category": "api"
-        },
-        {
-          "description": "POST /items creates a new item",
-          "category": "api"
-        },
-        {
-          "description": "GET /items/{item_id} returns 200 with correct item details",
-          "category": "api"
-        },
-        {
-          "description": "PUT /items/{item_id} updates an existing item",
-          "category": "api"
-        },
-        {
-          "description": "DELETE /items/{item_id} deletes an existing item",
-          "category": "api"
-        },
-        {
-          "description": "POST /webhook/lemonsqueezy handles webhook events",
-          "category": "infra"
-        },
-        {
-          "description": "PDF export with e-signature flow is available in the frontend",
-          "category": "ui"
-        },
-        {
-          "description": "Lemon Squeezy payment gateway is configured correctly",
-          "category": "payments"
-        },
-        {
-          "description": "User satisfaction scores from surveys are collected and stored",
-          "category": "data"
-        },
-        {
-          "description": "Number of contracts generated per month is tracked",
-          "category": "data"
-        },
-        {
-          "description": "Conversion rate from contract generation to payment is calculated",
-          "category": "data"
-        },
-        {
-          "description": "Tailwind CSS and Shadcn/ui are correctly set up for styling",
-          "category": "ui"
-        },
-        {
-          "description": "FastAPI backend API endpoints are tested with pytest (>=80%)",
-          "category": "perf"
-        },
-        {
-          "description": "Frontend vitest tests cover >=80% of the codebase",
-          "category": "perf"
-        },
-        {
-          "description": "MLflow is configured for model training and inference",
-          "category": "ml_service"
-        },
         {
           "description": "GET / returns 200 with app name and version",
           "category": "api"
@@ -733,6 +848,46 @@
         },
         {
           "description": "Frontend dashboard shows items list",
+          "category": "ui"
+        },
+        {
+          "description": "All pages mobile responsive at 375px viewport",
+          "category": "ui"
+        },
+        {
+          "description": "Supabase RLS policies exist for all tables",
+          "category": "security"
+        },
+        {
+          "description": ".env file not committed to git",
+          "category": "security"
+        },
+        {
+          "description": "All mutating routes require authentication",
+          "category": "security"
+        },
+        {
+          "description": "Backend dockerfile builds without errors",
+          "category": "infra"
+        },
+        {
+          "description": "Frontend Next.js build completes without errors",
+          "category": "infra"
+        },
+        {
+          "description": "GitHub Actions CI workflow exists",
+          "category": "infra"
+        },
+        {
+          "description": "vercel.json exists in frontend directory",
+          "category": "infra"
+        },
+        {
+          "description": "Backend pytest suite has at least 5 tests",
+          "category": "api"
+        },
+        {
+          "description": "LemonSqueezy checkout link is present on pricing page",
           "category": "ui"
         }
       ],
