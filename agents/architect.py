@@ -79,12 +79,28 @@ class ArchitectAgent(BaseAgent):
             json.dumps([asdict(t) for t in tasks], indent=2),
         )
 
+        # Mirror all key artefacts to .forgeos/ so the mission layer can read them.
+        forgeos_dir = Path(context.workdir) / ".forgeos"
+        forgeos_dir.mkdir(parents=True, exist_ok=True)
+        (forgeos_dir / "SPEC.md").write_text(spec_md, encoding="utf-8")
+        (forgeos_dir / "ARCH.md").write_text(arch_md, encoding="utf-8")
+        (forgeos_dir / "STACK.json").write_text(json.dumps(asdict(stack), indent=2), encoding="utf-8")
+        (forgeos_dir / "TASKS.json").write_text(
+            json.dumps([asdict(t) for t in tasks], indent=2), encoding="utf-8"
+        )
+        # context.json is saved by BaseAgent.run() via context.save(); mirror it too.
+        import shutil as _shutil
+        ctx_src = Path(context.workdir) / "context.json"
+        if ctx_src.exists():
+            _shutil.copy2(ctx_src, forgeos_dir / "context.json")
+
         return {
             "stack": asdict(stack),
             "spec_path": "SPEC.md",
             "arch_path": "ARCH.md",
             "tasks_path": "TASKS.json",
             "task_count": len(tasks),
+            "forgeos_dir": str(forgeos_dir),
         }
 
     # ------------------------------------------------------------------

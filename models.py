@@ -413,6 +413,11 @@ class ProjectContext:
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2, default=str)
         tmp.replace(path)
+        # Mirror to .forgeos/ directory if it exists (kept in sync with .forgeos/ artefacts).
+        forgeos_dir = path.parent / ".forgeos"
+        if forgeos_dir.is_dir():
+            import shutil as _shutil
+            _shutil.copy2(path, forgeos_dir / "context.json")
         return path
 
     @classmethod
