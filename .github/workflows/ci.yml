@@ -1,0 +1,31 @@
+name: ForgeOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PYTHONPATH: .
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ForgeOS dependencies
+        run: |
+          pip install -e ".[all,dev]"
+      - name: Verify imports
+        run: |
+          python3 -c "from orchestrator import main; from models import ProjectContext, SecurityReport, PipelineBlockedError; from agents.security import SecurityAgent; from agents.scaffold import ScaffoldAgent; print('All imports OK')"
+      - name: Run tests
+        env:
+          ANTHROPIC_API_KEY: ""
+          GITHUB_TOKEN: ""
+          RENDER_API_KEY: ""
+          VERCEL_TOKEN: ""
+        run: pytest tests/ -v --tb=short -q

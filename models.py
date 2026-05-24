@@ -1,4 +1,4 @@
-﻿"""
+"""
 ForgeOS — Core data models.
 
 All inter-agent state is exchanged through `ProjectContext`, which is
@@ -564,16 +564,67 @@ class MissionHandoff:
     timestamp: str = field(default_factory=_utc_now_iso)
 
 
+
+
+@dataclass
+class SecurityReport:
+    """Output of SecurityAgent — gates the pipeline if critical is non-empty."""
+    critical: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    passed: list[str] = field(default_factory=list)
+
+
+@dataclass
+class FailureRecord:
+    """Written to FAILURE.md on any pipeline exception."""
+    timestamp: str
+    stage: str
+    agent: str
+    error: str
+    context_idea: str
+    fix_attempted: str = ""
+    resolved: bool = False
+    processed: bool = False
+
+
+@dataclass
+class SandboxResult:
+    """Result from e2b sandbox execution."""
+    success: bool
+    output: str
+    errors: str
+    exit_code: int = 0
+
+
+@dataclass
+class BrowserResult:
+    """Result from browser-use action."""
+    success: bool
+    url: str
+    action: str
+    output: str
+    errors: str = ""
+
+
+class PipelineBlockedError(RuntimeError):
+    """Raised by gate stages when checks fail — stops the pipeline."""
+
+
 __all__ = [
     "AgentResult",
     "AgentStatus",
+    "BrowserResult",
+    "FailureRecord",
     "GateResult",
     "LLMClient",
     "LLMError",
     "LLMResponse",
     "MissionHandoff",
     "Phase",
+    "PipelineBlockedError",
     "ProjectContext",
+    "SandboxResult",
+    "SecurityReport",
     "StackChoice",
     "Task",
     "TaskStatus",

@@ -117,7 +117,7 @@ class DeployAgent(BaseAgent):
         client.create_repo(
             name=repo_name,
             description=context.idea[:300],
-            private=True,
+            private=False,
             auto_init=False,
         )
         try:
@@ -200,6 +200,7 @@ class DeployAgent(BaseAgent):
             project_name=project.get("name", repo_name),
             github_repo=f"{owner}/{repo_name}",
             ref="main",
+            root_directory="frontend",
         )
         slug = project.get("name", repo_name)
         return f"https://{slug}.vercel.app"

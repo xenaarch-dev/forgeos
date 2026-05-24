@@ -82,24 +82,31 @@ class VercelClient:
         )
 
     def trigger_deployment(
-        self, project_name: str, github_repo: str, ref: str = "main"
+        self,
+        project_name: str,
+        github_repo: str,
+        ref: str = "main",
+        root_directory: str | None = None,
     ) -> dict[str, Any]:
         owner, _, name = github_repo.partition("/")
+        body: dict[str, Any] = {
+            "name": project_name,
+            "target": "production",
+            "gitSource": {
+                "type": "github",
+                "repo": name,
+                "org": owner,
+                "ref": ref,
+            },
+        }
+        if root_directory:
+            body["rootDirectory"] = root_directory
         return http_request(
             f"{self.api}/v13/deployments",
             method="POST",
             headers=self._headers(),
             params=self._params(),
-            json_body={
-                "name": project_name,
-                "target": "production",
-                "gitSource": {
-                    "type": "github",
-                    "repo": name,
-                    "org": owner,
-                    "ref": ref,
-                },
-            },
+            json_body=body,
         )
 
     def get_deployment(self, deployment_id: str) -> dict[str, Any]:
