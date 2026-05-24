@@ -197,12 +197,17 @@ class HermesOrchestrator:
         context = hermes.run()
     """
 
-    def __init__(self, idea: str, workdir: str | None = None) -> None:
+    def __init__(
+        self,
+        idea: str,
+        workdir: str | None = None,
+        build_id: str | None = None,
+    ) -> None:
         import os
         from config import RUNTIME
 
         wd = workdir or str(Path(RUNTIME.workdir_root))
-        self.context = ProjectContext.new(idea=idea, workdir=wd)
+        self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
         self.tg = TelegramNotifier(
             token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
             chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),

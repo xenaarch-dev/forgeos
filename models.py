@@ -384,11 +384,16 @@ class ProjectContext:
     # ------------------------------------------------------------------
 
     @classmethod
-    def new(cls, idea: str, workdir: str | os.PathLike[str]) -> "ProjectContext":
+    def new(
+        cls,
+        idea: str,
+        workdir: str | os.PathLike[str],
+        build_id: str | None = None,
+    ) -> "ProjectContext":
         wd = str(Path(workdir).expanduser().resolve())
         Path(wd).mkdir(parents=True, exist_ok=True)
         return cls(
-            project_id=_new_id("proj"),
+            project_id=build_id or _new_id("proj"),
             idea=idea.strip(),
             workdir=wd,
         )
