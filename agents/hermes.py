@@ -204,9 +204,20 @@ class HermesOrchestrator:
         build_id: str | None = None,
     ) -> None:
         import os
+        import time
+        import re as _re
         from config import RUNTIME
 
-        wd = workdir or str(Path(RUNTIME.workdir_root))
+        if workdir:
+            wd = workdir
+        else:
+            # Create a unique per-build directory under builds/
+            slug = _re.sub(r"[^a-z0-9]+", "-", idea.lower().strip())[:32].strip("-")
+            ts = int(time.time())
+            folder = f"{slug}-{ts}"
+            builds_root = Path(RUNTIME.workdir_root).parent / "builds"
+            builds_root.mkdir(parents=True, exist_ok=True)
+            wd = str(builds_root / folder)
         self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
         self.tg = TelegramNotifier(
             token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
@@ -261,11 +272,12 @@ class HermesOrchestrator:
         )
 
         return [
-            # Planning gates
+            # Planning gate (idea viability — no spec needed)
             {"name": "office_hours",   "cls": OfficeHoursGate,   "gate": True},
-            {"name": "ceo_review",     "cls": CEOReviewGate,     "gate": True},
-            # Architecture
+            # Architecture — produces SPEC.md, ARCH.md, TASKS.json
             {"name": "architect",      "cls": ArchitectAgent,    "gate": False},
+            # Business review — now has access to the spec
+            {"name": "ceo_review",     "cls": CEOReviewGate,     "gate": True},
             # Design gates
             {"name": "eng_review",     "cls": EngReviewGate,     "gate": True},
             {"name": "design_shotgun", "cls": DesignShotgunGate, "gate": False},

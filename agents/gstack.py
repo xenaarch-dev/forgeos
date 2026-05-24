@@ -138,25 +138,25 @@ class CEOReviewGate(GStackGate):
     min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
-        spec = context.spec or "(no spec yet — evaluating idea only)"
+        # Evaluate idea alone — spec may not exist yet at planning stage.
+        spec_section = ""
+        if context.spec:
+            spec_section = f"\n\nSPEC (summary):\n{context.spec[:2000]}"
         return self._gate_call(
             context,
-            f"""Review this product from a CEO/investor perspective.
+            f"""Review this product idea from a CEO/investor perspective.
 
-IDEA: {context.idea}
+IDEA: {context.idea}{spec_section}
 
-SPEC:
-{spec[:3000]}
+Assess ONLY the idea as stated (spec may not exist yet):
+1. Revenue model — is Rs2499/month or equivalent a realistic starting price?
+2. Target user — is the ICP (Indian freelancers / B2B SaaS / etc.) specific?
+3. Core features described — do they justify the price?
+4. Scope — can a 5-agent AI system ship an MVP in one session?
+5. Fatal flaw — is there one deal-breaker?
 
-Assess:
-1. Revenue model — is there a clear path to $1k MRR?
-2. Target user — is the ICP specific enough to market to?
-3. Core features — do they match the revenue goal?
-4. Scope — is it too big to ship in one sprint?
-5. Missing — what critical feature is absent?
-
-Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
-End with SCORE: N/10 and PASS or FAIL.""",
+Score 1-10 based on the IDEA alone. Score >= 5 = PASS.
+End with SCORE: N/10 on its own line, then PASS or FAIL on its own line.""",
         )
 
 
@@ -484,7 +484,7 @@ def _parse_verdict(text: str, min_score: float) -> tuple[bool, float, str]:
     upper = text.upper()
 
     score = 0.0
-    m = re.search(r"SCORE\s*[:\-]\s*(\d+(?:\.\d+)?)\s*/\s*10", upper)
+    m = re.search(r"SCORE[^0-9]*?(\d+(?:\.\d+)?)\s*/\s*10", upper)
     if m:
         score = float(m.group(1))
 
