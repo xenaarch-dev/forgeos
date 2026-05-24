@@ -264,6 +264,45 @@ def _safe_json(obj: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
+
+def run_pipeline(
+    idea: str,
+    workdir: str | None = None,
+    build_id: str | None = None,
+    god_mode: bool = False,
+) -> dict:
+    """
+    Callable entry point for the rq worker and god-mode loop.
+
+    Returns a dict with project_id, workdir, repo_url, backend_url, frontend_url.
+    Raises RuntimeError if the pipeline is blocked by a gate.
+    """
+    import os as _os
+    if god_mode:
+        _os.environ["FORGEOS_GOD_MODE"] = "1"
+
+    from agents.hermes import HermesOrchestrator
+
+    hermes = HermesOrchestrator(idea=idea, workdir=workdir, build_id=build_id)
+    ctx = hermes.run()
+
+    # ForgeBrain learning loop — runs even if god_mode is off
+    try:
+        from forge_brain import ForgeBrain
+        brain = ForgeBrain()
+        brain.run_learning_loop(context=ctx)
+    except Exception as _e:
+        sys.stderr.write(f"[orchestrator] ForgeBrain loop skipped: {_e}\n")
+
+    return {
+        "project_id": ctx.project_id,
+        "workdir": ctx.workdir,
+        "repo_url": ctx.repo_url or "",
+        "backend_url": ctx.backend_url or "",
+        "frontend_url": ctx.frontend_url or "",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ForgeOS orchestrator")
     parser.add_argument("--idea", help="Idea to build")
@@ -275,6 +314,11 @@ def main(argv: list[str] | None = None) -> int:
         "--legacy",
         action="store_true",
         help="Use V1 flat pipeline (no GStack gates, no Missions)",
+    )
+    parser.add_argument(
+        "--god-mode",
+        action="store_true",
+        help="Enable god-mode: autonomous healing loop + continuous ForgeBrain learning",
     )
     args = parser.parse_args(argv)
 
@@ -296,6 +340,10 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write("[orchestrator] running V2 pipeline (GStack + Missions)\n")
         from agents.hermes import HermesOrchestrator
 
+        if args.god_mode:
+            import os as _os
+            _os.environ["FORGEOS_GOD_MODE"] = "1"
+            sys.stderr.write("[orchestrator] GOD MODE ENABLED\n")
         hermes = HermesOrchestrator(idea=idea, workdir=args.workdir)
         try:
             ctx = hermes.run()
