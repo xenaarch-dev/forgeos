@@ -3,7 +3,7 @@
   "idea": "ContractForge \u2014 AI contract and proposal generator for Indian freelancers. GST-compliant contracts, NDA templates, SOW generation. PDF export with e-signature flow. INR pricing at Rs2499/month via Lemon Squeezy. Next.js 14 + FastAPI + Supabase.",
   "workdir": "/home/padmaja/forge/forgeos/builds/contractforge-ai-contract-and-pr-1779644220",
   "started_at": "2026-05-24T17:44:56.343120+00:00",
-  "updated_at": "2026-05-24T18:05:35.198034+00:00",
+  "updated_at": "2026-05-24T18:16:25.827592+00:00",
   "spec": "# ContractForge Specification\n\n## Problem\nFreelancers in India often struggle to create professional and compliant contracts. The process is time-consuming and error-prone.\n\n## Target Users\n- Freelancers in India looking for a reliable platform to generate professional contracts.\n- Clients seeking to hire freelancers with legally binding agreements.\n\n## Core Features\n1. **AI Contract Generation**: Generate GST-compliant contracts using AI.\n2. **NDA Templates**: Create non-disclosure agreements (NDAs) quickly and easily.\n3. **Statement of Work (SOW)**: Generate detailed SOWs for projects.\n4. **PDF Export with E-Signature Flow**: Easily export contracts to PDF and allow e-signatures.\n\n## Non-Features\n- Real-time collaboration on documents.\n- Custom contract templates beyond the provided AI-generated ones.\n- Advanced legal consultation services.\n\n## Success Metrics\n1. Number of contracts generated per month.\n2. User satisfaction scores from surveys.\n3. Conversion rate from contract generation to payment.",
   "architecture": "# ContractForge Architecture\n\n## Stack Justification\n- **Frontend**: Next.js 14 (App Router) + Tailwind + Shadcn/ui - Provides a modern, performant, and scalable frontend with a rich UI/UX.\n- **Backend**: FastAPI - Offers high performance and easy-to-use asynchronous APIs for handling business logic.\n- **Database**: Supabase (Postgres) - A powerful database service that integrates well with the other tools in the stack.\n- **Cache**: Upstash Redis - Provides fast read/write access to cache data, improving application performance.\n- **Queue**: Upstash Kafka - Enables real-time messaging and processing of asynchronous tasks.\n- **Auth**: Supabase Auth - Handles user authentication and authorization securely.\n- **Payments**: Lemon Squeezy - A simple and secure payment gateway for recurring billing.\n- **Email**: Resend - Reliable email delivery with transactional capabilities.\n- **Monitoring**: Sentry + Uptime Robot - Ensures the application is always up and running, with detailed error tracking.\n- **CI/CD**: GitHub Actions - Automates testing and deployment processes.\n- **Deployment**: Railway (backend) + Vercel (frontend) - Provides a seamless and scalable deployment experience.\n\n## System Diagram",
   "stack": {
@@ -90,7 +90,7 @@
       "depends_on": [
         "task_211ac3238e03"
       ],
-      "status": "in_progress",
+      "status": "done",
       "notes": "",
       "artifacts": []
     },
@@ -103,7 +103,7 @@
         "task_d228dea9ecff",
         "task_e4092813be16"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "notes": "",
       "artifacts": []
     },
@@ -553,6 +553,14 @@
       "purpose": "worker.3",
       "prompt_tokens": 1333,
       "completion_tokens": 1192,
+      "cost_usd": 0.0
+    },
+    {
+      "timestamp": "2026-05-24T18:16:25.827568+00:00",
+      "model": "qwen2.5-coder:7b",
+      "purpose": "worker.4",
+      "prompt_tokens": 1332,
+      "completion_tokens": 6000,
       "cost_usd": 0.0
     }
   ],
