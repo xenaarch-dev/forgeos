@@ -209,7 +209,7 @@ class HermesOrchestrator:
         from config import RUNTIME
 
         if workdir:
-            wd = workdir
+            wd = str(Path(workdir).expanduser().resolve())
         else:
             # Create a unique per-build directory under builds/
             slug = _re.sub(r"[^a-z0-9]+", "-", idea.lower().strip())[:32].strip("-")
@@ -218,7 +218,18 @@ class HermesOrchestrator:
             builds_root = Path(RUNTIME.workdir_root).parent / "builds"
             builds_root.mkdir(parents=True, exist_ok=True)
             wd = str(builds_root / folder)
-        self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
+
+        # Load existing context if the workdir already has one (resume mode).
+        ctx_path = Path(wd) / "context.json"
+        if ctx_path.exists():
+            try:
+                self.context = ProjectContext.load(ctx_path)
+                self._log(f"[hermes] RESUME: loaded existing context from {ctx_path}")
+            except Exception as _e:
+                self._log(f"[hermes] resume load failed ({_e}), starting fresh")
+                self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
+        else:
+            self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
         self.tg = TelegramNotifier(
             token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
             chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
@@ -313,14 +324,21 @@ class HermesOrchestrator:
     def _completed_stages(self) -> set[str]:
         """Return set of stage names that already passed in a prior run (from context.json)."""
         completed = set()
-        # Check agent results
+        # Check agent results — key is "agent" (the agent's .name attribute)
         for result in (self.context.agent_results or []):
             if isinstance(result, dict) and result.get("status") == "success":
-                completed.add(result.get("agent_name", ""))
-        # Check gate results
+                agent_name = result.get("agent", result.get("agent_name", ""))
+                if agent_name:
+                    completed.add(agent_name)
+                    # Also add without "_gate" suffix for stage name matching
+                    if agent_name.endswith("_gate"):
+                        completed.add(agent_name[:-5])
+        # Check gate results — key is "gate" e.g. "office_hours"
         for gate in self.context.metadata.get("gates", []):
             if isinstance(gate, dict) and gate.get("passed"):
-                completed.add(gate.get("gate", ""))
+                g = gate.get("gate", "")
+                if g:
+                    completed.add(g)
         return completed
 
     def _run_stage(self, stage: dict[str, Any]) -> None:
