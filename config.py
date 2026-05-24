@@ -200,6 +200,13 @@ class RuntimeConfig:
         default_factory=lambda: _get("TELEGRAM_CHAT_ID")
     )
 
+    builds_dir: str = field(
+        default_factory=lambda: _get(
+            "FORGEOS_BUILDS_DIR",
+            str(Path.cwd() / "builds"),
+        )
+    )
+
     # Mission system
     mission_max_features: int = field(
         default_factory=lambda: _get_int("MISSION_MAX_FEATURES", 12)
