@@ -310,11 +310,30 @@ class HermesOrchestrator:
     # Stage runner
     # ------------------------------------------------------------------
 
+    def _completed_stages(self) -> set[str]:
+        """Return set of stage names that already passed in a prior run (from context.json)."""
+        completed = set()
+        # Check agent results
+        for result in (self.context.agent_results or []):
+            if isinstance(result, dict) and result.get("status") == "success":
+                completed.add(result.get("agent_name", ""))
+        # Check gate results
+        for gate in self.context.metadata.get("gates", []):
+            if isinstance(gate, dict) and gate.get("passed"):
+                completed.add(gate.get("gate", ""))
+        return completed
+
     def _run_stage(self, stage: dict[str, Any]) -> None:
         name = stage["name"]
         cls = stage["cls"]
         is_gate = stage.get("gate", False)
         max_retries = 1 if is_gate else 3
+
+        # Skip stages that already passed in a previous run (resume logic).
+        completed = self._completed_stages()
+        if name in completed:
+            self._log(f"[hermes] -> {name} SKIPPED (already completed)")
+            return
 
         self._log(f"[hermes] -> {name}")
         agent = cls()

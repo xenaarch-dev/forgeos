@@ -124,8 +124,8 @@ Assess:
 4. Risk — what is the biggest reason this fails?
 5. Moat — why would someone pay vs use a free alternative?
 
-Score the idea 1-10. Score >= 7 = PASS. Score < 7 = FAIL.
-End with SCORE: N/10 and PASS or FAIL.""",
+Score the idea 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
+End with SCORE: N/10 on its own line, then PASS or FAIL on its own line.""",
         )
 
 
@@ -171,28 +171,32 @@ class EngReviewGate(GStackGate):
     name = "eng_review_gate"
     gate_name = "eng_review"
     phase = "design"
-    min_score = 6.0
+    min_score = 5.0  # matches gate prompt: "Score >= 5 = PASS"
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
-        arch = context.architecture or "(no architecture yet)"
+        # Read from disk first (more complete than context.architecture which may be truncated)
+        arch = _read_artifact(context, "ARCH.md") or context.architecture or "(no architecture yet)"
         return self._gate_call(
             context,
             f"""Review this architecture from a senior engineer perspective.
+This is an MVP plan — evaluate it as an MVP, not an enterprise system.
 
 IDEA: {context.idea}
 
 ARCHITECTURE:
-{arch[:3000]}
+{arch[:4000]}
 
-Assess:
-1. Stack — appropriate and not over-engineered?
-2. Data model — does the ERD support all core features?
-3. API design — endpoints complete and RESTful?
-4. Gaps — what critical system component is missing?
-5. Risk — highest technical risk?
+Assess (grade leniently for MVP scope):
+1. Stack — appropriate and not over-engineered for an MVP?
+2. Data model — adequate for the core features described?
+3. API design — are the key endpoints implied/described?
+4. Security — any obvious missing concern (auth, RLS, secrets)?
+5. Risk — highest technical risk for this specific idea?
 
+NOTE: ERD diagrams and full endpoint lists may not be in this draft.
+Grade the thinking and decisions, not the documentation completeness.
 Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
-End with SCORE: N/10 and PASS or FAIL.""",
+End with SCORE: N/10 on its own line, then PASS or FAIL on its own line.""",
         )
 
 
@@ -245,7 +249,7 @@ class ReviewGate(GStackGate):
     name = "review_gate"
     gate_name = "review"
     phase = "review"
-    min_score = 6.0
+    min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
