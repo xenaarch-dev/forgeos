@@ -539,6 +539,15 @@ class GateResult:
 
 
 @dataclass
+class GStackResult:
+    """Result from a GStackRunner.run_skill() call."""
+    skill: str
+    passed: bool
+    output: str
+    errors: str
+
+
+@dataclass
 class ValidationAssertion:
     description: str
     category: str = "functional"
@@ -615,6 +624,7 @@ __all__ = [
     "AgentStatus",
     "BrowserResult",
     "FailureRecord",
+    "GStackResult",
     "GateResult",
     "LLMClient",
     "LLMError",
