@@ -223,3 +223,44 @@
 **Commit:** eb8b543 (feat: ComputerUseAgent -- Claude claude-sonnet-4-6 computer use + Playwright)
 
 **Next ForgeOS phase:** Wire ComputerUseAgent into scaffold templates (every generated product gets embedded agent), integration test with real Playwright browser task
+
+---
+
+## [2026-05-25] Session 2 Complete
+
+### Phases completed
+
+**Phase 2 — PDF Export (PASSED)**
+- POST /contracts/{id}/export live on Render
+- reportlab 4.2, DejaVuSans font (₹ symbol), all 8 sections
+- Verified: HTTP 200, 46524 bytes, pdfminer confirms all sections + India clauses
+- Commit: 378604b (ContractForge)
+
+**Phase 3 — Contract Generation Quality (PASSED)**
+- POST /contracts/generate calls claude-sonnet-4-6 with India-law system prompt
+- All checks pass: ₹75,000 (×1), GST (×2), 18% (×2), Mumbai (×1), Indian Contract Act (×2), zero placeholders
+- stop_reason: end_turn, length 5974 chars
+- Commit: 260e27f (ContractForge)
+
+**Phase 4 — ComputerUseAgent scaffolded (PASSED)**
+- tools/computer_use.py: Playwright-backed agentic loop, claude-sonnet-4-6 + computer-use-2024-10-22 beta
+- COMPUTER_USE=1 routes BrowserAgent to ComputerUseAgent
+- Commit: eb8b543 → cf4342e (ForgeOS)
+
+### Last commit hashes
+- ForgeOS: cf4342e (chore: STATE.md -- Phase 3 + Phase 4 complete)
+- ContractForge: 260e27f (feat: contract generation verified -- all India clauses present)
+
+### Key fixes discovered
+1. DejaVuSans font: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf for ₹ rendering; requires registerFontFamily() for bold tags
+2. urllib vs curl: curl shell-escaped sk-ant keys store empty values on Render API; always use Python urllib.request with json.dumps()
+3. Word-limit constraint: "MAXIMUM 1000 words" + CONTRACT STRUCTURE prevents max_tokens truncation; jurisdiction clause forced to section 4
+
+### First incomplete item for Session 3
+- Lemon Squeezy payment gate (POST /billing/checkout, webhook handler, plan guard middleware)
+- LS store status: exists, test mode ON, application under review
+
+### Next Sprint
+- LS payment gate on ContractForge
+- ComputerUseAgent integration into ForgeOS scaffold templates
+- ComputerUseAgent integration test with real Playwright task
