@@ -319,3 +319,10 @@ Go-live action: Toggle test mode OFF in LS dashboard after merchant approval. No
 - Add NEXT_PUBLIC_CHECKOUT_PER_CONTRACT + NEXT_PUBLIC_CHECKOUT_MONTHLY to frontend Vercel env vars for /pricing page
 - Toggle LS test mode OFF after merchant approval
 - Add SUPABASE_JWT_SECRET to Render for production JWT auth (backlog)
+
+### Fix: Supabase credentials corrected (2026-05-25)
+- ForgeOS .env had `sgtnxmoymxdtoqoszcwx` (ForgeOS project) — WRONG for ContractForge
+- ContractForge Supabase project: `vcjicrqfnwdegggkrlpd` (ap-southeast-1, Singapore)
+- Render updated: all 3 SUPABASE_* vars now point to vcjicrqfnwdegggkrlpd ✓
+- ContractForge .env written with correct creds (gitignored) ✓
+- SQL migration 002_billing.sql run in correct project with RLS enabled ✓
