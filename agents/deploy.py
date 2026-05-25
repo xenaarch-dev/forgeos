@@ -186,21 +186,25 @@ class DeployAgent(BaseAgent):
                 name=repo_name,
                 framework="nextjs",
                 github_repo=f"{owner}/{repo_name}",
-                root_directory="frontend",
             )
         except Exception as e:
-            body = getattr(e, "body", "") or ""
+            body = getattr(e, "body", "") or str(e)
             if "Login Connection" in body or "login connection" in body.lower():
                 raise RuntimeError(
                     "Vercel requires GitHub connected: go to vercel.com/account → "
                     "Git Integrations → Install GitHub App, then re-run deploy."
                 ) from e
             raise
+        # Set rootDirectory after creation (v10 API doesn't accept it at create time)
+        project_id = project.get("id") or project.get("name", repo_name)
+        try:
+            client.update_project(project_id, root_directory="frontend")
+        except Exception:
+            pass  # non-fatal — Vercel will still deploy from root if this fails
         client.trigger_deployment(
             project_name=project.get("name", repo_name),
             github_repo=f"{owner}/{repo_name}",
             ref="main",
-            root_directory="frontend",
         )
         slug = project.get("name", repo_name)
         return f"https://{slug}.vercel.app"

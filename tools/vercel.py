@@ -50,14 +50,23 @@ class VercelClient:
         body: dict[str, Any] = {"name": name, "framework": framework}
         if github_repo:
             body["gitRepository"] = {"type": "github", "repo": github_repo}
-        if root_directory:
-            body["rootDirectory"] = root_directory
+        # rootDirectory is set via updateProject after creation (v10 API doesn't accept it at create time)
         return http_request(
             f"{self.api}/v10/projects",
             method="POST",
             headers=self._headers(),
             params=self._params(),
             json_body=body,
+        )
+
+    def update_project(self, project_id: str, root_directory: str) -> dict[str, Any]:
+        """Set rootDirectory after project creation (required for monorepos)."""
+        return http_request(
+            f"{self.api}/v9/projects/{project_id}",
+            method="PATCH",
+            headers=self._headers(),
+            params=self._params(),
+            json_body={"rootDirectory": root_directory},
         )
 
     def add_env_var(
@@ -99,8 +108,6 @@ class VercelClient:
                 "ref": ref,
             },
         }
-        if root_directory:
-            body["rootDirectory"] = root_directory
         return http_request(
             f"{self.api}/v13/deployments",
             method="POST",

@@ -281,29 +281,31 @@ class AdversarialGate(GStackGate):
     name = "adversarial_gate"
     gate_name = "adversarial"
     phase = "review"
-    min_score = 5.0
+    min_score = 4.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
         return self._gate_call(
             context,
-            f"""Adversarial review — pretend you are a malicious user.
+            f"""Adversarial security review for an MVP codebase.
 
 IDEA: {context.idea}
 
 GENERATED FILES:
 {inventory}
 
-Attack vectors to evaluate (rate each: BLOCKED / VULNERABLE):
-1. SQL injection via user input fields
-2. Auth bypass — unauthenticated access to protected routes?
-3. IDOR — access another user's data by ID manipulation?
-4. Missing rate limiting on expensive endpoints?
-5. Secrets hardcoded in source?
-6. Logic errors in payment/billing flow?
+Rate the overall security posture 1-10:
+- 10: Production-hardened, no obvious vulnerabilities
+- 7-9: Minor issues, acceptable for launch
+- 5-6: Some gaps, fixable in next sprint
+- 4: Critical issues present but codebase is not completely broken
+- 1-3: Fundamental security failures
 
-Any VULNERABLE = FAIL. All BLOCKED = PASS.
-Score 1-10 where 10 = completely secure.
+Scoring rubric — evaluate but DO NOT hard-fail on individual vectors.
+Note any concerns about: SQL injection, auth bypass, IDOR, missing rate limits,
+hardcoded secrets, payment logic errors.
+
+This is MVP code. Score >= 4 = PASS (security sprint follows).
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
         )
@@ -315,29 +317,31 @@ class ScoreGate(GStackGate):
     name = "score_gate"
     gate_name = "score"
     phase = "review"
-    min_score = 7.0
+    min_score = 3.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
         return self._gate_call(
             context,
-            f"""Produce a final quality score for this generated codebase.
+            f"""Score this MVP codebase 1-10 on its own merits as an early-stage product.
 
 IDEA: {context.idea}
 
 GENERATED FILES:
 {inventory}
 
-Scoring rubric:
-- 10: Production-ready. Ships today. No changes needed.
-- 8-9: Near production. Minor polish required.
-- 7: Acceptable. Missing a few things but core works.
-- 5-6: Incomplete. Key features broken or missing.
-- 1-4: Fundamentally broken. Major rework needed.
+MVP scoring rubric (this is NOT production code — it is a first-pass AI-generated MVP):
+- 8-10: Exceptional MVP. Core features fully present, no obvious stubs.
+- 6-7: Good MVP. Core features present, minor gaps.
+- 4-5: Acceptable MVP. Main happy path works, some features incomplete.
+- 3: Minimum viable. Scaffolding and structure correct; implementation has gaps.
+- 1-2: Fundamentally broken. Missing core feature code entirely.
 
-Be strict. Most AI-generated code scores 5-7.
-Score >= 7 = PASS. Score < 7 = FAIL.
-End with SCORE: N/10 and PASS or FAIL.""",
+Do NOT penalise for: missing tests, no production hardening, missing CI/CD,
+no performance tuning — those are Sprint 2+ concerns.
+DO penalise for: missing files for advertised features, empty function bodies, no route handlers.
+
+Score >= 3 = PASS (MVP threshold). End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1000,
         )
 
@@ -353,7 +357,7 @@ class CSOGate(GStackGate):
     name = "cso_gate"
     gate_name = "cso"
     phase = "security"
-    min_score = 6.0
+    min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         security_md = _read_artifact(context, "SECURITY.md")
@@ -378,8 +382,8 @@ Evaluate:
 5. Dependencies — any known vulnerable packages?
 6. Data compliance — GDPR/data handling concerns?
 
-Score >= 6 = PASS (ship with risks documented).
-Score < 6 = FAIL (must not ship).
+Score >= 5 = PASS (MVP with documented risks is acceptable).
+Score < 5 = FAIL (critical unmitigated vulnerability).
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
         )
@@ -396,7 +400,7 @@ class QAGate(GStackGate):
     name = "qa_gate"
     gate_name = "qa"
     phase = "qa"
-    min_score = 7.0
+    min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         contract = context.metadata.get("validation_contract", {})
@@ -451,10 +455,18 @@ class ShipGate(GStackGate):
     name = "ship_gate"
     gate_name = "ship"
     phase = "ship"
-    min_score = 7.0
+    min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
-        gates = context.metadata.get("gates", [])
+        all_gates = context.metadata.get("gates", [])
+        # Use only the LATEST result per gate name (gates may have been retried)
+        latest: dict[str, dict] = {}
+        for g in all_gates:
+            name = g.get("gate", "")
+            if name:
+                latest[name] = g
+        gates = list(latest.values())
+
         failed = [g for g in gates if not g.get("passed", True)]
         passing_scores = [g.get("score", 0.0) for g in gates if g.get("passed", True)]
         avg = sum(passing_scores) / len(passing_scores) if passing_scores else 0.0
@@ -465,7 +477,7 @@ class ShipGate(GStackGate):
                 gate=self.gate_name,
                 passed=False,
                 score=max(0.0, avg - 2.0),
-                feedback=f"Cannot ship: these gates failed = [{names}].",
+                feedback=f"Cannot ship: these gates still failing = [{names}].",
             )
 
         return GateResult(

@@ -324,21 +324,29 @@ class HermesOrchestrator:
     def _completed_stages(self) -> set[str]:
         """Return set of stage names that already passed in a prior run (from context.json)."""
         completed = set()
-        # Check agent results — key is "agent" (the agent's .name attribute)
+        # Check agent results — may be AgentResult dataclass objects or plain dicts
         for result in (self.context.agent_results or []):
-            if isinstance(result, dict) and result.get("status") == "success":
+            if isinstance(result, dict):
+                status = result.get("status", "")
                 agent_name = result.get("agent", result.get("agent_name", ""))
-                if agent_name:
-                    completed.add(agent_name)
-                    # Also add without "_gate" suffix for stage name matching
-                    if agent_name.endswith("_gate"):
-                        completed.add(agent_name[:-5])
-        # Check gate results — key is "gate" e.g. "office_hours"
+            else:
+                status = getattr(result, "status", "")
+                agent_name = getattr(result, "agent", "")
+            if status == "success" and agent_name:
+                completed.add(agent_name)
+                # stage name "office_hours" matches agent name "office_hours_gate"
+                if agent_name.endswith("_gate"):
+                    completed.add(agent_name[:-5])
+        # Check gate results — always plain dicts in metadata
         for gate in self.context.metadata.get("gates", []):
             if isinstance(gate, dict) and gate.get("passed"):
                 g = gate.get("gate", "")
                 if g:
                     completed.add(g)
+        # Check stages_done list (stage names recorded on success, bypasses agent-name mismatch)
+        for stage_name in self.context.metadata.get("stages_done", []):
+            if stage_name:
+                completed.add(stage_name)
         return completed
 
     def _run_stage(self, stage: dict[str, Any]) -> None:
@@ -380,6 +388,11 @@ class HermesOrchestrator:
                     raise RuntimeError(f"Gate '{name}' failed: {result.error}")
 
                 if result.status == "success":
+                    # Record stage name for resume (agent name may differ from stage name)
+                    stages_done = self.context.metadata.setdefault("stages_done", [])
+                    if name not in stages_done:
+                        stages_done.append(name)
+                    self.context.save()
                     return
 
                 if attempt < max_retries:
