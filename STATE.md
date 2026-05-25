@@ -326,3 +326,10 @@ Go-live action: Toggle test mode OFF in LS dashboard after merchant approval. No
 - Render updated: all 3 SUPABASE_* vars now point to vcjicrqfnwdegggkrlpd ✓
 - ContractForge .env written with correct creds (gitignored) ✓
 - SQL migration 002_billing.sql run in correct project with RLS enabled ✓
+
+### Vercel NEXT_PUBLIC_ checkout vars added (2026-05-25)
+- NEXT_PUBLIC_CHECKOUT_PER_CONTRACT = https://contractforge.lemonsqueezy.com/checkout/buy/295f4732... ✓
+- NEXT_PUBLIC_CHECKOUT_MONTHLY = https://contractforge.lemonsqueezy.com/checkout/buy/9e263419... ✓
+- Fresh production build triggered: dpl_9gAhqYHakfLPEFH3UqycUALCr5wf (READY in 20s)
+- /pricing page verified: HTTP 200, both LS checkout URLs embedded in SSR HTML
+- Production URL: https://contractforge-ai-contract-and-a3425.vercel.app/pricing
