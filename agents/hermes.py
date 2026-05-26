@@ -22,6 +22,7 @@ Hermes Agent CLI integration (optional):
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -393,6 +394,8 @@ class HermesOrchestrator:
                     if name not in stages_done:
                         stages_done.append(name)
                     self.context.save()
+                    if is_gate:
+                        self._save_gate_post_draft(name, result)
                     return
 
                 if attempt < max_retries:
@@ -461,6 +464,24 @@ class HermesOrchestrator:
             self._log(f"[hermes] dataset entry -> {dataset_path}")
         except Exception as e:
             self._log(f"[hermes] dataset append failed: {e}")
+
+    def _save_gate_post_draft(self, gate_name: str, result: Any) -> None:
+        """After a gate passes, generate a post draft and save to drafts/posts/."""
+        try:
+            from agents.distribution.post_agent import generate_post, _save_draft, _load_env
+            _load_env()
+            if not os.environ.get("ANTHROPIC_API_KEY"):
+                return
+            out = result.output or {}
+            score = out.get("score", "?")
+            description = f"{gate_name} gate passed, score {score}/10"
+            idea_words = (self.context.idea or "").split()
+            product = idea_words[0] if idea_words else "ForgeOS"
+            data = generate_post(event="gate_passed", description=description, product=product)
+            path = _save_draft(data, event=gate_name, product=product)
+            self._log(f"[hermes] post draft saved: {path}")
+        except Exception as e:
+            self._log(f"[hermes] post draft skipped: {e}")
 
     def _log(self, msg: str) -> None:
         try:

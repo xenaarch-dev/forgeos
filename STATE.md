@@ -456,7 +456,50 @@ test_generate_with_active_subscription_200    PASSED
 |------|---------|
 | Toggle LS test mode OFF | After LS merchant approval |
 | SUPABASE_JWT_SECRET on Render | Before production auth (currently user_email from request body) |
-| Doppler install in WSL | Secrets management cleanup (low) |
+| Doppler install in WSL | In progress (apt install running) |
 | LS product images | Nice-to-have |
 | LS post-purchase redirect URL | Point to ContractForge dashboard |
 | Wire PaywallModal into frontend UI | Frontend dashboard → show on 402 response |
+
+---
+
+## [2026-05-26] SESSION 6 — Distribution agents + laptop setup
+
+**ContractForge status (entering session):** Auth redirect fixed (dc2eb4b). All QA green. Fully production-ready.
+
+### Done
+
+**Laptop setup:**
+- `.wslconfig` created at `C:\Users\PADMAJA\.wslconfig` — memory=12GB, processors=6, swap=4GB
+  - NOTE: `wsl --shutdown` then restart WSL required for new limits to apply
+- `~/scripts/cleanup.sh` — kills browser-use / pip / npm / playwright, shows RAM + top 5
+- Dev aliases added to `~/.bashrc`: clean, forge, cf, obs, health, gs, gp, gl, ram, gpu
+- `gpustat` installed via pip3
+- Doppler CLI apt install started (verify with `doppler --version` after WSL restart)
+
+**Obsidian vault:**
+- Full directory structure created at `~/obsidian/`
+- Daily note template: `~/obsidian/templates/daily.md`
+- Today's note: `~/obsidian/01-daily/2026-05-26.md`
+
+**ForgeOS distribution agents:**
+- `agents/distribution/post_agent.py` — drafts X posts in Xena's voice, temp=0.7, claude-sonnet-4-6
+- `agents/distribution/prospect_agent.py` — researches + drafts DMs, temp=0.5, claude-sonnet-4-6
+- `agents/distribution/outreach_queue.py` — JSONL queue, add/review/stats commands
+- `agents/distribution/queue.jsonl` — empty, ready for real prospects
+- `agents/hermes.py` — `_save_gate_post_draft()` hook: auto-drafts post when gate=True passes, saves to `drafts/posts/[ts]_[product]_[gate].txt`. Never posts. Always opt-in.
+- `drafts/posts/` — directory created
+
+### Tested
+- PostAgent: 168 chars, lowercase, specific, no banned phrases ✓
+- ProspectAgent: research + DM draft, FIT assessment, interactive C/E/S ✓
+- OutreachQueue add: saves to queue.jsonl with correct schema ✓
+- OutreachQueue stats: counts by status ✓
+- hermes.py syntax OK after os import + hook method ✓
+
+### Next
+1. Check `doppler --version` after WSL restart (or manual verify)
+2. Run `wsl --shutdown` from PowerShell to apply 12GB RAM limit
+3. First real outreach: use ProspectAgent on 3 actual Indian freelancer handles
+4. PostAgent draft for Session 6 completion
+5. Toggle LS test mode OFF after merchant approval
