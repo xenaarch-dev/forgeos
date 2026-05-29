@@ -14,6 +14,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from models.outputs.worker_output import WorkerOutput
 from models import MissionHandoff, ProjectContext, TaskStatus
 from agents.base import BaseAgent
 from agents.sandbox import ForgeOSSandbox
@@ -217,10 +218,17 @@ class MissionWorkerLoop(BaseAgent):
             context.save()
 
         context.metadata["mission_handoffs"] = handoffs
+        total = len(coder_tasks)
+        rate = round(completed / total, 4) if total > 0 else 1.0
+        output = WorkerOutput(
+            features_completed=completed,
+            features_total=total,
+            completion_rate=rate,
+            handoffs=handoffs,
+            all_tasks_completed=(completed == total and total > 0),
+        )
         return {
-            "features_completed": completed,
-            "features_total": len(coder_tasks),
-            "handoffs": handoffs,
+            **output.model_dump(),
         }
 
     def _write_failure(self, context: ProjectContext, feature: str, error: str) -> None:

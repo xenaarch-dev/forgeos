@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from models.outputs.validator_output import ValidatorOutput
 from models import PipelineBlockedError, ProjectContext
 from agents.base import BaseAgent
 from .orchestrator import MissionOrchestrator, _inventory
@@ -94,14 +95,19 @@ class MissionValidator(BaseAgent):
                 f"({acceptance_final:.0%} < {threshold:.0%} required)"
             )
 
+        output = ValidatorOutput(
+            assertions_total=total_final,
+            assertions_verified=verified_final,
+            acceptance_rate=round(acceptance_final, 4),
+            threshold=threshold,
+            passed=passed_final,
+            self_heals_used=heal_count,
+            verdict="PASS" if passed_final else "FAIL",
+            results=result_list,
+        )
         return {
-            "assertions_total": total_final,
-            "assertions_verified": verified_final,
-            "acceptance_rate": round(acceptance_final, 4),
-            "threshold": threshold,
-            "passed": True,
-            "self_heals": heal_count,
-            "results": result_list,
+            **output.model_dump(),
+            "self_heals": heal_count,  # legacy key
         }
 
     def _validate(
