@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from models import PipelineBlockedError, ProjectContext, SecurityReport, TaskStatus
+from models.outputs.security_output import SecurityOutput, compute_owasp_score
 from .base import BaseAgent
 
 
@@ -155,11 +156,24 @@ class SecurityAgent(BaseAgent):
                 "Fix them before deploying.\n" + "\n".join(report.critical)
             )
 
+        output = SecurityOutput(
+            owasp_score=compute_owasp_score(len(report.critical), len(report.warnings)),
+            critical_count=len(report.critical),
+            warnings_count=len(report.warnings),
+            passed_count=len(report.passed),
+            critical_findings=list(report.critical),
+            warnings_list=list(report.warnings),
+            passed_checks=list(report.passed),
+            security_md_written=(Path(context.workdir) / "SECURITY.md").exists(),
+            rls_policies_written=(project_root / "supabase/policies.sql").exists(),
+            ci_security_workflow_written=(project_root / ".github/workflows/security.yml").exists(),
+        )
         return {
+            **output.model_dump(),
+            "report": "SECURITY.md",  # legacy key
             "critical": len(report.critical),
             "warnings": len(report.warnings),
             "passed": len(report.passed),
-            "report": "SECURITY.md",
         }
 
     def _run_all_checks(
