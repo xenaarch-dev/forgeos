@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from models import ProjectContext, StackChoice, Task, TaskStatus
+from models.outputs.architect_output import ArchitectOutput
 from .base import BaseAgent
 
 
@@ -58,50 +59,120 @@ class ArchitectAgent(BaseAgent):
     phase = "architect"
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
-        # ---- Step 1: classify the idea & pick the stack -----------------
+        # Step 1: deterministic stack classification (never uses LLM alone)
         stack = self._decide_stack(context)
         context.stack = stack
+
+        # Step 2: produce validated ArchitectOutput via structured LLM or fallback
+        output = self._produce_architect_output(context, stack)
+
+        # Step 3: write all artifacts from the validated model
+        context.spec = output.spec_md
+        context.architecture = output.arch_md
         self._write(context, "STACK.json", json.dumps(asdict(stack), indent=2))
+        self._write(context, "SPEC.md", output.spec_md)
+        self._write(context, "ARCH.md", output.arch_md)
 
-        # ---- Step 2: produce SPEC.md & ARCH.md -------------------------
-        spec_md, arch_md = self._produce_spec_and_arch(context, stack)
-        context.spec = spec_md
-        context.architecture = arch_md
-        self._write(context, "SPEC.md", spec_md)
-        self._write(context, "ARCH.md", arch_md)
-
-        # ---- Step 3: produce TASKS.json --------------------------------
+        # Step 4: produce full task objects (with IDs + dependencies) for TASKS.json
         tasks = self._produce_tasks(context, stack)
         context.tasks = tasks
-        self._write(
-            context,
-            "TASKS.json",
-            json.dumps([asdict(t) for t in tasks], indent=2),
-        )
+        self._write(context, "TASKS.json", json.dumps([asdict(t) for t in tasks], indent=2))
 
-        # Mirror all key artefacts to .forgeos/ so the mission layer can read them.
-        forgeos_dir = Path(context.workdir) / ".forgeos"
-        forgeos_dir.mkdir(parents=True, exist_ok=True)
-        (forgeos_dir / "SPEC.md").write_text(spec_md, encoding="utf-8")
-        (forgeos_dir / "ARCH.md").write_text(arch_md, encoding="utf-8")
-        (forgeos_dir / "STACK.json").write_text(json.dumps(asdict(stack), indent=2), encoding="utf-8")
-        (forgeos_dir / "TASKS.json").write_text(
-            json.dumps([asdict(t) for t in tasks], indent=2), encoding="utf-8"
-        )
-        # context.json is saved by BaseAgent.run() via context.save(); mirror it too.
-        import shutil as _shutil
-        ctx_src = Path(context.workdir) / "context.json"
-        if ctx_src.exists():
-            _shutil.copy2(ctx_src, forgeos_dir / "context.json")
-
+        # Return ArchitectOutput fields + legacy keys (extra="ignore" lets tests parse cleanly)
         return {
+            **output.model_dump(),
             "stack": asdict(stack),
             "spec_path": "SPEC.md",
             "arch_path": "ARCH.md",
             "tasks_path": "TASKS.json",
             "task_count": len(tasks),
-            "forgeos_dir": str(forgeos_dir),
         }
+
+    # ------------------------------------------------------------------
+    # Structured output production
+    # ------------------------------------------------------------------
+
+    def _produce_architect_output(
+        self, context: ProjectContext, stack: StackChoice
+    ) -> ArchitectOutput:
+        """Try Claude structured output first; fall back to deterministic templates."""
+        try:
+            return self._produce_structured_architect_output(context, stack)
+        except Exception as e:
+            self._log(f"[architect] structured output unavailable ({e}), using fallback")
+            return self._produce_legacy_architect_output(context, stack)
+
+    def _produce_structured_architect_output(
+        self, context: ProjectContext, stack: StackChoice
+    ) -> ArchitectOutput:
+        prompt = (
+            f"IDEA: {context.idea}\n\n"
+            f"CHOSEN STACK:\n{json.dumps(asdict(stack), indent=2)}\n\n"
+            "Produce the full product architecture using the structured_output tool.\n\n"
+            "SPEC.md requirements:\n"
+            "- Problem statement (2+ sentences)\n"
+            "- Target users (2+ bullet points)\n"
+            "- Core features (numbered, at least 5)\n"
+            "- Non-features / out-of-scope (2+ items)\n"
+            "- Success metrics (3+ measurable KPIs)\n\n"
+            "ARCH.md requirements:\n"
+            "- Stack justification (explain every choice)\n"
+            "- System diagram as ```mermaid graph TD``` block\n"
+            "- Data model as ```mermaid erDiagram``` block\n"
+            "- API surface table (| Method | Path | Purpose | Auth |)\n\n"
+            "api_routes: list every route as 'METHOD /path' (e.g. 'GET /healthz').\n"
+            "task_titles: ordered list of ≥5 atomic build tasks.\n"
+            "estimated_phases: integer 3–20 based on idea complexity.\n"
+            "product_name: short marketable name (2–4 words)."
+        )
+        return self._structured_llm(
+            context,
+            user_prompt=prompt,
+            output_model=ArchitectOutput,
+            system_extra=SYSTEM_PROMPT,
+            max_tokens=8192,
+        )
+
+    def _produce_legacy_architect_output(
+        self, context: ProjectContext, stack: StackChoice
+    ) -> ArchitectOutput:
+        """Build ArchitectOutput from deterministic fallback templates (no LLM needed)."""
+        spec_md, arch_md = self._produce_spec_and_arch(context, stack)
+        baseline_tasks = self._baseline_tasks(stack)
+        return ArchitectOutput(
+            product_name=self._extract_product_name(context.idea),
+            tech_stack=asdict(stack),
+            spec_md=spec_md,
+            arch_md=arch_md,
+            api_routes=self._extract_api_routes(arch_md),
+            task_titles=[t.title for t in baseline_tasks],
+            estimated_phases=min(20, max(3, len(baseline_tasks))),
+            stack_frontend=stack.frontend,
+            stack_backend=stack.backend,
+            stack_database=stack.database,
+        )
+
+    @staticmethod
+    def _extract_product_name(idea: str) -> str:
+        m = re.search(
+            r'(?:build|create|make|develop)\s+(?:a|an)\s+(.+?)(?:\s+for\s|\s+that\s|\s+which\s|\s+using\s|$)',
+            idea,
+            re.I,
+        )
+        if m:
+            raw = m.group(1).strip()
+            return " ".join(w.capitalize() for w in raw.split()[:4])
+        words = [w.capitalize() for w in idea.split() if len(w) > 2]
+        return " ".join(words[:3]) if words else "Product"
+
+    @staticmethod
+    def _extract_api_routes(arch_md: str) -> list[str]:
+        routes = []
+        for line in arch_md.splitlines():
+            m = re.match(r'\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*(/[^\s|]+)', line)
+            if m:
+                routes.append(f"{m.group(1)} {m.group(2).strip()}")
+        return routes if routes else ["GET /healthz", "GET /api/items", "POST /api/items"]
 
     # ------------------------------------------------------------------
     # Stack selection
@@ -312,10 +383,8 @@ class ArchitectAgent(BaseAgent):
     # Task list
     # ------------------------------------------------------------------
 
-    def _produce_tasks(
-        self, context: ProjectContext, stack: StackChoice
-    ) -> list[Task]:
-        # Deterministic baseline — guarantees a usable plan even if LLM fails.
+    def _baseline_tasks(self, stack: StackChoice) -> list[Task]:
+        """Deterministic task baseline — always ≥11 tasks, no LLM required."""
         scaffold = Task.new("Generate project skeleton + configs", "scaffold", "scaffold")
         db = Task.new("Apply Supabase schema + RLS placeholders", "scaffold", "scaffold", [scaffold.id])
         be_health = Task.new("Backend: healthz + auth exchange + base middleware", "coder", "code", [db.id])
@@ -327,16 +396,15 @@ class ArchitectAgent(BaseAgent):
         tests = Task.new("Tests: backend pytest + frontend vitest (>=80%)", "coder", "code", [be_crud.id, fe_dashboard.id])
         sec = Task.new("Security: OWASP audit + RLS + rate limits", "security", "security", [tests.id])
         deploy = Task.new("Deploy: GitHub repo, Railway, Vercel, monitoring", "deploy", "deploy", [sec.id])
-
-        baseline = [
-            scaffold, db, be_health, be_crud, be_billing,
-            fe_shell, fe_dashboard, fe_pricing, tests, sec, deploy,
-        ]
-
-        # Conditional ML tasks
+        tasks = [scaffold, db, be_health, be_crud, be_billing, fe_shell, fe_dashboard, fe_pricing, tests, sec, deploy]
         if "ml_service" in stack.extras:
-            ml = Task.new("ML: training script + inference endpoint + MLflow", "coder", "code", [be_health.id])
-            baseline.append(ml)
+            tasks.append(Task.new("ML: training script + inference endpoint + MLflow", "coder", "code", [be_health.id]))
+        return tasks
+
+    def _produce_tasks(
+        self, context: ProjectContext, stack: StackChoice
+    ) -> list[Task]:
+        baseline = self._baseline_tasks(stack)
 
         # Optional LLM enrichment
         try:

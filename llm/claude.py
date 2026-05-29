@@ -9,10 +9,14 @@ and reports prompt/completion tokens.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Type, TypeVar
+
+from pydantic import BaseModel
 
 from config import LLM, required
 from .base import LLMClient, LLMError, LLMResponse
+
+_T = TypeVar("_T", bound=BaseModel)
 
 
 class ClaudeClient(LLMClient):
@@ -86,6 +90,60 @@ class ClaudeClient(LLMClient):
             )
 
         return self._retry(call, purpose="claude.complete")
+
+    # ------------------------------------------------------------------
+    # Structured output via tool_use
+    # ------------------------------------------------------------------
+
+    def complete_structured(
+        self,
+        messages: list[dict[str, str]],
+        output_model: Type[_T],
+        system: str | None = None,
+        *,
+        max_tokens: int = 4096,
+        temperature: float = 0.1,
+    ) -> _T:
+        """Call the Messages API with tool_use to get a Pydantic-validated output.
+
+        Forces model="claude-sonnet-4-6" regardless of instance model — structured
+        outputs require a capable model per ForgeOS hard rules.
+        """
+        tools = [
+            {
+                "name": "structured_output",
+                "description": "Return the structured agent output. Use this tool to respond.",
+                "input_schema": output_model.model_json_schema(),
+            }
+        ]
+        payload: dict[str, Any] = {
+            "model": "claude-sonnet-4-6",
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": {"type": "tool", "name": "structured_output"},
+        }
+        if system:
+            payload["system"] = system
+
+        def call() -> _T:
+            raw = self._http_json(
+                url=f"{self.api_base}/messages",
+                headers=self._headers(),
+                payload=payload,
+                stream=False,
+            )
+            data = json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
+            for block in data.get("content", []):
+                if block.get("type") == "tool_use" and block.get("name") == "structured_output":
+                    return output_model(**block["input"])
+            raise LLMError(
+                f"No structured_output tool_use block in response. "
+                f"stop_reason={data.get('stop_reason')} content={data.get('content', [])[:1]}"
+            )
+
+        return self._retry(call, purpose="claude.complete_structured")
 
     # ------------------------------------------------------------------
     # SSE consumption

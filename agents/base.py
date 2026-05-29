@@ -13,14 +13,19 @@ from __future__ import annotations
 
 import abc
 import json
+import os
 import re
 import sys
 import traceback
 from pathlib import Path
-from typing import Any
+from typing import Any, Type, TypeVar
 
-from llm.router import complete as llm_complete
-from models import AgentResult, AgentStatus, LLMResponse, ProjectContext
+from pydantic import BaseModel
+
+from llm.router import complete as llm_complete, _build_system_prompt
+from models import AgentResult, AgentStatus, LLMError, LLMResponse, ProjectContext
+
+_T = TypeVar("_T", bound=BaseModel)
 
 
 class BaseAgent(abc.ABC):
@@ -88,6 +93,44 @@ class BaseAgent(abc.ABC):
             max_tokens=max_tokens,
             temperature=temperature,
         )
+
+    def _structured_llm(
+        self,
+        context: ProjectContext,
+        user_prompt: str,
+        output_model: Type[_T],
+        *,
+        system_extra: str = "",
+        max_tokens: int = 4096,
+    ) -> _T:
+        """Call claude-sonnet-4-6 with tool_use to get a validated Pydantic output.
+
+        Always uses ClaudeClient directly — bypasses Ollama since Ollama does
+        not support the Anthropic tool_use protocol. Raises LLMError if
+        ANTHROPIC_API_KEY is not set or Claude returns an unexpected response.
+        """
+        from llm.claude import ClaudeClient
+
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            raise LLMError("ANTHROPIC_API_KEY not set — cannot use structured output")
+
+        client = ClaudeClient(model="claude-sonnet-4-6")
+        system = _build_system_prompt(context, system_extra)
+        result = client.complete_structured(
+            messages=[{"role": "user", "content": user_prompt}],
+            output_model=output_model,
+            system=system,
+            max_tokens=max_tokens,
+        )
+        context.record_tokens(
+            model="claude-sonnet-4-6",
+            purpose=f"{self.name}.structured",
+            prompt_tokens=0,
+            completion_tokens=0,
+            cost_usd=0.0,
+        )
+        return result
 
     def _write(self, context: ProjectContext, relpath: str, content: str) -> Path:
         workdir = Path(context.workdir).resolve()

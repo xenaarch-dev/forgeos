@@ -1,12 +1,15 @@
 """
 LLM router.
 
-Routing strategy:
-  Primary  → Ollama (qwen2.5-coder, free, local GPU)
-  Fallback → Claude haiku (cheap, ~$0.01/run, needs ANTHROPIC_API_KEY)
+Routing strategy (ForgeOS V2):
+  hard / architecture / planning  -> Ollama -> Claude Sonnet -> Claude Haiku
+  medium / review / security      -> Ollama -> Claude Haiku
+  low / code / scaffold           -> Ollama -> Claude Haiku
 
-All task types hit Ollama first. Claude is only used when Ollama is
-unreachable or returns an error. DeepSeek can be re-enabled later.
+Claude Sonnet is used for the highest-stakes tasks (planning, architecture,
+gate evaluation) where quality matters most. Claude Haiku handles validation
+and security (fast, precise, cheap). Ollama (qwen2.5-coder) is always tried
+first as it is free and local.
 """
 
 from __future__ import annotations
@@ -23,11 +26,14 @@ if TYPE_CHECKING:
     from models import ProjectContext
 
 
-# Ollama first for everything — free local GPU.
-# Claude haiku is the only paid fallback (cheap).
-_HARD_STACK   = ("ollama", "claude")   # architect / spec
-_MEDIUM_STACK = ("ollama", "claude")   # review / security
-_LOW_STACK    = ("ollama", "claude")   # code / scaffold
+# Model IDs
+_SONNET = "claude-sonnet-4-20250514"
+_HAIKU  = "claude-haiku-4-5"
+
+# Provider chains per complexity/type
+_HARD_STACK   = ("ollama", "claude-sonnet", "claude-haiku")
+_MEDIUM_STACK = ("ollama", "claude-haiku")
+_LOW_STACK    = ("ollama", "claude-haiku")
 
 
 def route(task_complexity: str, task_type: str) -> LLMClient:
@@ -40,7 +46,7 @@ def route(task_complexity: str, task_type: str) -> LLMClient:
 
 
 def _select_chain(task_complexity: str, task_type: str) -> tuple[str, ...]:
-    if task_complexity == "hard" or task_type == "architecture":
+    if task_complexity == "hard" or task_type in ("architecture", "planning"):
         return _HARD_STACK
     if task_complexity == "medium" or task_type in ("review", "security"):
         return _MEDIUM_STACK
@@ -48,18 +54,19 @@ def _select_chain(task_complexity: str, task_type: str) -> tuple[str, ...]:
 
 
 def _build(name: str) -> LLMClient:
-    if name == "claude":
-        return ClaudeClient()
+    if name == "claude-sonnet":
+        return ClaudeClient(model=_SONNET)
+    if name in ("claude", "claude-haiku"):
+        return ClaudeClient(model=_HAIKU)
     if name == "ollama":
         return OllamaClient()
     raise ValueError(f"Unknown LLM provider: {name}")
 
 
 def _is_available(client_name: str) -> bool:
-    if client_name == "claude":
+    if client_name in ("claude", "claude-haiku", "claude-sonnet"):
         return bool(LLM.anthropic_api_key)
     if client_name == "ollama":
-        # Always try Ollama; connection errors demote it at runtime.
         return True
     return False
 
@@ -147,4 +154,4 @@ def _safe_summary(ctx: "ProjectContext") -> dict[str, Any]:
     }
 
 
-__all__ = ["LLMClient", "LLMResponse", "route", "complete"]
+__all__ = ["LLMClient", "LLMResponse", "route", "complete", "_build_system_prompt"]
