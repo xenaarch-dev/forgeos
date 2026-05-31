@@ -28,6 +28,10 @@ class ClaudeClient(LLMClient):
     def __init__(self, model: str | None = None) -> None:
         super().__init__(model or LLM.anthropic_model or self.default_model)
 
+    def _temperature_supported(self) -> bool:
+        """Extended-thinking models (opus-4-*) reject the temperature parameter."""
+        return "opus-4" not in self.model
+
     def _headers(self) -> dict[str, str]:
         return {
             "x-api-key": required("ANTHROPIC_API_KEY", LLM.anthropic_api_key),
@@ -48,9 +52,10 @@ class ClaudeClient(LLMClient):
         payload: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
-            "temperature": temperature,
             "messages": messages,
         }
+        if self._temperature_supported():
+            payload["temperature"] = temperature
         if system:
             payload["system"] = system
         if stream:
@@ -125,14 +130,16 @@ class ClaudeClient(LLMClient):
                 "input_schema": output_model.model_json_schema(),
             }
         ]
+        temp_client = ClaudeClient(model=model)
         payload: dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
-            "temperature": temperature,
             "messages": messages,
             "tools": tools,
             "tool_choice": {"type": "tool", "name": "structured_output"},
         }
+        if temp_client._temperature_supported():
+            payload["temperature"] = temperature
         if system:
             payload["system"] = system
 

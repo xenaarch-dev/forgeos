@@ -42,8 +42,9 @@ class LegalAgent:
 
     def _generate(self, ctx: ProductContext, output_dir: str) -> dict[str, Any]:
         from llm.claude import ClaudeClient
+        from llm.router import router as model_router
 
-        client = ClaudeClient(model="claude-sonnet-4-6")
+        client = ClaudeClient(model=model_router.get_model("legal"))
         system = self._system_prompt()
         data_list = ", ".join(ctx.data_collected) if ctx.data_collected else "email, name"
         services_list = ", ".join(ctx.third_party_services) if ctx.third_party_services else "none"
