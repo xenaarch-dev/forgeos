@@ -1,0 +1,8 @@
+{
+  "tests/test_tools.py::test_github_resolve_owner": true,
+  "tests/test_tools.py::test_railway_query_sends_graphql": true,
+  "tests/test_tools.py::test_vercel_uses_team_id": true,
+  "tests/test_tools.py::test_sentry_lists_teams": true,
+  "tests/test_tools.py::test_uptimerobot_post": true,
+  "tests/test_tools.py::test_supabase_admin_lists_projects": true
+}

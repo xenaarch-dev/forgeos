@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-space: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { color-scheme: dark; scroll-behavior: smooth; }
+
+body {
+  background-color: #07040f;
+  color: #f5f0ff;
+  font-family: var(--font-space);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Purple grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(168,85,247,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,85,247,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Radial glow top */
+body::after {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80vw;
+  height: 60vh;
+  background: radial-gradient(ellipse, rgba(124,58,237,0.18) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a1f4a; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #6d28d9; }
+
+/* Selection */
+::selection { background: rgba(168,85,247,0.3); }
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid rgba(168,85,247,0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Log line styles */
+.log-line {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #7b6fa0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.log-line.agent-start   { color: #a855f7; font-weight: 600; }
+.log-line.agent-success { color: #34d399; }
+.log-line.agent-error   { color: #f87171; }
+.log-line.agent-warn    { color: #fbbf24; }
+
+/* Glow utilities */
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168,85,247,0.25), 0 0 60px rgba(168,85,247,0.08);
+}
+.text-glow {
+  text-shadow: 0 0 30px rgba(168,85,247,0.5);
+}

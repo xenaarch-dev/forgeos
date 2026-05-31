@@ -1,0 +1,10 @@
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/{{ prefix }}", tags=["{{ tag }}"])
+
+
+@router.get("/")
+async def list_items() -> list[dict]:
+    return []

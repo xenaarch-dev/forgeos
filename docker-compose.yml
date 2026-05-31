@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  forgeos:
+    build: .
+    image: forgeos:latest
+    env_file: .env
+    volumes:
+      - ./.forgeos:/app/.forgeos
+      - ${HOME}/ObsidianVault/ForgeOS:/root/ObsidianVault/ForgeOS
+    command: ["forge", "--idea-file", "/app/idea.txt"]
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes: ["ollama:/root/.ollama"]
+
+volumes:
+  ollama:

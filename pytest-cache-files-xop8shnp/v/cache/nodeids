@@ -1,0 +1,16 @@
+[
+  "tests/test_agents.py::test_architect_falls_back_without_llm",
+  "tests/test_agents.py::test_scaffold_emits_full_tree",
+  "tests/test_agents.py::test_security_writes_report_and_policies",
+  "tests/test_agents.py::test_task_dependencies_round_trip",
+  "tests/test_orchestrator.py::test_orchestrator_degrades_on_failure",
+  "tests/test_orchestrator.py::test_orchestrator_runs_stub_agents",
+  "tests/test_orchestrator.py::test_project_context_round_trip",
+  "tests/test_orchestrator.py::test_summary_after_token_record",
+  "tests/test_tools.py::test_github_resolve_owner",
+  "tests/test_tools.py::test_railway_query_sends_graphql",
+  "tests/test_tools.py::test_sentry_lists_teams",
+  "tests/test_tools.py::test_supabase_admin_lists_projects",
+  "tests/test_tools.py::test_uptimerobot_post",
+  "tests/test_tools.py::test_vercel_uses_team_id"
+]
