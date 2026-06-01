@@ -1,4 +1,4 @@
-﻿"""
+"""
 Hermes — ForgeOS V2 brain and coordinator.
 
 Wraps the full build pipeline with:
@@ -22,7 +22,6 @@ Hermes Agent CLI integration (optional):
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -198,39 +197,12 @@ class HermesOrchestrator:
         context = hermes.run()
     """
 
-    def __init__(
-        self,
-        idea: str,
-        workdir: str | None = None,
-        build_id: str | None = None,
-    ) -> None:
+    def __init__(self, idea: str, workdir: str | None = None) -> None:
         import os
-        import time
-        import re as _re
         from config import RUNTIME
 
-        if workdir:
-            wd = str(Path(workdir).expanduser().resolve())
-        else:
-            # Create a unique per-build directory under builds/
-            slug = _re.sub(r"[^a-z0-9]+", "-", idea.lower().strip())[:32].strip("-")
-            ts = int(time.time())
-            folder = f"{slug}-{ts}"
-            builds_root = Path(RUNTIME.workdir_root).parent / "builds"
-            builds_root.mkdir(parents=True, exist_ok=True)
-            wd = str(builds_root / folder)
-
-        # Load existing context if the workdir already has one (resume mode).
-        ctx_path = Path(wd) / "context.json"
-        if ctx_path.exists():
-            try:
-                self.context = ProjectContext.load(ctx_path)
-                self._log(f"[hermes] RESUME: loaded existing context from {ctx_path}")
-            except Exception as _e:
-                self._log(f"[hermes] resume load failed ({_e}), starting fresh")
-                self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
-        else:
-            self.context = ProjectContext.new(idea=idea, workdir=wd, build_id=build_id)
+        wd = workdir or str(Path(RUNTIME.workdir_root))
+        self.context = ProjectContext.new(idea=idea, workdir=wd)
         self.tg = TelegramNotifier(
             token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
             chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
@@ -283,13 +255,17 @@ class HermesOrchestrator:
             MissionValidator,
         )
 
+        from agents.pm_agent import PMAgent
+        from agents.eval_agent import EvalAgent
+
         return [
-            # Planning gate (idea viability — no spec needed)
+            # Stage 0: demand validation — blocks if market is wrong
+            {"name": "pm_agent",       "cls": PMAgent,           "gate": True},
+            # Planning gates
             {"name": "office_hours",   "cls": OfficeHoursGate,   "gate": True},
-            # Architecture — produces SPEC.md, ARCH.md, TASKS.json
-            {"name": "architect",      "cls": ArchitectAgent,    "gate": False},
-            # Business review — now has access to the spec
             {"name": "ceo_review",     "cls": CEOReviewGate,     "gate": True},
+            # Architecture
+            {"name": "architect",      "cls": ArchitectAgent,    "gate": False},
             # Design gates
             {"name": "eng_review",     "cls": EngReviewGate,     "gate": True},
             {"name": "design_shotgun", "cls": DesignShotgunGate, "gate": False},
@@ -314,6 +290,8 @@ class HermesOrchestrator:
             {"name": "validator",      "cls": MissionValidator,  "gate": False},
             # Final ship gate
             {"name": "ship",           "cls": ShipGate,          "gate": True},
+            # Stage 13: automated quality gate — blocks deploy if score < 80
+            {"name": "eval_agent",     "cls": EvalAgent,         "gate": True},
             # Deploy
             {"name": "deploy",         "cls": DeployAgent,       "gate": False},
         ]
@@ -322,45 +300,11 @@ class HermesOrchestrator:
     # Stage runner
     # ------------------------------------------------------------------
 
-    def _completed_stages(self) -> set[str]:
-        """Return set of stage names that already passed in a prior run (from context.json)."""
-        completed = set()
-        # Check agent results — may be AgentResult dataclass objects or plain dicts
-        for result in (self.context.agent_results or []):
-            if isinstance(result, dict):
-                status = result.get("status", "")
-                agent_name = result.get("agent", result.get("agent_name", ""))
-            else:
-                status = getattr(result, "status", "")
-                agent_name = getattr(result, "agent", "")
-            if status == "success" and agent_name:
-                completed.add(agent_name)
-                # stage name "office_hours" matches agent name "office_hours_gate"
-                if agent_name.endswith("_gate"):
-                    completed.add(agent_name[:-5])
-        # Check gate results — always plain dicts in metadata
-        for gate in self.context.metadata.get("gates", []):
-            if isinstance(gate, dict) and gate.get("passed"):
-                g = gate.get("gate", "")
-                if g:
-                    completed.add(g)
-        # Check stages_done list (stage names recorded on success, bypasses agent-name mismatch)
-        for stage_name in self.context.metadata.get("stages_done", []):
-            if stage_name:
-                completed.add(stage_name)
-        return completed
-
     def _run_stage(self, stage: dict[str, Any]) -> None:
         name = stage["name"]
         cls = stage["cls"]
         is_gate = stage.get("gate", False)
         max_retries = 1 if is_gate else 3
-
-        # Skip stages that already passed in a previous run (resume logic).
-        completed = self._completed_stages()
-        if name in completed:
-            self._log(f"[hermes] -> {name} SKIPPED (already completed)")
-            return
 
         self._log(f"[hermes] -> {name}")
         agent = cls()
@@ -389,13 +333,6 @@ class HermesOrchestrator:
                     raise RuntimeError(f"Gate '{name}' failed: {result.error}")
 
                 if result.status == "success":
-                    # Record stage name for resume (agent name may differ from stage name)
-                    stages_done = self.context.metadata.setdefault("stages_done", [])
-                    if name not in stages_done:
-                        stages_done.append(name)
-                    self.context.save()
-                    if is_gate:
-                        self._save_gate_post_draft(name, result)
                     return
 
                 if attempt < max_retries:
@@ -437,8 +374,6 @@ class HermesOrchestrator:
 
     def _append_dataset(self) -> None:
         try:
-            dataset_path = Path.home() / ".forgeos" / "dataset.jsonl"
-            dataset_path.parent.mkdir(parents=True, exist_ok=True)
             contract = self.context.metadata.get("validation_contract", {})
             handoffs = self.context.metadata.get("mission_handoffs", [])
             gates = self.context.metadata.get("gates", [])
@@ -447,41 +382,47 @@ class HermesOrchestrator:
                 if gates
                 else 0.0
             )
+            pm_output = self.context.metadata.get("pm_output", {})
+            eval_output = self.context.metadata.get("eval_output", {})
+            stages_done = [s["name"] for s in self._stage_log if s.get("status") == "success"]
+
+            # Legacy JSONL (append-only, compact)
+            dataset_path = Path.home() / ".forgeos" / "dataset.jsonl"
+            dataset_path.parent.mkdir(parents=True, exist_ok=True)
             entry = {
                 "project_id": self.context.project_id,
                 "idea": self.context.idea,
                 "spec": (self.context.spec or "")[:500],
                 "validation_contract": contract,
                 "gstack_score": round(avg_score, 2),
-                "deploy_success": bool(
-                    self.context.backend_url or self.context.frontend_url
-                ),
+                "deploy_success": bool(self.context.backend_url or self.context.frontend_url),
                 "handoffs": handoffs[:5],
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             with dataset_path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
-            self._log(f"[hermes] dataset entry -> {dataset_path}")
+
+            # Structured per-run JSON (DatasetCollector — used for fine-tuning)
+            from dataset.collector import DatasetCollector
+            collector = DatasetCollector()
+            collector.record_run({
+                "project_id": self.context.project_id,
+                "idea": self.context.idea,
+                "pm_output": pm_output,
+                "spec_md": (self.context.spec or ""),
+                "arch_md": (self.context.architecture or ""),
+                "eval_score": eval_output.get("overall_score"),
+                "eval_passed": eval_output.get("passed"),
+                "build_recommendation": pm_output.get("build_recommendation"),
+                "stages_completed": stages_done,
+                "model_used_per_stage": {},
+                "success": bool(self.context.backend_url or self.context.frontend_url),
+                "error": None,
+                "product_url": self.context.frontend_url or self.context.backend_url or "",
+            })
+            self._log(f"[hermes] dataset entry logged (JSONL + DatasetCollector)")
         except Exception as e:
             self._log(f"[hermes] dataset append failed: {e}")
-
-    def _save_gate_post_draft(self, gate_name: str, result: Any) -> None:
-        """After a gate passes, generate a post draft and save to drafts/posts/."""
-        try:
-            from agents.distribution.post_agent import generate_post, _save_draft, _load_env
-            _load_env()
-            if not os.environ.get("ANTHROPIC_API_KEY"):
-                return
-            out = result.output or {}
-            score = out.get("score", "?")
-            description = f"{gate_name} gate passed, score {score}/10"
-            idea_words = (self.context.idea or "").split()
-            product = idea_words[0] if idea_words else "ForgeOS"
-            data = generate_post(event="gate_passed", description=description, product=product)
-            path = _save_draft(data, event=gate_name, product=product)
-            self._log(f"[hermes] post draft saved: {path}")
-        except Exception as e:
-            self._log(f"[hermes] post draft skipped: {e}")
 
     def _log(self, msg: str) -> None:
         try:

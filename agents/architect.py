@@ -105,9 +105,18 @@ class ArchitectAgent(BaseAgent):
     def _produce_structured_architect_output(
         self, context: ProjectContext, stack: StackChoice
     ) -> ArchitectOutput:
+        pm = context.metadata.get("pm_output", {})
+        pm_block = ""
+        if pm.get("spec_additions"):
+            additions = "\n".join(f"  - {a}" for a in pm["spec_additions"])
+            pm_block = (
+                f"\nPM RESEARCH ADDITIONS (must be included in SPEC.md features):\n"
+                f"{additions}\n"
+            )
         prompt = (
             f"IDEA: {context.idea}\n\n"
-            f"CHOSEN STACK:\n{json.dumps(asdict(stack), indent=2)}\n\n"
+            f"CHOSEN STACK:\n{json.dumps(asdict(stack), indent=2)}\n"
+            f"{pm_block}\n"
             "Produce the full product architecture using the structured_output tool.\n\n"
             "SPEC.md requirements:\n"
             "- Problem statement (2+ sentences)\n"

@@ -10,7 +10,7 @@ import pytest
 
 from forgeos.tools import (
     GitHubClient,
-    RailwayClient,
+    RenderClient,
     SentryClient,
     UptimeRobotClient,
     VercelClient,
@@ -18,7 +18,7 @@ from forgeos.tools import (
 )
 from forgeos.tools import (
     github as github_mod,
-    railway as railway_mod,
+    render as render_mod,
     vercel as vercel_mod,
     supabase_admin as supabase_mod,
     sentry as sentry_mod,
@@ -40,17 +40,16 @@ def fake_http(monkeypatch):
                 "params": params,
             }
         )
-        if "graphql" in url:
-            return {"data": {"me": {"id": "u_1", "email": "a@b"}}}
+        if url.endswith("/owners"):
+            return [{"owner": {"id": "owner_1"}}]
         if url.endswith("/user"):
             return {"login": "octocat"}
         if url.endswith("/getMonitors"):
             return {"monitors": []}
         return {"ok": True}
 
-    # Each tool module imported `http_request` by name, so patch the
-    # binding inside each module directly.
-    for mod in (github_mod, railway_mod, vercel_mod, supabase_mod, sentry_mod, uptime_mod):
+    # Patch http_request in each module's namespace directly.
+    for mod in (github_mod, render_mod, vercel_mod, supabase_mod, sentry_mod, uptime_mod):
         monkeypatch.setattr(mod, "http_request", fake)
     return captured
 
@@ -62,13 +61,12 @@ def test_github_resolve_owner(monkeypatch, fake_http):
     assert any("/user" in x["url"] for x in fake_http)
 
 
-def test_railway_query_sends_graphql(monkeypatch, fake_http):
-    monkeypatch.setenv("RAILWAY_TOKEN", "rl_fake")
-    c = RailwayClient(token="rl_fake")
-    out = c.me()
-    assert out == {"id": "u_1", "email": "a@b"}
-    assert fake_http[0]["method"] == "POST"
-    assert "graphql" in fake_http[0]["url"]
+def test_render_get_owner_id(monkeypatch, fake_http):
+    monkeypatch.setenv("RENDER_API_KEY", "rnd_fake")
+    c = RenderClient(api_key="rnd_fake")
+    out = c.get_owner_id()
+    assert out == "owner_1"
+    assert any("/owners" in x["url"] for x in fake_http)
 
 
 def test_vercel_uses_team_id(monkeypatch, fake_http):
