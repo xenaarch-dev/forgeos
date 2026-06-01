@@ -1,0 +1,15 @@
+stages:
+  architect:     "claude-opus-4-8"
+  scaffold:      "claude-sonnet-4-6"
+  security:      "claude-opus-4-8"
+  worker:        "claude-sonnet-4-6"
+  validator:     "claude-sonnet-4-6"
+  legal:         "claude-opus-4-8"
+  pm_agent:      "claude-sonnet-4-6"
+  eval_agent:    "claude-sonnet-4-6"
+  gbrain_index:  "ollama/qwen2.5-coder:7b"
+  default:       "claude-sonnet-4-6"
+
+fallback:
+  - "claude-sonnet-4-6"
+  - "ollama/qwen2.5-coder:7b"
