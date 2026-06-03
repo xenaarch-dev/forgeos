@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from config import LLM, estimate_cost
+from models.outputs.architect_output import ArchitectOutput
 
 
 # ---------------------------------------------------------------------------
@@ -631,6 +632,7 @@ class PipelineBlockedError(RuntimeError):
 
 __all__ = [
     "AgentResult",
+    "ArchitectOutput",
     "AgentStatus",
     "BrowserResult",
     "FailureRecord",

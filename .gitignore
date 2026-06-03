@@ -21,3 +21,4 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+models_pkg/

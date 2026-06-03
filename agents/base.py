@@ -115,6 +115,7 @@ class BaseAgent(abc.ABC):
         if not api_key:
             raise LLMError("ANTHROPIC_API_KEY not set — cannot use structured output")
 
+        stage = self.__class__.__name__.lower().replace("agent", "").strip()
         client = ClaudeClient(model="claude-sonnet-4-6")
         system = _build_system_prompt(context, system_extra)
         result = client.complete_structured(
@@ -122,6 +123,7 @@ class BaseAgent(abc.ABC):
             output_model=output_model,
             system=system,
             max_tokens=max_tokens,
+            stage=stage,
         )
         context.record_tokens(
             model="claude-sonnet-4-6",

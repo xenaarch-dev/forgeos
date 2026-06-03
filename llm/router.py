@@ -15,6 +15,7 @@ first as it is free and local.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from config import LLM
@@ -154,4 +155,44 @@ def _safe_summary(ctx: "ProjectContext") -> dict[str, Any]:
     }
 
 
-__all__ = ["LLMClient", "LLMResponse", "route", "complete", "_build_system_prompt"]
+class ModelRouter:
+    """Provider-agnostic model router backed by LiteLLM and models.yaml."""
+
+    def __init__(self) -> None:
+        import yaml  # local import — only needed when ModelRouter is instantiated
+        config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+        self.config = yaml.safe_load(config_path.read_text())
+
+    def get_model(self, stage: str) -> str:
+        return self.config["stages"].get(stage, self.config["stages"]["default"])
+
+    def complete(
+        self,
+        stage: str,
+        messages: list,
+        tools: list | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        from litellm import completion  # local import — optional dependency
+
+        model = self.get_model(stage)
+        primary_error: Exception | None = None
+        try:
+            return completion(model=model, messages=messages, tools=tools, **kwargs)
+        except Exception as e:
+            primary_error = e
+
+        for fallback in self.config["fallback"]:
+            if fallback != model:
+                try:
+                    return completion(
+                        model=fallback, messages=messages, tools=tools, **kwargs
+                    )
+                except Exception:
+                    continue
+        raise primary_error  # type: ignore[misc]
+
+
+router = ModelRouter()
+
+__all__ = ["LLMClient", "LLMResponse", "ModelRouter", "route", "complete", "_build_system_prompt", "router"]
