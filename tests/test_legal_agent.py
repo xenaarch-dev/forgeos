@@ -14,6 +14,7 @@ import pytest
 # These imports fail until the agent + model are created — confirms RED
 from models.outputs.legal_output import LegalAgentOutput, ProductContext
 from agents.legal_agent import LegalAgent
+from tests.conftest import skip_no_claude
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +107,7 @@ class TestProductContext:
 # Integration tests — LegalAgent.run() must generate real legal content
 # ---------------------------------------------------------------------------
 
+@skip_no_claude
 class TestLegalAgentIntegration:
     @pytest.fixture
     def contractforge_ctx(self):

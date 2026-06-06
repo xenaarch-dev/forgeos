@@ -10,6 +10,7 @@ import pytest
 
 from models.outputs.pm_output import CompetitorInfo, PMOutput
 from agents.pm_agent import PMAgent
+from tests.conftest import skip_no_claude
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +159,7 @@ class TestCompetitorInfo:
 # Integration tests — skipped by -k "not integration"
 # ---------------------------------------------------------------------------
 
+@skip_no_claude
 class TestPMAgentIntegration:
     """Live API tests. Require ANTHROPIC_API_KEY. Skipped in CI."""
 
