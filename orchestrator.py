@@ -40,6 +40,7 @@ from agents import (
     ScaffoldAgent,
     SecurityAgent,
 )
+from agents.voice_agent import VoiceAgent
 from config import RUNTIME
 from models import AgentResult, AgentStatus, Phase, ProjectContext
 
@@ -127,11 +128,17 @@ class Orchestrator:
         DeployAgent,
     ]
 
-    def __init__(self, idea: str, workdir: str | None = None) -> None:
+    def __init__(
+        self,
+        idea: str,
+        workdir: str | None = None,
+        voice: VoiceAgent | None = None,
+    ) -> None:
         wd = workdir or str(Path(RUNTIME.workdir_root))
         self.context = ProjectContext.new(idea=idea, workdir=wd)
         self.console = _Console()
         self.statuses: list[dict[str, Any]] = []
+        self.voice = voice
 
     def run(self) -> ProjectContext:
         self.console.banner(
@@ -139,6 +146,9 @@ class Orchestrator:
             f"project_id={self.context.project_id} workdir={self.context.workdir}",
         )
         self.context.save()
+
+        if self.voice:
+            self.voice.say("pipeline", "start")
 
         for agent_cls in self.AGENTS:
             self._run_agent(agent_cls)
@@ -157,6 +167,8 @@ class Orchestrator:
 
         self._write_status_md()
         self._write_summary_md()
+        if self.voice:
+            self.voice.say("pipeline", "done")
         return self.context
 
     def _run_agent(self, agent_cls: type[BaseAgent]) -> None:
@@ -164,6 +176,9 @@ class Orchestrator:
         attempts = 0
         last_result: AgentResult | None = None
         delay = RUNTIME.retry_backoff_base
+
+        if self.voice:
+            self.voice.say(agent.name, "start")
 
         while attempts < RUNTIME.max_agent_retries:
             attempts += 1
@@ -186,6 +201,8 @@ class Orchestrator:
                     agent.name, "success", f"in {last_result.duration_seconds:.1f}s"
                 )
                 self.statuses.append({"agent": agent.name, "status": "success"})
+                if self.voice:
+                    self.voice.say(agent.name, "done")
                 return
 
             if attempts < RUNTIME.max_agent_retries:
@@ -205,6 +222,8 @@ class Orchestrator:
                 "error": last_result.error if last_result else "unknown",
             }
         )
+        if self.voice:
+            self.voice.say(agent.name, "fail")
 
     def _write_status_md(self) -> None:
         rows = "\n".join(
@@ -320,6 +339,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Enable god-mode: autonomous healing loop + continuous ForgeBrain learning",
     )
+    parser.add_argument(
+        "--silent",
+        action="store_true",
+        help="Disable voice narration (skip TTS and mpg123)",
+    )
     args = parser.parse_args(argv)
 
     idea = args.idea or ""
@@ -329,9 +353,11 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write("No --idea provided and no idea.txt found. Aborting.\n")
         return 2
 
+    voice = VoiceAgent(silent=args.silent)
+
     if args.legacy:
         sys.stderr.write("[orchestrator] running V1 legacy pipeline\n")
-        orch = Orchestrator(idea=idea, workdir=args.workdir)
+        orch = Orchestrator(idea=idea, workdir=args.workdir, voice=voice)
         orch.run()
         sys.stderr.write(
             f"\nForgeOS V1 run complete. See {orch.context.workdir}/SUMMARY.md\n"
@@ -344,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
             import os as _os
             _os.environ["FORGEOS_GOD_MODE"] = "1"
             sys.stderr.write("[orchestrator] GOD MODE ENABLED\n")
-        hermes = HermesOrchestrator(idea=idea, workdir=args.workdir)
+        hermes = HermesOrchestrator(idea=idea, workdir=args.workdir, silent=args.silent)
         try:
             ctx = hermes.run()
             sys.stderr.write(
