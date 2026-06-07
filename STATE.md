@@ -2,6 +2,7 @@
 
 **Date:** 2026-06-07  
 **Branch:** master  
+**Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all 6 session commits live)  
 **Session focus:** ForgeADK v0.1 — ForgeAgent base, GBrainLogger, SSE wiring, GBrain knowledge directory
 
 ---
@@ -103,7 +104,7 @@ GBrainLogger proof: 8 session `.jsonl` files + 8 summary `.json` files written d
 
 ## Open items / next session
 
-- [ ] **Git remote** — no origin configured. Run `git remote add origin <repo-url>` before pushing.
+- [x] **Git remote** — `origin` set to `https://github.com/xenaarch-dev/forgeos.git`; master pushed 2026-06-07.
 - [ ] **Migrate remaining agents** — ScaffoldAgent, CoderAgent, SecurityAgent, EvalAgent, all 10 GStack gates still extend `BaseAgent` not `ForgeAgent`
 - [ ] **Implement DesignAgent._execute()** — step-by-step guide is in the class docstring
 - [ ] **Implement MediaAgent._execute()** — step-by-step guide is in the class docstring
