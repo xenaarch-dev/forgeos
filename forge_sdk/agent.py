@@ -9,6 +9,10 @@ agents. It wraps BaseAgent with:
   - Per-run USD budget enforcement (raises LLMError before spend exceeds cap)
   - Event callback hook (used by api.py SSE streaming)
 
+Auto-instrumented methods (subclasses get these for free):
+  _llm()   — every call is logged to GBrainLogger with model/tokens/cost
+  _write() — every artifact write is logged with path and byte size
+
 All existing agents (BaseAgent subclasses) remain valid — this is additive.
 New agents that need the extra features inherit from ForgeAgent instead.
 
@@ -20,11 +24,12 @@ from __future__ import annotations
 
 import abc
 import traceback
+from pathlib import Path
 from typing import Any, Callable
 
 from agents.base import BaseAgent
 from forge_sdk.glogger import GBrainLogger
-from models import AgentResult, AgentStatus, LLMError, ProjectContext
+from models import AgentResult, AgentStatus, LLMError, LLMResponse, ProjectContext
 
 
 EventCallback = Callable[[str, dict[str, Any]], None]
@@ -132,6 +137,50 @@ class ForgeAgent(BaseAgent):
             "requires": list(self.requires),
             "budget_usd": self.budget_usd,
         }
+
+    # ------------------------------------------------------------------
+    # Auto-instrumented BaseAgent helpers
+    # ------------------------------------------------------------------
+
+    def _llm(
+        self,
+        context: ProjectContext,
+        user_prompt: str,
+        *,
+        system_extra: str = "",
+        task_complexity: str = "medium",
+        task_type: str = "code",
+        purpose: str = "",
+        max_tokens: int = 4096,
+        temperature: float = 0.2,
+        stream: bool = True,
+    ) -> LLMResponse:
+        """Delegate to BaseAgent._llm and log the result to GBrainLogger."""
+        resp = super()._llm(
+            context,
+            user_prompt,
+            system_extra=system_extra,
+            task_complexity=task_complexity,
+            task_type=task_type,
+            purpose=purpose,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=stream,
+        )
+        self._logger.log_llm_call(
+            model=resp.model,
+            purpose=purpose or self.name,
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            cost_usd=resp.cost_usd,
+        )
+        return resp
+
+    def _write(self, context: ProjectContext, relpath: str, content: str) -> Path:
+        """Delegate to BaseAgent._write and log the artifact to GBrainLogger."""
+        path = super()._write(context, relpath, content)
+        self._logger.log_artifact(relpath, len(content.encode("utf-8")))
+        return path
 
 
 __all__ = ["EventCallback", "ForgeAgent"]
