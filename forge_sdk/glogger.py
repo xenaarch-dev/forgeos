@@ -55,6 +55,7 @@ class GBrainLogger:
         self._events: list[dict[str, Any]] = []
         self._started_at: str = ""
         self._session_path: Path | None = None
+        self._workdir_events_path: Path | None = None
         self._total_cost: float = 0.0
         self._total_prompt_tokens: int = 0
         self._total_completion_tokens: int = 0
@@ -63,8 +64,13 @@ class GBrainLogger:
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def start(self, project_id: str) -> None:
-        """Begin a new logging session for the given project."""
+    def start(self, project_id: str, workdir: str | None = None) -> None:
+        """Begin a new logging session.
+
+        workdir — when provided, events are also appended to
+        ``<workdir>/gbrain-events.jsonl`` so the API server can tail
+        that file across the subprocess boundary.
+        """
         self._project_id = project_id
         self._started_at = _now()
         self._events.clear()
@@ -74,6 +80,10 @@ class GBrainLogger:
 
         slug = f"{project_id}_{self.agent_name}"
         self._session_path = self._sessions_dir / f"{slug}.jsonl"
+
+        self._workdir_events_path = None
+        if workdir:
+            self._workdir_events_path = Path(workdir) / "gbrain-events.jsonl"
 
     def finish(self, result: AgentResult) -> None:
         """Close the session and write the summary JSON."""
@@ -166,13 +176,15 @@ class GBrainLogger:
     # ------------------------------------------------------------------
 
     def _append_jsonl(self, entry: dict[str, Any]) -> None:
-        if not self._session_path:
-            return
-        try:
-            with self._session_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, default=str) + "\n")
-        except OSError:
-            pass
+        serialised = json.dumps(entry, default=str) + "\n"
+        for path in (self._session_path, self._workdir_events_path):
+            if path is None:
+                continue
+            try:
+                with path.open("a", encoding="utf-8") as f:
+                    f.write(serialised)
+            except OSError:
+                pass
 
     def _write_summary(self, result: AgentResult) -> None:
         if not self._project_id:

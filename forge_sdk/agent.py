@@ -68,7 +68,7 @@ class ForgeAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def run(self, context: ProjectContext) -> AgentResult:  # type: ignore[override]
-        self._logger.start(context.project_id)
+        self._logger.start(context.project_id, workdir=context.workdir)
         self._emit("start", {"agent": self.name, "phase": self.phase})
 
         result = AgentResult.started(self.name)
