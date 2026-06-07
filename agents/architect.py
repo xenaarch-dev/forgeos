@@ -20,6 +20,10 @@ from forge_sdk.agent import ForgeAgent
 from models import ProjectContext, StackChoice, Task, TaskStatus
 from models.outputs.architect_output import ArchitectOutput
 
+_GBRAIN_TECHNICAL = (
+    Path(__file__).resolve().parent.parent / "gbrain" / "patterns" / "technical.json"
+)
+
 
 SYSTEM_PROMPT = """\
 You are the ArchitectAgent in ForgeOS. You receive a single English idea
@@ -60,6 +64,56 @@ class ArchitectAgent(ForgeAgent):
     capabilities = ["SPEC.md", "ARCH.md", "TASKS.json", "STACK.json"]
     requires = ["idea"]
     budget_usd = 0.0  # runs first — no prior spend to guard against
+
+    def __init__(
+        self,
+        event_callback: Any = None,
+        logger: Any = None,
+        *,
+        _gbrain_path: Path | None = None,
+    ) -> None:
+        super().__init__(event_callback=event_callback, logger=logger)
+        self._gbrain_context = self._load_gbrain_patterns(
+            _gbrain_path or _GBRAIN_TECHNICAL
+        )
+
+    # ------------------------------------------------------------------
+    # GBrain — learned patterns from previous builds
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load_gbrain_patterns(path: Path) -> str:
+        """Read technical.json and return a formatted string for the system prompt.
+
+        Returns empty string silently if the file is absent, empty, or malformed.
+        """
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return ""
+        patterns = data.get("patterns") or []
+        if not patterns:
+            return ""
+        lines: list[str] = ["Learned patterns from previous builds:"]
+        for i, p in enumerate(patterns, 1):
+            lines.append(f"\n[{i}] {p.get('title', '')}")
+            tags = p.get("tags") or []
+            if tags:
+                lines.append(f"Tags: {', '.join(tags)}")
+            if p.get("when_to_use"):
+                lines.append(f"When to use: {p['when_to_use']}")
+            if p.get("pattern"):
+                lines.append(f"Pattern: {p['pattern']}")
+            if p.get("example"):
+                lines.append(f"Example:\n```\n{p['example'].strip()}\n```")
+        return "\n".join(lines)
+
+    @property
+    def _system_prompt(self) -> str:
+        """Full system prompt: GBrain patterns (if any) prepended to SYSTEM_PROMPT."""
+        if self._gbrain_context:
+            return f"{self._gbrain_context}\n\n{SYSTEM_PROMPT}"
+        return SYSTEM_PROMPT
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         # Step 1: deterministic stack classification (never uses LLM alone)
@@ -141,7 +195,7 @@ class ArchitectAgent(ForgeAgent):
             context,
             user_prompt=prompt,
             output_model=ArchitectOutput,
-            system_extra=SYSTEM_PROMPT,
+            system_extra=self._system_prompt,
             max_tokens=8192,
         )
 
@@ -250,7 +304,7 @@ class ArchitectAgent(ForgeAgent):
                     "Return ONLY a JSON object with the same keys, adjusting any "
                     "choices you think are wrong. Add `extras` keys for niche tech."
                 ),
-                system_extra=SYSTEM_PROMPT,
+                system_extra=self._system_prompt,
                 task_complexity="hard",
                 task_type="architecture",
                 purpose="architect.stack",
@@ -290,7 +344,7 @@ class ArchitectAgent(ForgeAgent):
                     "(another ```mermaid``` block, erDiagram), API surface map (table of "
                     "endpoints with method, path, purpose, auth)."
                 ),
-                system_extra=SYSTEM_PROMPT,
+                system_extra=self._system_prompt,
                 task_complexity="hard",
                 task_type="architecture",
                 purpose="architect.spec_arch",
@@ -430,7 +484,7 @@ class ArchitectAgent(ForgeAgent):
                     "Valid agents: scaffold|coder|security|deploy. "
                     "Valid phases: scaffold|code|security|deploy."
                 ),
-                system_extra=SYSTEM_PROMPT,
+                system_extra=self._system_prompt,
                 task_complexity="medium",
                 task_type="architecture",
                 purpose="architect.tasks",
