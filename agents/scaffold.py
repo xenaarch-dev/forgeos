@@ -12,14 +12,17 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Any
 
+from forge_sdk.agent import ForgeAgent
 from models import ProjectContext, TaskStatus
 from models.outputs.scaffold_output import ScaffoldOutput
-from .base import BaseAgent
 
 
-class ScaffoldAgent(BaseAgent):
-    name = "scaffold"
-    phase = "scaffold"
+class ScaffoldAgent(ForgeAgent):
+    name         = "scaffold"
+    phase        = "scaffold"
+    capabilities = ["project/"]
+    requires     = ["stack", "tasks"]
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         project_root = Path(context.workdir) / "project"
