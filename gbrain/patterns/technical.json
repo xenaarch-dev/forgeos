@@ -1,0 +1,40 @@
+{
+  "version": "0.1.0",
+  "category": "technical",
+  "description": "Engineering patterns accumulated from ForgeOS builds",
+  "patterns": [
+    {
+      "id": "supabase-subscriptions-table",
+      "title": "Supabase subscriptions table — billing state pattern",
+      "tags": ["supabase", "billing", "subscriptions", "postgres", "rls"],
+      "source": "ContractForge",
+      "learned_at": "2026-05-26",
+      "pattern": "Track subscription state in a dedicated `subscriptions` table with columns: user_id (FK → auth.users), plan (text), status (active | cancelled | past_due | trialing), current_period_end (timestamptz), and the payment-provider subscription ID (lemon_subscription_id or stripe_subscription_id). Use a Postgres trigger to sync `profiles.plan` whenever status changes. Never compute plan from invoice history — the status column is the single source of truth.",
+      "when_to_use": "Any SaaS that gates features behind a paid plan. Required when using Lemon Squeezy or Stripe webhook-driven billing with Supabase Auth.",
+      "example": "CREATE TABLE public.subscriptions (\n  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id                uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,\n  plan                   text NOT NULL DEFAULT 'free',\n  status                 text NOT NULL DEFAULT 'active'\n                           CHECK (status IN ('active','cancelled','past_due','trialing')),\n  current_period_end     timestamptz,\n  lemon_subscription_id  text UNIQUE,\n  created_at             timestamptz NOT NULL DEFAULT now(),\n  updated_at             timestamptz NOT NULL DEFAULT now()\n);\n\nALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;\nCREATE POLICY \"owner\" ON public.subscriptions\n  FOR ALL USING (auth.uid() = user_id);\n\n-- Sync profiles.plan on every status change\nCREATE OR REPLACE FUNCTION sync_profile_plan()\nRETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$\nBEGIN\n  UPDATE public.profiles SET plan = NEW.plan WHERE id = NEW.user_id;\n  RETURN NEW;\nEND;\n$$;\nCREATE TRIGGER trg_sync_plan\n  AFTER INSERT OR UPDATE ON public.subscriptions\n  FOR EACH ROW EXECUTE FUNCTION sync_profile_plan();",
+      "related": ["rls-deny-by-default", "webhook-signature-verification"]
+    },
+    {
+      "id": "pdf-dejavusans-rupee-symbol",
+      "title": "PDF generation — DejaVuSans required for ₹ symbol",
+      "tags": ["pdf", "fonts", "unicode", "india", "reportlab", "fpdf2", "invoices"],
+      "source": "ContractForge",
+      "learned_at": "2026-05-26",
+      "pattern": "Standard PDF libraries (ReportLab, fpdf2, WeasyPrint) ship without a font that covers the Indian Rupee sign U+20B9 (₹). The glyph renders as a box or raises a UnicodeEncodeError unless DejaVuSans is explicitly registered. Bundle DejaVuSans.ttf (Apache 2.0, safe to redistribute) in the project's assets and register it before any PDF draw call. Use this font as the default body font for all Indian-locale invoices.",
+      "when_to_use": "Any PDF-generating feature (invoices, contracts, receipts) that displays INR amounts in Indian-locale projects.",
+      "example": "# fpdf2 example — works identically for ReportLab and WeasyPrint\nfrom fpdf import FPDF\nimport pathlib\n\nFONT_DIR = pathlib.Path(__file__).parent / 'assets' / 'fonts'\n\nclass InvoicePDF(FPDF):\n    def __init__(self):\n        super().__init__()\n        # Register DejaVuSans before any add_page() call\n        self.add_font('DejaVu', '', str(FONT_DIR / 'DejaVuSans.ttf'), uni=True)\n        self.add_font('DejaVu', 'B', str(FONT_DIR / 'DejaVuSans-Bold.ttf'), uni=True)\n\n    def amount_cell(self, amount: float) -> None:\n        self.set_font('DejaVu', '', 12)\n        # ₹ renders correctly with DejaVuSans\n        self.cell(0, 10, f'\\u20b9{amount:,.2f}', ln=True)",
+      "related": ["supabase-subscriptions-table"]
+    },
+    {
+      "id": "session-email-never-hardcoded",
+      "title": "Auth — session email must come from token, never hardcoded",
+      "tags": ["auth", "security", "session", "supabase", "fastapi"],
+      "source": "ContractForge",
+      "learned_at": "2026-05-26",
+      "pattern": "Never hardcode or cache a user's email in application code for session-dependent operations (payment webhooks, email dispatch, audit logs). Always resolve the current user's email from the live JWT token via `auth.get_user(token)` or `request.state.user.email` populated by the auth middleware. Hardcoded emails survive code review but fail silently in production when a user changes their email or when running integration tests with seeded data.",
+      "when_to_use": "Any endpoint or background task that needs the current user's identity: webhooks, invoice generation, email notifications, audit trails.",
+      "example": "# FastAPI dependency — resolves user from Bearer token every request\nfrom fastapi import Depends, HTTPException, status\nfrom fastapi.security import HTTPBearer, HTTPAuthorizationCredentials\nfrom supabase import create_client\n\nbearer = HTTPBearer()\n\nasync def current_user(\n    creds: HTTPAuthorizationCredentials = Depends(bearer)\n) -> dict:\n    supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)\n    response = supabase.auth.get_user(creds.credentials)\n    if not response.user:\n        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)\n    # email is always fresh from the token — never hardcode it\n    return {\"id\": response.user.id, \"email\": response.user.email}\n\n@router.post('/invoices')\nasync def create_invoice(user: dict = Depends(current_user)):\n    # Use user['email'] — resolved from live JWT, never cached or hardcoded\n    send_invoice_email(to=user['email'], ...)",
+      "related": ["webhook-signature-verification"]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "version": "0.1.0",
+  "category": "legal",
+  "jurisdiction": "India",
+  "description": "India regulatory knowledge for SaaS products built by ForgeOS",
+  "disclaimer": "Patterns here are engineering-level summaries for code generation. They are not legal advice. Consult a qualified advocate for contracts with real legal exposure.",
+  "patterns": [
+    {
+      "id": "indian-contract-act-1872",
+      "title": "Indian Contract Act 1872 — SaaS Terms of Service requirements",
+      "tags": ["india", "contract-law", "terms-of-service", "ica-1872", "saas"],
+      "source": "ContractForge",
+      "learned_at": "2026-06-07",
+      "pattern": "A valid contract under the Indian Contract Act 1872 (ICA) requires: (1) a lawful offer and unqualified acceptance (S.2), (2) lawful consideration — the subscription fee satisfies this (S.25), (3) parties competent to contract — age 18+, sound mind, not disqualified by law (S.11), (4) free consent — no coercion, undue influence, fraud, misrepresentation, or mistake (S.13–22), and (5) a lawful object (S.23). For SaaS: the click-wrap acceptance of Terms of Service constitutes valid offer+acceptance under S.2(b); the subscription payment is the consideration. Display ToS before payment, record acceptance timestamp and IP, and store the version accepted.",
+      "when_to_use": "Any SaaS with Indian users. Required for LegalAgent when generating Terms of Service, refund policies, or end-user agreements for India-jurisdiction builds.",
+      "example": "-- Store ToS acceptance for ICA compliance\nCREATE TABLE public.tos_acceptances (\n  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id       uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,\n  tos_version   text NOT NULL,           -- e.g. 'v1.2'\n  accepted_at   timestamptz NOT NULL DEFAULT now(),\n  ip_address    inet,                    -- S.2(b) acceptance evidence\n  user_agent    text\n);\n\nALTER TABLE public.tos_acceptances ENABLE ROW LEVEL SECURITY;\nCREATE POLICY \"owner\" ON public.tos_acceptances\n  FOR SELECT USING (auth.uid() = user_id);\n-- Only backend (service role) can insert\nCREATE POLICY \"service-insert\" ON public.tos_acceptances\n  FOR INSERT WITH CHECK (true);  -- restricted at API level",
+      "related": ["mumbai-jurisdiction-default", "gst-18-sac-998314"]
+    },
+    {
+      "id": "gst-18-sac-998314",
+      "title": "GST 18% — SAC 998314 for Indian SaaS invoices",
+      "tags": ["india", "gst", "tax", "invoicing", "sac-998314", "saas"],
+      "source": "ContractForge",
+      "learned_at": "2026-06-07",
+      "pattern": "Indian SaaS / IT software services fall under SAC code 998314 (Information technology software services) at 18% GST (9% CGST + 9% SGST for intra-state transactions; 18% IGST for inter-state and exports). Every B2B invoice must show: seller GSTIN, buyer GSTIN (if GST-registered), SAC code 998314, taxable amount, CGST/SGST or IGST breakdown, and invoice number in the format YYYY-MM-XXXX. B2C invoices above ₹2.5 lakh require an e-invoice (IRN). For exports: zero-rated with LUT (Letter of Undertaking) or with IGST refund — exports are the most common case for Indian SaaS with foreign customers.",
+      "when_to_use": "Invoice generation for any India-registered SaaS entity. Required whenever billing Indian users or any Indian legal entity. Also applies when an Indian company bills foreign clients — use zero-rated export treatment.",
+      "example": "# Invoice line-item calculation (Python)\ndef compute_gst(\n    base_amount: float,\n    buyer_state: str,\n    seller_state: str = 'MH',  # Maharashtra (Mumbai)\n    is_export: bool = False,\n) -> dict:\n    SAC_CODE = '998314'\n    GST_RATE = 0.18\n    if is_export:\n        return {'base': base_amount, 'igst': 0.0, 'cgst': 0.0,\n                'sgst': 0.0, 'total': base_amount, 'sac': SAC_CODE,\n                'note': 'Zero-rated export — LUT filed'}\n    if buyer_state == seller_state:  # intra-state\n        half = round(base_amount * GST_RATE / 2, 2)\n        return {'base': base_amount, 'cgst': half, 'sgst': half,\n                'igst': 0.0, 'total': base_amount + half * 2, 'sac': SAC_CODE}\n    else:  # inter-state\n        igst = round(base_amount * GST_RATE, 2)\n        return {'base': base_amount, 'igst': igst, 'cgst': 0.0,\n                'sgst': 0.0, 'total': base_amount + igst, 'sac': SAC_CODE}",
+      "related": ["indian-contract-act-1872", "late-payment-18-percent"]
+    },
+    {
+      "id": "late-payment-18-percent",
+      "title": "Late payment — 18% per annum is the Indian SaaS standard",
+      "tags": ["india", "billing", "late-payment", "interest", "terms-of-service"],
+      "source": "ContractForge",
+      "learned_at": "2026-06-07",
+      "pattern": "18% per annum (1.5% per month) on overdue invoices is the commercially standard and legally defensible late-payment rate for Indian SaaS B2B contracts. For MSME suppliers the MSME Development Act mandates 3× the RBI bank rate (currently ~18–21%), but 18% p.a. is safe for all suppliers. Specify the grace period (typically 30 days from invoice date) and the calculation basis (simple interest, daily pro-rata) in the Terms of Service. Late interest is GST-exempt — apply it to the base invoice amount only, not to the GST component.",
+      "when_to_use": "Any SaaS Terms of Service or contract template targeting Indian businesses. Include in the payment terms clause whenever billing in INR.",
+      "example": "# Late-payment interest calculation\nfrom datetime import date\nfrom decimal import Decimal\n\ndef late_interest(\n    invoice_amount: Decimal,   # base amount before GST\n    invoice_date: date,\n    payment_date: date,\n    grace_days: int = 30,\n    annual_rate: Decimal = Decimal('0.18'),\n) -> Decimal:\n    \"\"\"Returns simple interest on overdue invoice (GST-free).\"\"\"\n    due_date = invoice_date + __import__('datetime').timedelta(days=grace_days)\n    if payment_date <= due_date:\n        return Decimal('0')\n    overdue_days = (payment_date - due_date).days\n    # Simple interest: P × R × D / 365\n    return (invoice_amount * annual_rate * overdue_days / 365).quantize(\n        Decimal('0.01')\n    )",
+      "related": ["gst-18-sac-998314", "mumbai-jurisdiction-default"]
+    },
+    {
+      "id": "mumbai-jurisdiction-default",
+      "title": "Mumbai (Bombay High Court) as default dispute jurisdiction",
+      "tags": ["india", "jurisdiction", "dispute-resolution", "terms-of-service", "contract"],
+      "source": "ContractForge",
+      "learned_at": "2026-06-07",
+      "pattern": "For India-registered SaaS companies, specify Mumbai (Bombay High Court, Maharashtra jurisdiction) as the exclusive jurisdiction for disputes unless the company is registered elsewhere. Mumbai is preferred because: (1) Bombay High Court has strong commercial bench track record, (2) IT Act and e-commerce case law is well-developed there, (3) most payment processors and investors recognise it. Alternatives: Bangalore (Karnataka HC — high-tech disputes, common for Bangalore-registered startups) or Delhi (Delhi HC — for regulatory/government matters). Always pair with Indian arbitration (Arbitration & Conciliation Act 1996, DIAC or Mumbai Centre for International Arbitration) for contracts above ₹5 lakh to avoid court delays. English language governs.",
+      "when_to_use": "All Terms of Service, SaaS agreements, contractor agreements, and vendor contracts generated for Indian-registered entities. LegalAgent must include the jurisdiction clause in every generated contract.",
+      "example": "# Jurisdiction and dispute resolution clause (plain English)\nJURISDICTION_CLAUSE = \"\"\"\n**Governing Law and Dispute Resolution**\n\nThis Agreement is governed by the laws of India. Any dispute arising out of\nor in connection with this Agreement shall first be attempted to be resolved\nby the parties through good-faith negotiation for 30 days.\n\nIf unresolved, disputes shall be referred to binding arbitration under the\nArbitration and Conciliation Act, 1996, conducted in English at the Mumbai\nCentre for International Arbitration (MCIA), Mumbai, Maharashtra, India.\nThe arbitral tribunal shall consist of one arbitrator mutually appointed by\nthe parties. The award shall be final and binding.\n\nFor interim relief, the courts of Mumbai, Maharashtra shall have exclusive\njurisdiction.\n\"\"\"",
+      "related": ["indian-contract-act-1872", "gst-18-sac-998314"]
+    }
+  ]
+}
