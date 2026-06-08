@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #060D08;
+  --surf: #0D1810;
+  --surf2: #142018;
+  --cel: #3EB489;
+  --cel-dim: rgba(62, 180, 137, 0.12);
+  --blue: #1D5FC5;
+  --fire: #D9832A;
+  --fire-dim: rgba(217, 131, 42, 0.10);
+  --w: #E8E3D2;
+  --m: #5A7060;
+  --bd: #1C2E22;
+  --bd2: #243C2A;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: var(--bg);
+  color: var(--w);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  line-height: 2.1;
+  background-color: var(--bg);
+  color: var(--w);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+h1 {
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-size: clamp(48px, 6vw, 72px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+h2 {
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 4.5vw, 52px);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.label {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.20em;
+  color: var(--m);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.75);
+  }
+}
+
+@keyframes live-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes running-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(217, 131, 42, 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(217, 131, 42, 0.25);
+  }
+}
