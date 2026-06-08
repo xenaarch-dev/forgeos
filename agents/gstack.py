@@ -1,4 +1,4 @@
-﻿"""
+"""
 GStack quality gates for ForgeOS.
 
 Each gate is a BaseAgent subclass that performs an LLM-powered quality
@@ -124,8 +124,8 @@ Assess:
 4. Risk — what is the biggest reason this fails?
 5. Moat — why would someone pay vs use a free alternative?
 
-Score the idea 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
-End with SCORE: N/10 on its own line, then PASS or FAIL on its own line.""",
+Score the idea 1-10. Score >= 7 = PASS. Score < 7 = FAIL.
+End with SCORE: N/10 and PASS or FAIL.""",
         )
 
 
@@ -135,28 +135,28 @@ class CEOReviewGate(GStackGate):
     name = "ceo_review_gate"
     gate_name = "ceo_review"
     phase = "planning"
-    min_score = 5.0
+    min_score = 6.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
-        # Evaluate idea alone — spec may not exist yet at planning stage.
-        spec_section = ""
-        if context.spec:
-            spec_section = f"\n\nSPEC (summary):\n{context.spec[:2000]}"
+        spec = context.spec or "(no spec yet — evaluating idea only)"
         return self._gate_call(
             context,
-            f"""Review this product idea from a CEO/investor perspective.
+            f"""Review this product from a CEO/investor perspective.
 
-IDEA: {context.idea}{spec_section}
+IDEA: {context.idea}
 
-Assess ONLY the idea as stated (spec may not exist yet):
-1. Revenue model — is Rs2499/month or equivalent a realistic starting price?
-2. Target user — is the ICP (Indian freelancers / B2B SaaS / etc.) specific?
-3. Core features described — do they justify the price?
-4. Scope — can a 5-agent AI system ship an MVP in one session?
-5. Fatal flaw — is there one deal-breaker?
+SPEC:
+{spec[:3000]}
 
-Score 1-10 based on the IDEA alone. Score >= 5 = PASS.
-End with SCORE: N/10 on its own line, then PASS or FAIL on its own line.""",
+Assess:
+1. Revenue model — is there a clear path to $1k MRR?
+2. Target user — is the ICP specific enough to market to?
+3. Core features — do they match the revenue goal?
+4. Scope — is it too big to ship in one sprint?
+5. Missing — what critical feature is absent?
+
+Score 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
+End with SCORE: N/10 and PASS or FAIL.""",
         )
 
 
@@ -171,32 +171,28 @@ class EngReviewGate(GStackGate):
     name = "eng_review_gate"
     gate_name = "eng_review"
     phase = "design"
-    min_score = 5.0  # matches gate prompt: "Score >= 5 = PASS"
+    min_score = 6.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
-        # Read from disk first (more complete than context.architecture which may be truncated)
-        arch = _read_artifact(context, "ARCH.md") or context.architecture or "(no architecture yet)"
+        arch = context.architecture or "(no architecture yet)"
         return self._gate_call(
             context,
             f"""Review this architecture from a senior engineer perspective.
-This is an MVP plan — evaluate it as an MVP, not an enterprise system.
 
 IDEA: {context.idea}
 
 ARCHITECTURE:
-{arch[:4000]}
+{arch[:3000]}
 
-Assess (grade leniently for MVP scope):
-1. Stack — appropriate and not over-engineered for an MVP?
-2. Data model — adequate for the core features described?
-3. API design — are the key endpoints implied/described?
-4. Security — any obvious missing concern (auth, RLS, secrets)?
-5. Risk — highest technical risk for this specific idea?
+Assess:
+1. Stack — appropriate and not over-engineered?
+2. Data model — does the ERD support all core features?
+3. API design — endpoints complete and RESTful?
+4. Gaps — what critical system component is missing?
+5. Risk — highest technical risk?
 
-NOTE: ERD diagrams and full endpoint lists may not be in this draft.
-Grade the thinking and decisions, not the documentation completeness.
-Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
-End with SCORE: N/10 on its own line, then PASS or FAIL on its own line.""",
+Score 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
+End with SCORE: N/10 and PASS or FAIL.""",
         )
 
 
@@ -249,7 +245,7 @@ class ReviewGate(GStackGate):
     name = "review_gate"
     gate_name = "review"
     phase = "review"
-    min_score = 5.0
+    min_score = 6.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
@@ -269,7 +265,7 @@ Review for:
 4. Security — obvious vulnerabilities?
 5. Production readiness — will this actually run without modification?
 
-Score 1-10. Score >= 5 = PASS. Score < 5 = FAIL.
+Score 1-10. Score >= 6 = PASS. Score < 6 = FAIL.
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
         )
@@ -281,31 +277,29 @@ class AdversarialGate(GStackGate):
     name = "adversarial_gate"
     gate_name = "adversarial"
     phase = "review"
-    min_score = 4.0
+    min_score = 5.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
         return self._gate_call(
             context,
-            f"""Adversarial security review for an MVP codebase.
+            f"""Adversarial review — pretend you are a malicious user.
 
 IDEA: {context.idea}
 
 GENERATED FILES:
 {inventory}
 
-Rate the overall security posture 1-10:
-- 10: Production-hardened, no obvious vulnerabilities
-- 7-9: Minor issues, acceptable for launch
-- 5-6: Some gaps, fixable in next sprint
-- 4: Critical issues present but codebase is not completely broken
-- 1-3: Fundamental security failures
+Attack vectors to evaluate (rate each: BLOCKED / VULNERABLE):
+1. SQL injection via user input fields
+2. Auth bypass — unauthenticated access to protected routes?
+3. IDOR — access another user's data by ID manipulation?
+4. Missing rate limiting on expensive endpoints?
+5. Secrets hardcoded in source?
+6. Logic errors in payment/billing flow?
 
-Scoring rubric — evaluate but DO NOT hard-fail on individual vectors.
-Note any concerns about: SQL injection, auth bypass, IDOR, missing rate limits,
-hardcoded secrets, payment logic errors.
-
-This is MVP code. Score >= 4 = PASS (security sprint follows).
+Any VULNERABLE = FAIL. All BLOCKED = PASS.
+Score 1-10 where 10 = completely secure.
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
         )
@@ -317,31 +311,29 @@ class ScoreGate(GStackGate):
     name = "score_gate"
     gate_name = "score"
     phase = "review"
-    min_score = 3.0
+    min_score = 7.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
         return self._gate_call(
             context,
-            f"""Score this MVP codebase 1-10 on its own merits as an early-stage product.
+            f"""Produce a final quality score for this generated codebase.
 
 IDEA: {context.idea}
 
 GENERATED FILES:
 {inventory}
 
-MVP scoring rubric (this is NOT production code — it is a first-pass AI-generated MVP):
-- 8-10: Exceptional MVP. Core features fully present, no obvious stubs.
-- 6-7: Good MVP. Core features present, minor gaps.
-- 4-5: Acceptable MVP. Main happy path works, some features incomplete.
-- 3: Minimum viable. Scaffolding and structure correct; implementation has gaps.
-- 1-2: Fundamentally broken. Missing core feature code entirely.
+Scoring rubric:
+- 10: Production-ready. Ships today. No changes needed.
+- 8-9: Near production. Minor polish required.
+- 7: Acceptable. Missing a few things but core works.
+- 5-6: Incomplete. Key features broken or missing.
+- 1-4: Fundamentally broken. Major rework needed.
 
-Do NOT penalise for: missing tests, no production hardening, missing CI/CD,
-no performance tuning — those are Sprint 2+ concerns.
-DO penalise for: missing files for advertised features, empty function bodies, no route handlers.
-
-Score >= 3 = PASS (MVP threshold). End with SCORE: N/10 and PASS or FAIL.""",
+Be strict. Most AI-generated code scores 5-7.
+Score >= 7 = PASS. Score < 7 = FAIL.
+End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1000,
         )
 
@@ -357,7 +349,7 @@ class CSOGate(GStackGate):
     name = "cso_gate"
     gate_name = "cso"
     phase = "security"
-    min_score = 5.0
+    min_score = 6.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         security_md = _read_artifact(context, "SECURITY.md")
@@ -382,8 +374,8 @@ Evaluate:
 5. Dependencies — any known vulnerable packages?
 6. Data compliance — GDPR/data handling concerns?
 
-Score >= 5 = PASS (MVP with documented risks is acceptable).
-Score < 5 = FAIL (critical unmitigated vulnerability).
+Score >= 6 = PASS (ship with risks documented).
+Score < 6 = FAIL (must not ship).
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
         )
@@ -400,7 +392,7 @@ class QAGate(GStackGate):
     name = "qa_gate"
     gate_name = "qa"
     phase = "qa"
-    min_score = 5.0
+    min_score = 7.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         contract = context.metadata.get("validation_contract", {})
@@ -455,18 +447,10 @@ class ShipGate(GStackGate):
     name = "ship_gate"
     gate_name = "ship"
     phase = "ship"
-    min_score = 5.0
+    min_score = 7.0
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
-        all_gates = context.metadata.get("gates", [])
-        # Use only the LATEST result per gate name (gates may have been retried)
-        latest: dict[str, dict] = {}
-        for g in all_gates:
-            name = g.get("gate", "")
-            if name:
-                latest[name] = g
-        gates = list(latest.values())
-
+        gates = context.metadata.get("gates", [])
         failed = [g for g in gates if not g.get("passed", True)]
         passing_scores = [g.get("score", 0.0) for g in gates if g.get("passed", True)]
         avg = sum(passing_scores) / len(passing_scores) if passing_scores else 0.0
@@ -477,7 +461,7 @@ class ShipGate(GStackGate):
                 gate=self.gate_name,
                 passed=False,
                 score=max(0.0, avg - 2.0),
-                feedback=f"Cannot ship: these gates still failing = [{names}].",
+                feedback=f"Cannot ship: these gates failed = [{names}].",
             )
 
         return GateResult(
@@ -500,22 +484,17 @@ def _parse_verdict(text: str, min_score: float) -> tuple[bool, float, str]:
     upper = text.upper()
 
     score = 0.0
-    m = re.search(r"SCORE[^0-9]*?(\d+(?:\.\d+)?)\s*/\s*10", upper)
+    m = re.search(r"SCORE\s*[:\-]\s*(\d+(?:\.\d+)?)\s*/\s*10", upper)
     if m:
         score = float(m.group(1))
 
-    if score > 0:
-        # Numeric score is authoritative — text verdict is advisory only.
-        passed = score >= min_score
+    tail = upper[-400:]
+    if "PASS" in tail and "FAIL" not in tail[tail.rfind("PASS"):]:
+        passed = True
+    elif "FAIL" in tail:
+        passed = False
     else:
-        # No score found — fall back to text-based PASS/FAIL detection.
-        tail = upper[-400:]
-        if "PASS" in tail and "FAIL" not in tail[tail.rfind("PASS"):]:
-            passed = True
-        elif "FAIL" in tail:
-            passed = False
-        else:
-            passed = score >= min_score
+        passed = score >= min_score
 
     lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
     feedback_lines = [

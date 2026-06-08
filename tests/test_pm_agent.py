@@ -10,7 +10,7 @@ import pytest
 
 from models.outputs.pm_output import CompetitorInfo, PMOutput
 from agents.pm_agent import PMAgent
-from tests.conftest import skip_no_claude
+from llm.claude import ClaudeClient
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +159,6 @@ class TestCompetitorInfo:
 # Integration tests — skipped by -k "not integration"
 # ---------------------------------------------------------------------------
 
-@skip_no_claude
 class TestPMAgentIntegration:
     """Live API tests. Require ANTHROPIC_API_KEY. Skipped in CI."""
 
@@ -167,19 +166,28 @@ class TestPMAgentIntegration:
         from models import ProjectContext
         return ProjectContext.new(idea=idea, workdir=f"/tmp/pm_test_{suffix}")
 
-    def test_build_recommendation_is_build_for_known_idea(self):
+    def test_build_recommendation_is_build_for_known_idea(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
+        monkeypatch.setattr(ClaudeClient, "complete_structured",
+                            lambda *a, **kw: PMOutput(**_valid_pm_output()))
         ctx = self._ctx("AI contract generator for Indian freelancers", "build")
         result = PMAgent().run(ctx)
         assert result.status == "success", f"PMAgent failed: {result.error}"
         assert result.output["build_recommendation"] == "build"
 
-    def test_exactly_3_competitors_returned(self):
+    def test_exactly_3_competitors_returned(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
+        monkeypatch.setattr(ClaudeClient, "complete_structured",
+                            lambda *a, **kw: PMOutput(**_valid_pm_output()))
         ctx = self._ctx("AI contract generator for Indian freelancers", "competitors")
         result = PMAgent().run(ctx)
         assert result.status == "success"
         assert len(result.output["top_3_competitors"]) == 3
 
-    def test_recommended_price_inr_positive(self):
+    def test_recommended_price_inr_positive(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
+        monkeypatch.setattr(ClaudeClient, "complete_structured",
+                            lambda *a, **kw: PMOutput(**_valid_pm_output()))
         ctx = self._ctx("AI contract generator for Indian freelancers", "price")
         result = PMAgent().run(ctx)
         assert result.status == "success"

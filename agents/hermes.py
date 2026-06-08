@@ -32,7 +32,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agents.voice_agent import VoiceAgent
 from models import ProjectContext
 
 
@@ -189,13 +188,6 @@ class TelegramNotifier:
         self.send(f"*Feature {index}/{total}* complete: _{feature}_")
 
 
-_STAGE_VOICE_KEY: dict[str, str] = {
-    "pm_agent":    "pm",
-    "eval_agent":  "eval",
-    "mission_work": "worker",
-}
-
-
 class HermesOrchestrator:
     """
     ForgeOS V2 main orchestrator. Runs GStack + Missions + Deploy pipeline.
@@ -205,13 +197,7 @@ class HermesOrchestrator:
         context = hermes.run()
     """
 
-    def __init__(
-        self,
-        idea: str,
-        workdir: str | None = None,
-        build_id: str | None = None,
-        silent: bool = False,
-    ) -> None:
+    def __init__(self, idea: str, workdir: str | None = None) -> None:
         import os
         from config import RUNTIME
 
@@ -222,20 +208,14 @@ class HermesOrchestrator:
             chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
         )
         self._stage_log: list[dict[str, Any]] = []
-        self.voice = VoiceAgent(silent=silent)
 
     def run(self) -> ProjectContext:
         self._log(f"[hermes] build start: {self.context.project_id}")
-        self.voice.say("pipeline", "start")
         self.tg.build_start(self.context.idea, self.context.project_id)
         self.context.save()
 
-        try:
-            for stage in self._build_pipeline():
-                self._run_stage(stage)
-        except RuntimeError:
-            self.voice.say("pipeline", "fail")
-            raise
+        for stage in self._build_pipeline():
+            self._run_stage(stage)
 
         self._write_obsidian()
         self._append_dataset()
@@ -245,7 +225,6 @@ class HermesOrchestrator:
             self.context.backend_url,
             self.context.frontend_url,
         )
-        self.voice.say("pipeline", "done")
         return self.context
 
     # ------------------------------------------------------------------
@@ -326,11 +305,9 @@ class HermesOrchestrator:
         cls = stage["cls"]
         is_gate = stage.get("gate", False)
         max_retries = 1 if is_gate else 3
-        voice_key = _STAGE_VOICE_KEY.get(name, name)
 
         self._log(f"[hermes] -> {name}")
         agent = cls()
-        self.voice.say(voice_key, "start")
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -356,7 +333,6 @@ class HermesOrchestrator:
                     raise RuntimeError(f"Gate '{name}' failed: {result.error}")
 
                 if result.status == "success":
-                    self.voice.say(voice_key, "done")
                     return
 
                 if attempt < max_retries:
@@ -364,7 +340,6 @@ class HermesOrchestrator:
                     time.sleep(2 ** attempt)
 
             except RuntimeError:
-                self.voice.say(voice_key, "fail")
                 self.tg.build_failed(
                     self.context.project_id, name, "Gate blocked pipeline"
                 )
@@ -375,7 +350,6 @@ class HermesOrchestrator:
                     self._stage_log.append(
                         {"name": name, "status": "degraded", "error": str(e)}
                     )
-                    self.voice.say(voice_key, "fail")
                     self.tg.build_failed(
                         self.context.project_id, name, str(e)[:200]
                     )

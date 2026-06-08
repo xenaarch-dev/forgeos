@@ -145,13 +145,6 @@ class ToolConfig:
     upstash_redis_url: str = field(default_factory=lambda: _get("UPSTASH_REDIS_URL"))
     upstash_redis_token: str = field(default_factory=lambda: _get("UPSTASH_REDIS_TOKEN"))
 
-    # V3 additions
-    e2b_api_key: str = field(default_factory=lambda: _get("E2B_API_KEY"))
-    composio_api_key: str = field(default_factory=lambda: _get("COMPOSIO_API_KEY"))
-    redis_url: str = field(default_factory=lambda: _get("REDIS_URL", "redis://localhost:6379"))
-    supabase_url: str = field(default_factory=lambda: _get("SUPABASE_URL"))
-    supabase_service_key: str = field(default_factory=lambda: _get("SUPABASE_SERVICE_KEY"))
-
     lemonsqueezy_api_key: str = field(default_factory=lambda: _get("LEMONSQUEEZY_API_KEY"))
 
 
@@ -198,13 +191,6 @@ class RuntimeConfig:
     )
     telegram_chat_id: str = field(
         default_factory=lambda: _get("TELEGRAM_CHAT_ID")
-    )
-
-    builds_dir: str = field(
-        default_factory=lambda: _get(
-            "FORGEOS_BUILDS_DIR",
-            str(Path.cwd() / "builds"),
-        )
     )
 
     # Mission system

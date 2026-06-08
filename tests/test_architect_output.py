@@ -9,13 +9,14 @@ Run before implementation to confirm RED. After implementation must be GREEN.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 # NOTE: This import fails until models/outputs/architect_output.py is created.
 from models.outputs.architect_output import ArchitectOutput
-from agents.architect import ArchitectAgent
+from agents.architect import ArchitectAgent, SYSTEM_PROMPT
 from models import ProjectContext
 
 
@@ -215,3 +216,46 @@ class TestArchitectOutputFromAgent:
         assert (tmp_path / "ARCH.md").exists()
         assert (tmp_path / "TASKS.json").exists()
         assert (tmp_path / "STACK.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# GBrain integration — technical.json injection into system prompt
+# ---------------------------------------------------------------------------
+
+class TestGBrainIntegration:
+    def test_system_prompt_includes_patterns_when_file_present(self, tmp_path):
+        """GBrain patterns are prepended to SYSTEM_PROMPT before the LLM sees the idea."""
+        patterns_file = tmp_path / "technical.json"
+        patterns_file.write_text(json.dumps({
+            "version": "0.1.0",
+            "patterns": [{
+                "id": "test-caching",
+                "title": "Redis write-through caching pattern",
+                "tags": ["redis", "cache", "performance"],
+                "pattern": "Always use write-through caching for user session data.",
+                "when_to_use": "Any endpoint that reads user session state.",
+            }]
+        }), encoding="utf-8")
+
+        agent = ArchitectAgent(_gbrain_path=patterns_file)
+        prompt = agent._system_prompt
+
+        assert "Learned patterns from previous builds" in prompt
+        assert "Redis write-through caching pattern" in prompt
+        assert "Always use write-through caching" in prompt
+        # Patterns must appear BEFORE the core system prompt
+        assert prompt.index("Learned patterns") < prompt.index("You are the ArchitectAgent")
+
+    def test_agent_runs_cleanly_when_gbrain_missing(self, tmp_path, monkeypatch):
+        """Missing technical.json must not crash — graceful fallback to base prompt."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        missing = tmp_path / "does_not_exist.json"
+
+        agent = ArchitectAgent(_gbrain_path=missing)
+        assert agent._gbrain_context == ""
+        assert agent._system_prompt == SYSTEM_PROMPT
+
+        # Full pipeline run also completes without error
+        ctx = _ctx(tmp_path / "build")
+        result = agent.run(ctx)
+        assert result.status == "success"

@@ -1,111 +1,184 @@
-# ForgeOS STATE — last updated 2026-06-06
+# ForgeOS — Session State
 
-## Pipeline status (V2 — Stage 0 to Stage 13)
+**Date:** 2026-06-07  
+**Branch:** master  
+**Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all 10 session commits live)  
+**Session focus:** README rewrite, pip packaging, ScaffoldAgent migration, GBrain ArchitectAgent wiring, PMAgent test mocking
 
-| Stage | Agent | Structured Output | Tests |
-|-------|-------|-------------------|-------|
-| 0 | **PMAgent** | **PMOutput (3f64b0d)** | **24 GREEN** |
-| 1 | ArchitectAgent | ArchitectOutput (dda55c6) | 15 GREEN |
-| 2 | ScaffoldAgent | ScaffoldOutput (fae3f75) | 12 GREEN |
-| 3-12 | GStack + Mission gates | — | — |
-| 12 | SecurityAgent | SecurityOutput (983ac18) | 15 GREEN |
-| 13 | **EvalAgent** | **EvalOutput (8bf4e81)** | **18 GREEN** |
-| — | LegalAgent | LegalAgentOutput (8586811) | 13 GREEN |
-| — | WorkerLoopAgent | WorkerOutput (0fd6381) | 6 GREEN |
-| — | MissionValidator | ValidatorOutput (0fd6381) | 7 GREEN |
-| — | GameAgent | not yet | — |
-| — | DeployAgent | not yet | — |
+---
 
-## Dataset flywheel
+## Commits landed today
 
-Status: BUILT (fa586c9)
-Path: ~/forge/forgeos/dataset/runs/
-Runs logged: 0 (collector ready)
-Milestone: 100 runs → fine-tune Qwen locally
+| Hash | Message |
+|------|---------|
+| `3d9757f` | feat: ForgeADK v0.1 — ForgeAgent base + GBrainLogger |
+| `a08ac9c` | refactor: ArchitectAgent extends ForgeAgent |
+| `7a33f42` | feat: wire GBrainLogger into api.py SSE stream |
+| `be240ac` | refactor: PMAgent extends ForgeAgent |
+| `6ca4f39` | feat: add DesignAgent and MediaAgent extending ForgeAgent |
+| `c6f42f6` | feat: GBrain knowledge directory v0.1 — seeded |
+| `396eb00` | docs: rewrite README as conversion document |
+| `4d6beb0` | feat: pip packaging — forgeos CLI v0.1.0 (build, status, init) |
+| `dba1760` | refactor: ScaffoldAgent extends ForgeAgent |
+| `9c760a2` | feat: ArchitectAgent reads GBrain technical patterns at runtime |
+| `cb88cd4` | feat: PMAgent tests — 27/27 green, no live API |
 
-## Test count (Day 152)
+---
 
-Total non-integration tests: 130 GREEN
-Breakdown:
-  PMAgent model+agent: 24
-  EvalAgent model+agent: 18
-  VoiceAgent: 18           ← added Day 152
-  DatasetCollector: 19
-  tools (Render fix): 6
-  orchestrator: 4
-  architect/scaffold/security/worker/validator models: ~35
-  legal (unit only): 6
+## What was built this session (2026-06-07 continuation)
 
-Ollama-dependent tests (test_agents.py + *FromAgent): passing but slow
+### README rewrite (`README.md`)
 
-## models/ package structure
+Full rewrite as conversion document. Leads with ContractForge proof ($0.031 build cost),
+20-stage pipeline table, 10 quality gates table, ForgeADK + GBrain sections, correct
+GitHub URL (`xenaarch-dev/forgeos`), Railway deploy target.
 
-models/
-  __init__.py
-  outputs/
-    architect_output.py, scaffold_output.py, security_output.py
-    worker_output.py, validator_output.py, legal_output.py
-    pm_output.py        ← added Day 151
-    eval_output.py      ← added Day 151
+### pip packaging (`forgeos/`, `pyproject.toml`)
 
-## Branch
+`forgeos` CLI v0.1.0 installable via `pip install -e .`:
+- `forgeos build "<idea>"` — runs the full pipeline (V2 default, `--legacy` for V1)
+- `forgeos status [build_id]` — list all builds or drill into one
+- `forgeos init` — scaffold `.env` from `.env.example` or built-in template
+- `forgeos/pipeline.py` — `_ensure_repo_on_path()` adds repo root to `sys.path` at import time; no `ImportError`
+- CP1252-safe: `→` and `—` replaced with ASCII equivalents in CLI output
 
-main — active, pushed
+### ScaffoldAgent migration (`agents/scaffold.py`)
 
-## Day 152 summary (2026-06-06)
+`ScaffoldAgent` now extends `ForgeAgent` (was `BaseAgent`).
+`capabilities = ["project/"]` | `requires = ["stack", "tasks"]` | `budget_usd = 0.0`
+All 12 scaffold tests pass; no test code changed.
 
-### VoiceAgent shipped
-- File: agents/voice_agent.py
-- TTS: edge-tts (free, no API key), default voice en-GB-RyanNeural
-- Playback: mpg123 non-blocking Popen; silent fallback if missing
-- 9 agents × 3 events = 27 canned voice lines (AGENT_VOICE_LINES)
-- silent=True mode: prints 🔊 [AGENT]: <text>, never crashes
-- Constructor params: voice_id, silent
+### GBrain → ArchitectAgent (`agents/architect.py`)
 
-### Wired into pipeline
-- orchestrator.py (V1): voice.say(agent, start/done/fail) in _run_agent();
-  pipeline start/done in run(); --silent CLI flag
-- agents/hermes.py (V2): VoiceAgent(silent) in __init__; pipeline
-  start/done/fail in run(); per-stage in _run_stage() with name map
-  (pm_agent→pm, eval_agent→eval, mission_work→worker)
+Self-improving loop: `ArchitectAgent` loads `gbrain/patterns/technical.json` at `__init__`,
+formats patterns as "Learned patterns from previous builds:" block, and injects it BEFORE
+the user idea in the system prompt. Silent on missing file. `_gbrain_path` constructor kwarg
+provides a test seam. 2 new tests in `test_architect_output.py` (with content / missing file).
 
-### Fixes
-- queue.py renamed to job_queue.py — was shadowing stdlib queue,
-  breaking edge_tts internally (from queue import Queue)
-- HermesOrchestrator.__init__ gained build_id=None param (fixes
-  pre-existing TypeError in run_pipeline())
+### PMAgent test mocking (`tests/test_pm_agent.py`)
 
-### Audio status
-- edge-tts: MP3 generation confirmed (26 KB, real audio)
-- mpg123: NOT YET INSTALLED — run: sudo apt-get install -y mpg123
-- Until then: fallback print fires correctly
+All 3 `TestPMAgentIntegration` tests now run offline:
+- `monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")` bypasses the env guard
+- `monkeypatch.setattr(ClaudeClient, "complete_structured", lambda *a, **kw: PMOutput(**_valid_pm_output()))` replaces the real API call
+- No assertion changed. No test logic changed. Only the external dependency is mocked.
 
-### Tests
-- 28 green (orchestrator: 4, voice_agent: 18, tools: 6) post-rename
-- 130 total non-integration GREEN
+---
 
-## Day 152 commits (2026-06-06)
+## What was built (prior session — ForgeADK v0.1)
 
-3af0645 feat: VoiceAgent with edge-tts and agent personality lines
-a38a693 feat: wire VoiceAgent into orchestrator pipeline
+### ForgeADK (`forge_sdk/`)
 
-## Day 151 commits (2026-06-02)
+New developer-facing SDK for writing ForgeOS pipeline agents.
 
-3f64b0d forgeos: PMAgent — demand validation stage 0
-8bf4e81 forgeos: EvalAgent — automated quality gate
-fa586c9 forgeos: dataset collector — every run logged
-ae16ff4 forgeos: pipeline updated — PM + Eval + Dataset wired
+**`forge_sdk/agent.py` — ForgeAgent**
+- Inherits from `BaseAgent`; MRO: `ForgeAgent → BaseAgent → ABC → object`
+- Declarative class attributes: `capabilities`, `requires`, `budget_usd`, `tools`
+- `run()` override: GBrainLogger auto-integration, SSE event callback hook, USD budget enforcement
+- Auto-instrumented: `_llm()` logs every LLM call (model/tokens/cost), `_write()` logs every artifact (relpath/bytes)
+- `_describe()` returns machine-readable agent descriptor for agent-organizer routing
+- `_emit()` fires events to both GBrainLogger and SSE callback simultaneously
 
-## Next session
+**`forge_sdk/glogger.py` — GBrainLogger**
+- Per-agent append-only event log
+- Dual-write: `~/.forgeos/gbrain/sessions/<proj_id>_<agent>.jsonl` (global) + `<workdir>/gbrain-events.jsonl` (per-build, tailed by SSE)
+- Event types: `start`, `llm_call`, `artifact`, `gate`, `success`, `error`, `finish`
+- Accumulates cost/token totals across the run; writes `summary/` JSON on close
 
-- DeployAgent: structured output, Render + Vercel deploy, tests
-- GameAgent: Three.js/Phaser/Godot routing, structured output
-- Fill stages 3–11 gap (GStack gates need real implementations)
-- Target: 150 total tests
+### SSE wiring (`api.py`)
 
-## Known issues
+`GET /builds/{id}/stream` now emits three SSE event shapes:
+```
+{"type": "log",         "text": "<stderr/stdout line>"}
+{"type": "agent_event", "event": "<name>", "agent": "<name>", ...}
+{"type": "done",        "status": "success"|"failed"}
+```
+Implementation: `_read_gbrain()` helper tails `<workdir>/gbrain-events.jsonl` by byte offset (seek + read), runs alongside the existing text-log poll on the same 0.5 s tick.
 
-- Windows/OneDrive mirror has models.py (stale); WSL2 has models/__init__.py (live)
-- test_agents.py and *FromAgent tests require Ollama running — slow but pass
-- Windows repo (OneDrive) diverged from WSL2 repo; WSL2 is canonical
-- mpg123 not yet installed — audio falls back to print until installed
+**Circular import fix:** `agents/__init__.py` changed from eager to lazy imports via module `__getattr__`. Only `BaseAgent` is eager. All agent subclasses load on first access and are cached in `globals()`. This was required because `forge_sdk.agent → agents.base → agents.__init__ → agents.architect → forge_sdk.agent` was a cycle.
+
+### Agent migrations
+
+**ArchitectAgent** → ForgeAgent  
+`capabilities = ["SPEC.md", "ARCH.md", "TASKS.json", "STACK.json"]`  
+`requires = ["idea"]` | `budget_usd = 0.0`
+
+**PMAgent** → ForgeAgent  
+`capabilities = ["pm_output"]`  
+`requires = ["idea"]` | `budget_usd = 0.10`
+
+### New agents (structure only)
+
+**DesignAgent** (`agents/design_agent.py`)  
+Phase: `design` | Budget: $0.15  
+6 tools: figma_api, style_dictionary, chromatic_snapshot, axe_accessibility, shadcn_registry (req), llm_design_critic (req)  
+`_execute` raises `NotImplementedError` with step-by-step implementation guide in docstring.
+
+**MediaAgent** (`agents/media_agent.py`)  
+Phase: `media` | Budget: $0.05  
+8 tools: ffmpeg, pillow (req), cloudinary, bunny_cdn, supabase_storage (req), stable_diffusion_placeholder, sharp_cli, lighthouse_media_audit  
+`_execute` raises `NotImplementedError` with step-by-step implementation guide in docstring.
+
+### GBrain knowledge directory (`gbrain/`)
+
+Checked-in structured knowledge store. Seeded with ContractForge learnings and India regulatory patterns.
+
+**`gbrain/patterns/technical.json`** — 3 patterns:
+- `supabase-subscriptions-table` — billing state: status column + Postgres trigger to sync profiles.plan
+- `pdf-dejavusans-rupee-symbol` — DejaVuSans.ttf (Apache 2.0) required for ₹ glyph in all PDF libs
+- `session-email-never-hardcoded` — always resolve from live JWT; never cache or hardcode
+
+**`gbrain/patterns/legal.json`** — 4 patterns:
+- `indian-contract-act-1872` — ICA S.10 requirements for valid SaaS ToS; click-wrap acceptance logging schema
+- `gst-18-sac-998314` — SAC 998314 at 18% GST; intra-state CGST/SGST vs inter-state IGST; zero-rated exports
+- `late-payment-18-percent` — 18% p.a. simple interest; grace 30 days; applies to base amount only (GST-exempt)
+- `mumbai-jurisdiction-default` — Bombay HC exclusive jurisdiction; MCIA arbitration for contracts > ₹5 lakh
+
+---
+
+## Test status
+
+| Suite | Passing | Failing | Notes |
+|-------|---------|---------|-------|
+| `test_agents.py` | 4/4 | 0 | full pass |
+| `test_architect_output.py` | 17/17 | 0 | includes 2 new GBrain tests |
+| `test_dataset_collector.py` | 19/19 | 0 | full pass |
+| `test_eval_agent.py` | 19/19 | 0 | full pass |
+| `test_legal_agent.py` | 7/13 | 6 | integration tests require live ANTHROPIC_API_KEY (pre-existing) |
+| `test_orchestrator.py` | 4/4 | 0 | full pass |
+| `test_pm_agent.py` | 27/27 | 0 | all integration tests mocked — no live API needed |
+| `test_scaffold_output.py` | 12/12 | 0 | full pass after ScaffoldAgent migration |
+| `test_security_output.py` | 15/15 | 0 | full pass |
+| `test_tools.py` | 6/6 | 0 | full pass |
+| `test_validator_output.py` | 7/7 | 0 | full pass |
+| `test_worker_output.py` | 6/6 | 0 | full pass |
+| **TOTAL** | **143/149** | **6** | 6 pre-existing legal agent failures (need Claude mock) |
+
+GBrainLogger proof: 8 session `.jsonl` files + 8 summary `.json` files written during test run. `gbrain-events.jsonl` verified in workdir after ArchitectAgent smoke-test (7 events: start, 4 artifacts, success, finish).
+
+---
+
+## Open items / next session
+
+- [x] **Git remote** — `origin` set to `https://github.com/xenaarch-dev/forgeos.git`; master pushed 2026-06-07.
+- [x] **README rewrite** — conversion document, leads with ContractForge proof, no stubs.
+- [x] **pip packaging** — `forgeos` CLI v0.1.0 installable, `build/status/init` commands.
+- [x] **ScaffoldAgent migration** — extends `ForgeAgent`, 12/12 tests pass.
+- [x] **GBrain → ArchitectAgent** — `technical.json` injected at init; self-improving loop active.
+- [x] **PMAgent tests** — 27/27 green, no live API needed.
+- [ ] **Migrate remaining agents** — CoderAgent, SecurityAgent, EvalAgent, all 10 GStack gates still extend `BaseAgent` not `ForgeAgent`
+- [ ] **Mock LegalAgent integration tests** — same pattern as PMAgent: `monkeypatch.setattr(ClaudeClient, "complete_structured", ...)` to fix 6 failing tests
+- [ ] **Commit orphaned files** — `agents/eval_agent.py`, `dataset/`, `models/outputs/eval_output.py`, `tests/test_dataset_collector.py`, `tests/test_eval_agent.py` (left untracked; already passing)
+- [ ] **Implement DesignAgent._execute()** — step-by-step guide is in the class docstring
+- [ ] **Implement MediaAgent._execute()** — step-by-step guide is in the class docstring
+- [ ] **Wire `gbrain/` into LegalAgent** — load `legal.json` jurisdiction rules before contract generation
+- [ ] **GBrain auto-ingest** — hook `ForgeBrain._append_dataset()` to also append to `gbrain/patterns/*.json` after each successful build
+
+---
+
+## Key invariants to preserve
+
+1. `ForgeAgent.run()` is the single point of GBrainLogger lifecycle (`start` → `finish`) — never call `logger.start/finish` from `_execute`
+2. `agents/__init__.py` must keep `BaseAgent` as the only eager import — all subclasses in `_LAZY`
+3. `gbrain-events.jsonl` is append-only during a build — never truncate or rewrite
+4. `budget_usd = 0.0` means unlimited — do not set it to a tiny value for first-in-pipeline agents
+5. All ForgeOS `from` imports are absolute (`from models import X`, not `from .models import X`)

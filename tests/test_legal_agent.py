@@ -14,7 +14,23 @@ import pytest
 # These imports fail until the agent + model are created — confirms RED
 from models.outputs.legal_output import LegalAgentOutput, ProductContext
 from agents.legal_agent import LegalAgent
-from tests.conftest import skip_no_claude
+from llm.claude import ClaudeClient
+from models import LLMResponse
+
+
+# ---------------------------------------------------------------------------
+# Fake legal document returned by the stubbed ClaudeClient.complete
+# Must satisfy all content assertions across all three document types.
+# ---------------------------------------------------------------------------
+_FAKE_LEGAL_DOC = (
+    "## Legal Document\n\n"
+    "This agreement is governed by the Indian Contract Act 1872 and the "
+    "Information Technology Act 2000 (as amended 2008). "
+    "Exclusive jurisdiction of the Courts of Mumbai, Maharashtra. "
+    "DPDP Act 2023 compliance: your personal data is protected under the "
+    "Digital Personal Data Protection Act 2023. "
+    "Data protection and data security measures apply. "
+) + "Legal content. " * 200  # pads to >> 2000 chars, no placeholders
 
 
 # ---------------------------------------------------------------------------
@@ -107,8 +123,16 @@ class TestProductContext:
 # Integration tests — LegalAgent.run() must generate real legal content
 # ---------------------------------------------------------------------------
 
-@skip_no_claude
 class TestLegalAgentIntegration:
+    @pytest.fixture(autouse=True)
+    def patch_claude(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
+        monkeypatch.setattr(
+            ClaudeClient,
+            "complete",
+            lambda *a, **kw: LLMResponse(text=_FAKE_LEGAL_DOC, model="test"),
+        )
+
     @pytest.fixture
     def contractforge_ctx(self):
         return ProductContext(

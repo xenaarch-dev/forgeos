@@ -48,7 +48,6 @@ Rules:
 - Overwrite is allowed. Cover both implementation AND tests per task.
 - Use pytest for backend tests, vitest for frontend tests.
 - Use real shadcn/ui import paths: from "@/components/ui/button" not from "shadcn/ui".
-- NEVER remove or omit @app.get("/") and @app.get("/healthz") from backend/app/main.py. These routes are mandatory in every build — Render health checks them on deploy.
 """
 
 

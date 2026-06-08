@@ -40,16 +40,32 @@ cat builds/<id>/context.json | python3 -m json.tool | head -60
 
 ## Agent pipeline
 
-Agents run in this fixed order. Each writes its output to `builds/<id>/` and updates `context.json`.
+**V2 pipeline** (default — `HermesOrchestrator` in `agents/hermes.py`):
 
-| # | Agent | Output | Auto-skip condition |
-|---|-------|--------|---------------------|
-| 1 | ArchitectAgent | `SPEC.md`, `ARCH.md`, `TASKS.json`, `STACK.json` | Never |
-| 2 | ScaffoldAgent | Full project directory tree + config files | Never |
-| 3 | CoderAgent | All `coder`-tagged tasks implemented | Never |
-| 4 | GameAgent | Complete playable game in `project/game/` | Idea has no game keywords |
-| 5 | SecurityAgent | `SECURITY.md`, RLS policies, secrets audit | Never |
-| 6 | DeployAgent | GitHub repo, Railway deploy, Vercel deploy | Missing tokens (degrades) |
+| # | Agent | Base | Output | Gate? |
+|---|-------|------|--------|-------|
+| 0 | PMAgent | ForgeAgent | `pm_output` metadata | yes — blocks on dont_build |
+| 1 | OfficeHoursGate | GStackGate | gate score | yes |
+| 2 | CEOReviewGate | GStackGate | gate score | yes |
+| 3 | ArchitectAgent | ForgeAgent | `SPEC.md`, `ARCH.md`, `TASKS.json`, `STACK.json` | no |
+| 4 | EngReviewGate | GStackGate | gate score | yes |
+| 5 | DesignShotgunGate | GStackGate | gate score | no |
+| 6 | MissionOrchestrator | BaseAgent | mission plan | no |
+| 7 | ScaffoldAgent | BaseAgent | project skeleton | no |
+| 8 | GameAgent | BaseAgent | `project/game/` | no — skips if non-game |
+| 9 | MissionWorkerLoop | BaseAgent | all features implemented | no |
+| 10 | ReviewGate | GStackGate | gate score | yes |
+| 11 | AdversarialGate | GStackGate | gate score | yes |
+| 12 | ScoreGate | GStackGate | gate score | yes |
+| 13 | SecurityAgent | BaseAgent | `SECURITY.md` | no |
+| 14 | CSOGate | GStackGate | gate score | yes |
+| 15 | QAGate | GStackGate | gate score | yes |
+| 16 | MissionValidator | BaseAgent | validation contract | no |
+| 17 | ShipGate | GStackGate | gate score | yes |
+| 18 | EvalAgent | BaseAgent | `eval_output` metadata | yes — blocks if score < 80 |
+| 19 | DeployAgent | BaseAgent | GitHub repo, Railway, Vercel | no — degrades gracefully |
+
+**V1 legacy pipeline** (`--legacy` flag): ArchitectAgent → ScaffoldAgent → CoderAgent → GameAgent → SecurityAgent → DeployAgent
 
 ## LLM routing (current)
 
@@ -63,6 +79,111 @@ _LOW_STACK    = ("ollama", "claude")   # scaffolding, formatting
 
 The router calls `_is_available()` before each provider. Ollama requires the service running on port 11434. Claude requires `ANTHROPIC_API_KEY` in `.env`.
 
+## ForgeADK — agent development standards
+
+**ForgeAgent** (`forge_sdk/agent.py`) is the new base for all pipeline agents.
+Inherit from `ForgeAgent`, not `BaseAgent`, for any new agent.
+
+```python
+from forge_sdk.agent import ForgeAgent
+
+class MyAgent(ForgeAgent):
+    name         = "my_agent"
+    phase        = "build"
+    capabilities = ["OUTPUT.md"]          # artifacts this agent writes
+    requires     = ["idea", "spec"]       # context fields it reads
+    budget_usd   = 0.20                   # max project spend before abort; 0=unlimited
+    tools        = [...]                  # optional tool registry for agent-organizer
+
+    def _execute(self, context: ProjectContext) -> dict[str, Any]:
+        ...                               # raise NotImplementedError until ready
+```
+
+**Rules:**
+- `_execute` must raise `NotImplementedError` if not implemented — never `pass`
+- `budget_usd = 0.0` for agents that run before any significant spend (ArchitectAgent)
+- All `_llm()` and `_write()` calls are auto-instrumented — never call `GBrainLogger` manually inside `_execute`
+- If an agent calls Claude structured output directly, log the call yourself: `self._logger.log_event("structured_llm", {...})`
+- `capabilities` / `requires` / `tools` are read by agent-organizer — keep them accurate
+
+**Migrated to ForgeAgent:** ArchitectAgent, PMAgent
+**Pending migration:** ScaffoldAgent, CoderAgent, SecurityAgent, EvalAgent, all GStack gates
+**Planned (not yet implemented):** DesignAgent (`phase=design`), MediaAgent (`phase=media`)
+
+**GBrainLogger** (`forge_sdk/glogger.py`) — per-agent event log:
+- Writes `<workdir>/gbrain-events.jsonl` (tailed by SSE stream) + `~/.forgeos/gbrain/sessions/<proj_id>_<agent>.jsonl`
+- `GBrainLogger.start(project_id, workdir)` is called automatically by `ForgeAgent.run()`
+- Manual events: `self._logger.log_gate(...)`, `self._logger.log_event("my_event", {...})`
+
+**Circular import rule (critical):**
+`agents/__init__.py` uses lazy module `__getattr__` for all agent subclasses. `BaseAgent` is the only eager export. When a new agent imports from `forge_sdk`, it MUST NOT be eagerly imported in `agents/__init__.py` — add it to `_LAZY` instead.
+
+## Agent mesh vision
+
+ForgeOS V3 target: a fully-connected agent mesh where any agent can consult
+any other agent without going through the linear HermesOrchestrator pipeline.
+
+```
+                    ┌─────────────┐
+                    │  PMAgent    │  demand validation
+                    └──────┬──────┘
+                           │
+              ┌────────────▼────────────┐
+              │     ArchitectAgent      │  spec + stack + tasks
+              └──┬──────────┬───────────┘
+                 │          │
+        ┌────────▼──┐  ┌────▼────────┐
+        │DesignAgent│  │ ScaffoldAgent│
+        │ (planned) │  └──────┬───────┘
+        └────────┬──┘         │
+                 │      ┌─────▼──────┐
+                 └──────► CoderAgent │  per-feature loop
+                         └─────┬──────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │    MediaAgent       │  (planned)
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │   SecurityAgent     │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │    EvalAgent        │  quality gate
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │    DeployAgent      │
+                    └─────────────────────┘
+```
+
+Each node in the mesh:
+- Declares `capabilities` (what it produces) and `requires` (what it needs)
+- Registers a `tools` list for agent-organizer auto-routing
+- Emits structured events to GBrain via GBrainLogger
+- Can be addressed directly by HermesOrchestrator or by other agents
+
+The mesh enables: parallel feature coding (multiple CoderAgent instances),
+design-to-code handoff (DesignAgent → ScaffoldAgent without architect re-run),
+and live quality feedback loops (EvalAgent → CoderAgent for targeted fixes).
+
+## GBrain knowledge store
+
+`gbrain/` — persistent structured knowledge directory read before each build.
+
+```
+gbrain/
+├── README.md                # schema + usage docs
+├── knowledge.json           # index of all pattern files
+└── patterns/
+    ├── technical.json       # engineering patterns (stack, bugs, library quirks)
+    └── legal.json           # India regulatory knowledge (ICA, GST, jurisdiction)
+```
+
+ArchitectAgent loads `technical.json` before producing ARCH.md.
+LegalAgent loads `legal.json` before generating contracts.
+ForgeBrain appends new patterns post-build.
+
 ## Stack conventions
 
 **Backend (ForgeOS engine)**
@@ -70,7 +191,7 @@ The router calls `_is_available()` before each provider. Ollama requires the ser
 - No relative imports — all absolute (`from models import X`, not `from .models import X`)
 - `PYTHONPATH=.` must be set when running any module directly
 - `models.py` is the canonical home for `LLMClient`, `LLMError`, `LLMResponse`
-- All agents inherit from `agents.base.BaseAgent`
+- New agents inherit from `forge_sdk.agent.ForgeAgent` (not `agents.base.BaseAgent` directly)
 
 **Frontend (ForgeOS UI)**
 - Next.js 14 App Router + TypeScript + Tailwind CSS
@@ -87,25 +208,44 @@ The router calls `_is_available()` before each provider. Ollama requires the ser
 
 ```
 forgeos/
-├── orchestrator.py        # entry point, runs the agent pipeline
-├── api.py                 # FastAPI server with SSE streaming
+├── orchestrator.py        # entry point — V1 legacy pipeline
+├── api.py                 # FastAPI server with SSE streaming (agent_event + log)
 ├── models.py              # LLMClient, LLMError, LLMResponse (canonical)
 ├── config.py              # LLM, Stack, Deploy dataclasses + cost table
-├── forge_brain.py         # Obsidian knowledge accumulation
+├── forge_brain.py         # Obsidian knowledge accumulation (post-build)
 ├── healer.py              # self-healing daemon (Sentry + UptimeRobot)
+├── forge_sdk/             # ForgeADK — agent development kit
+│   ├── __init__.py        # public: ForgeAgent, GBrainLogger, EventCallback
+│   ├── agent.py           # ForgeAgent base (capabilities, requires, budget, events)
+│   └── glogger.py         # GBrainLogger (per-agent JSONL event log)
+├── gbrain/                # persistent knowledge store (checked in)
+│   ├── README.md          # schema + usage docs
+│   ├── knowledge.json     # index + stats
+│   └── patterns/
+│       ├── technical.json # engineering patterns (stack, bugs, library quirks)
+│       └── legal.json     # India regulatory (ICA, GST, jurisdiction)
 ├── agents/
-│   ├── base.py            # BaseAgent ABC
-│   ├── architect.py       # ArchitectAgent
+│   ├── __init__.py        # BaseAgent eager; all subclasses lazy via __getattr__
+│   ├── base.py            # BaseAgent ABC (low-level; prefer ForgeAgent)
+│   ├── architect.py       # ArchitectAgent  [ForgeAgent]
+│   ├── pm_agent.py        # PMAgent         [ForgeAgent]
+│   ├── design_agent.py    # DesignAgent     [ForgeAgent] — NotImplemented
+│   ├── media_agent.py     # MediaAgent      [ForgeAgent] — NotImplemented
 │   ├── scaffold.py        # ScaffoldAgent
 │   ├── coder.py           # CoderAgent
 │   ├── game.py            # GameAgent (Three.js/Phaser/Godot)
 │   ├── security.py        # SecurityAgent
-│   └── deploy.py          # DeployAgent
+│   ├── legal_agent.py     # LegalAgent
+│   ├── eval_agent.py      # EvalAgent
+│   ├── deploy.py          # DeployAgent
+│   ├── gstack.py          # GStackGate + 10 quality gates
+│   ├── mission.py         # MissionOrchestrator, MissionWorkerLoop, MissionValidator
+│   └── hermes.py          # HermesOrchestrator (V2 pipeline coordinator)
 ├── llm/
 │   ├── base.py            # re-exports from models.py (thin shim)
-│   ├── router.py          # route() function — picks Ollama or Claude
+│   ├── router.py          # route() — picks Ollama or Claude
 │   ├── ollama.py          # OllamaClient
-│   └── claude.py          # ClaudeClient (haiku-4-5 default)
+│   └── claude.py          # ClaudeClient (sonnet-4-6 default)
 ├── tools/
 │   ├── github.py          # repo creation via GitHub API
 │   ├── railway.py         # deploy via Railway API
@@ -113,26 +253,28 @@ forgeos/
 │   ├── supabase_admin.py  # service-role Supabase client
 │   ├── sentry.py          # Sentry issue watcher
 │   └── uptimerobot.py     # uptime monitor setup
+├── models/
+│   └── outputs/           # Pydantic output models per agent
+│       ├── architect_output.py
+│       ├── pm_output.py
+│       ├── eval_output.py
+│       └── ...
+├── dataset/
+│   └── collector.py       # DatasetCollector — fine-tuning flywheel
 ├── .claude/
 │   ├── settings.json      # MCP server config (Supabase, Context7, Playwright)
 │   ├── settings.local.json
 │   └── agents/            # Claude Code subagents (7 specialists)
-│       ├── fullstack-developer.md
-│       ├── nextjs-developer.md
-│       ├── backend-developer.md
-│       ├── game-developer.md
-│       ├── mobile-developer.md
-│       ├── agent-organizer.md
-│       └── context-manager.md
 └── builds/                # runtime output — one folder per build
     └── <build-id>/
-        ├── context.json   # full pipeline state, updated after each agent
+        ├── context.json        # full pipeline state
+        ├── gbrain-events.jsonl # GBrainLogger event stream (tailed by SSE)
         ├── SPEC.md
         ├── ARCH.md
         ├── TASKS.json
         ├── STACK.json
         ├── SECURITY.md
-        └── project/       # the generated codebase
+        └── project/            # the generated codebase
 ```
 
 ## Environment variables (`.env`)
