@@ -6,6 +6,7 @@ stages:
   validator:     "claude-sonnet-4-6"
   legal:         "claude-opus-4-8"
   pm_agent:      "claude-sonnet-4-6"
+  eval_agent:    "claude-sonnet-4-6"
   gbrain_index:  "ollama/qwen2.5-coder:7b"
   default:       "claude-sonnet-4-6"
 

@@ -255,7 +255,12 @@ class HermesOrchestrator:
             MissionValidator,
         )
 
+        from agents.pm_agent import PMAgent
+        from agents.eval_agent import EvalAgent
+
         return [
+            # Stage 0: demand validation — blocks if market is wrong
+            {"name": "pm_agent",       "cls": PMAgent,           "gate": True},
             # Planning gates
             {"name": "office_hours",   "cls": OfficeHoursGate,   "gate": True},
             {"name": "ceo_review",     "cls": CEOReviewGate,     "gate": True},
@@ -285,6 +290,8 @@ class HermesOrchestrator:
             {"name": "validator",      "cls": MissionValidator,  "gate": False},
             # Final ship gate
             {"name": "ship",           "cls": ShipGate,          "gate": True},
+            # Stage 13: automated quality gate — blocks deploy if score < 80
+            {"name": "eval_agent",     "cls": EvalAgent,         "gate": True},
             # Deploy
             {"name": "deploy",         "cls": DeployAgent,       "gate": False},
         ]
@@ -367,8 +374,6 @@ class HermesOrchestrator:
 
     def _append_dataset(self) -> None:
         try:
-            dataset_path = Path.home() / ".forgeos" / "dataset.jsonl"
-            dataset_path.parent.mkdir(parents=True, exist_ok=True)
             contract = self.context.metadata.get("validation_contract", {})
             handoffs = self.context.metadata.get("mission_handoffs", [])
             gates = self.context.metadata.get("gates", [])
@@ -377,21 +382,45 @@ class HermesOrchestrator:
                 if gates
                 else 0.0
             )
+            pm_output = self.context.metadata.get("pm_output", {})
+            eval_output = self.context.metadata.get("eval_output", {})
+            stages_done = [s["name"] for s in self._stage_log if s.get("status") == "success"]
+
+            # Legacy JSONL (append-only, compact)
+            dataset_path = Path.home() / ".forgeos" / "dataset.jsonl"
+            dataset_path.parent.mkdir(parents=True, exist_ok=True)
             entry = {
                 "project_id": self.context.project_id,
                 "idea": self.context.idea,
                 "spec": (self.context.spec or "")[:500],
                 "validation_contract": contract,
                 "gstack_score": round(avg_score, 2),
-                "deploy_success": bool(
-                    self.context.backend_url or self.context.frontend_url
-                ),
+                "deploy_success": bool(self.context.backend_url or self.context.frontend_url),
                 "handoffs": handoffs[:5],
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             with dataset_path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
-            self._log(f"[hermes] dataset entry -> {dataset_path}")
+
+            # Structured per-run JSON (DatasetCollector — used for fine-tuning)
+            from dataset.collector import DatasetCollector
+            collector = DatasetCollector()
+            collector.record_run({
+                "project_id": self.context.project_id,
+                "idea": self.context.idea,
+                "pm_output": pm_output,
+                "spec_md": (self.context.spec or ""),
+                "arch_md": (self.context.architecture or ""),
+                "eval_score": eval_output.get("overall_score"),
+                "eval_passed": eval_output.get("passed"),
+                "build_recommendation": pm_output.get("build_recommendation"),
+                "stages_completed": stages_done,
+                "model_used_per_stage": {},
+                "success": bool(self.context.backend_url or self.context.frontend_url),
+                "error": None,
+                "product_url": self.context.frontend_url or self.context.backend_url or "",
+            })
+            self._log(f"[hermes] dataset entry logged (JSONL + DatasetCollector)")
         except Exception as e:
             self._log(f"[hermes] dataset append failed: {e}")
 
