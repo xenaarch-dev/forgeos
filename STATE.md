@@ -1,9 +1,38 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-08  
+**Date:** 2026-06-11  
 **Branch:** main  
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)  
-**Session focus:** Merge master → main (ForgeADK), CoderAgent + SecurityAgent + EvalAgent migration to ForgeAgent
+**Session focus:** Day 156 — Landing page bug fixes (nav anchors, GBrain counter, agent roster)
+
+---
+
+## Landing page fixes (2026-06-11)
+
+| Bug | Status | Commit |
+|-----|--------|--------|
+| BUG 1 nav anchors | ✅ | `4528eb9` |
+| BUG 2 gbrain counter | ✅ | `4d85a8c` |
+| BUG 3 agent roster | ✅ | `519186f` |
+| Last commit | `519186f` | fix: agent roster — 7 agents correct, GBrain as intelligence layer |
+| Vercel | auto-deploying from main push | |
+
+### BUG 1 detail
+- `web/app/globals.css`: Added `scroll-behavior: smooth` to `html`
+- `web/components/Nav.tsx`: Replaced `href="#"` on all 4 links → `#how-it-works`, `#agents`, `#gbrain`, `#products`
+- Added section IDs: `id="how-it-works"` (HowItWorks), `id="agents"` (AgentGrid), `id="gbrain"` (GBrainStrip), `id="products"` (ProofBar)
+
+### BUG 2 detail
+- `web/components/GBrainStrip.tsx`: Removed `useState(0)` + `useEffect` animation that left counter at 0 on initial render. Hardcoded `7`. Also corrected `Forge agents` stat from `8` → `7`.
+
+### BUG 3 detail
+- `web/components/AgentGrid.tsx`: Replaced 8-entry agentData with correct 7 agents:
+  01 Maya (PMAgent) · 02 Aria (ArchitectAgent) · 03 Rex (ScaffoldAgent)
+  04 Marcus (SecurityAgent) · 05 Nova (EvalAgent) · 06 Lexi (LegalAgent) · 07 Kira (DeployAgent)
+- Removed `Coder` (no assigned persona in V2 pipeline)
+- GBrain removed from numbered grid → shown as full-width Intelligence Layer strip in celadon (#3EB489), no sequence number
+
+---
 
 ---
 
