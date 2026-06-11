@@ -1,27 +1,14 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
 
 const stats = [
   { label: 'Products shipped', value: '1' },
-  { label: 'Forge agents',     value: '8' },
+  { label: 'Forge agents',     value: '7' },
   { label: 'Build cost',       value: '$0.03' },
 ]
 
 export default function GBrainStrip() {
-  const [patterns, setPatterns] = useState(0)
-
-  useEffect(() => {
-    let count = 0
-    const interval = setInterval(() => {
-      count++
-      setPatterns(count)
-      if (count >= 7) clearInterval(interval)
-    }, 200)
-    return () => clearInterval(interval)
-  }, [])
-
   return (
     <motion.section
       id="gbrain"
@@ -48,7 +35,7 @@ export default function GBrainStrip() {
             lineHeight: 1,
           }}
         >
-          {patterns}
+          7
         </div>
         <div className="label" style={{ lineHeight: 1.7, marginTop: '6px' }}>
           GBrain patterns
