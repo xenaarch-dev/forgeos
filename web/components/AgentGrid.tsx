@@ -7,11 +7,10 @@ const agentData = [
   { name: 'Maya',   role: 'PMAgent',        color: '#3EB489', caps: ['Spec', 'Research', 'Scope'] },
   { name: 'Aria',   role: 'ArchitectAgent', color: '#3EB489', caps: ['ERD', 'API', 'Stack'] },
   { name: 'Rex',    role: 'ScaffoldAgent',  color: '#1D5FC5', caps: ['Scaffold', 'Templates'] },
-  { name: 'Coder',  role: 'CoderAgent',     color: '#1D5FC5', caps: ['Code', 'Review'] },
   { name: 'Marcus', role: 'SecurityAgent',  color: '#D9832A', caps: ['Scan', 'Harden'] },
-  { name: 'Kira',   role: 'DeployAgent',    color: '#D9832A', caps: ['Vercel', 'Render'] },
   { name: 'Nova',   role: 'EvalAgent',      color: '#1D5FC5', caps: ['QA', 'Tests'] },
-  { name: 'GBrain', role: 'Memory',         color: '#E8E3D2', caps: ['Patterns', 'Learn'] },
+  { name: 'Lexi',   role: 'LegalAgent',     color: '#1D5FC5', caps: ['Contracts', 'Compliance'] },
+  { name: 'Kira',   role: 'DeployAgent',    color: '#D9832A', caps: ['Vercel', 'Render'] },
 ]
 
 const containerVariants = {
@@ -26,6 +25,7 @@ const itemVariants = {
 
 export default function AgentGrid() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [gbhovered, setGbhovered] = useState(false)
 
   return (
     <motion.section
@@ -129,6 +129,80 @@ export default function AgentGrid() {
             </div>
           </motion.div>
         ))}
+      </motion.div>
+
+      {/* GBrain — Intelligence Layer (not an agent, shown separately) */}
+      <motion.div
+        variants={itemVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true }}
+        onMouseEnter={() => setGbhovered(true)}
+        onMouseLeave={() => setGbhovered(false)}
+        style={{
+          marginTop: '10px',
+          border: `1px solid ${gbhovered ? 'var(--cel)' : 'rgba(62,180,137,0.25)'}`,
+          background: 'rgba(62,180,137,0.05)',
+          padding: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          transition: 'border-color 0.2s',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Celadon dot — no number */}
+          <div
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: 'var(--cel)',
+              flexShrink: 0,
+            }}
+          />
+          <div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '10px',
+                fontWeight: 700,
+                color: 'var(--cel)',
+                marginBottom: '1px',
+              }}
+            >
+              GBrain
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '8.5px',
+                color: 'var(--m)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.10em',
+              }}
+            >
+              Intelligence Layer
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {['Patterns', 'Learn', 'Recall'].map((cap) => (
+            <span
+              key={cap}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '7.5px',
+                color: 'var(--cel)',
+                border: '1px solid rgba(62,180,137,0.3)',
+                padding: '2px 6px',
+              }}
+            >
+              {cap}
+            </span>
+          ))}
+        </div>
       </motion.div>
     </motion.section>
   )
