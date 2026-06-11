@@ -33,6 +33,7 @@ const itemVariants = {
 export default function HowItWorks() {
   return (
     <motion.section
+      id="how-it-works"
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}

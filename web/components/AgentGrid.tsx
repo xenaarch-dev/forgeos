@@ -29,6 +29,7 @@ export default function AgentGrid() {
 
   return (
     <motion.section
+      id="agents"
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}

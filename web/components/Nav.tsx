@@ -42,9 +42,14 @@ export default function Nav() {
 
       {/* Nav links — hidden below sm (640px) */}
       <div className="hidden sm:flex items-center gap-6">
-        {['Docs', 'Agents', 'GBrain', 'Products'].map((link) => (
-          <a key={link} href="#" className="label" style={{ cursor: 'pointer' }}>
-            {link}
+        {[
+          { label: 'Docs',     href: '#how-it-works' },
+          { label: 'Agents',   href: '#agents' },
+          { label: 'GBrain',   href: '#gbrain' },
+          { label: 'Products', href: '#products' },
+        ].map(({ label, href }) => (
+          <a key={label} href={href} className="label" style={{ cursor: 'pointer' }}>
+            {label}
           </a>
         ))}
       </div>
