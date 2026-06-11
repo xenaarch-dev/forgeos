@@ -8,7 +8,10 @@
       "PowerShell(wsl -d Ubuntu-22.04 bash -c \"cd /home/padmaja/forge/forgeos-ui && npm run build 2>&1 | tail -40\")",
       "PowerShell(wsl -d Ubuntu-22.04 bash -ic \"curl -s http://localhost:8000/builds | python3 -c 'import json,sys; d=json.load\\(sys.stdin\\); print\\(f\\\\\"API UP — {len\\(d\\)} builds in history\\\\\"\\)' 2>/dev/null || echo 'API DOWN'\")",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
-      "Bash(wsl -d Ubuntu-22.04 -- cp '/mnt/c/Users/PADMAJA/OneDrive/Documents/Claude/Projects/Claude + Obsidian as second Brain/forgeos/api.py' /home/padmaja/forge/forgeos/api.py)"
+      "Bash(wsl -d Ubuntu-22.04 -- cp '/mnt/c/Users/PADMAJA/OneDrive/Documents/Claude/Projects/Claude + Obsidian as second Brain/forgeos/api.py' /home/padmaja/forge/forgeos/api.py)",
+      "Bash(pnpm --version)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm build *)"
     ]
   }
 }

@@ -1,11 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Cormorant_Garamond, Space_Mono } from 'next/font/google'
 import './globals.css'
-import Providers from '@/components/Providers'
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
+  weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   variable: '--font-display',
 })
@@ -18,9 +17,22 @@ const spaceMono = Space_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'ForgeOS — Autonomous AI Product Factory',
+  title: 'ForgeOS — One sentence in. Full SaaS out.',
   description:
-    'One sentence in. Full SaaS out. The AI product factory that builds, deploys, and operates complete software businesses — autonomously.',
+    'ForgeOS builds, deploys, and operates complete software businesses — autonomously. Proof: contractforge.co.in — live, real, built by ForgeOS.',
+  openGraph: {
+    title: 'ForgeOS — One sentence in. Full SaaS out.',
+    description:
+      'ForgeOS builds, deploys, and operates complete software businesses — autonomously. Proof: contractforge.co.in — live, real, built by ForgeOS.',
+    siteName: 'ForgeOS',
+    type: 'website',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#060D08',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
@@ -30,9 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${spaceMono.variable}`}>
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }
