@@ -1,111 +1,134 @@
-# ForgeOS STATE — last updated 2026-06-06
+# ForgeOS — Session State
 
-## Pipeline status (V2 — Stage 0 to Stage 13)
+**Date:** 2026-06-08  
+**Branch:** main  
+**Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)  
+**Session focus:** Merge master → main (ForgeADK), CoderAgent + SecurityAgent + EvalAgent migration to ForgeAgent
 
-| Stage | Agent | Structured Output | Tests |
-|-------|-------|-------------------|-------|
-| 0 | **PMAgent** | **PMOutput (3f64b0d)** | **24 GREEN** |
-| 1 | ArchitectAgent | ArchitectOutput (dda55c6) | 15 GREEN |
-| 2 | ScaffoldAgent | ScaffoldOutput (fae3f75) | 12 GREEN |
-| 3-12 | GStack + Mission gates | — | — |
-| 12 | SecurityAgent | SecurityOutput (983ac18) | 15 GREEN |
-| 13 | **EvalAgent** | **EvalOutput (8bf4e81)** | **18 GREEN** |
-| — | LegalAgent | LegalAgentOutput (8586811) | 13 GREEN |
-| — | WorkerLoopAgent | WorkerOutput (0fd6381) | 6 GREEN |
-| — | MissionValidator | ValidatorOutput (0fd6381) | 7 GREEN |
-| — | GameAgent | not yet | — |
-| — | DeployAgent | not yet | — |
+---
 
-## Dataset flywheel
+## Commits landed today
 
-Status: BUILT (fa586c9)
-Path: ~/forge/forgeos/dataset/runs/
-Runs logged: 0 (collector ready)
-Milestone: 100 runs → fine-tune Qwen locally
+| Hash | Message |
+|------|---------|
+| `f80da72` | feat: wire PMAgent + EvalAgent into V2 pipeline; DatasetCollector in _append_dataset |
+| `2d2ce5b` | refactor: Railway -> Render in tool tests |
+| `583ffdd` | merge: master into main — ForgeADK, GBrain, pip packaging, ScaffoldAgent |
+| `6b72217` | refactor: CoderAgent extends ForgeAgent |
+| `2b78129` | refactor: SecurityAgent extends ForgeAgent |
+| `8bb7b79` | refactor: EvalAgent extends ForgeAgent; commit orphaned eval + dataset files |
 
-## Test count (Day 152)
+---
 
-Total non-integration tests: 130 GREEN
-Breakdown:
-  PMAgent model+agent: 24
-  EvalAgent model+agent: 18
-  VoiceAgent: 18           ← added Day 152
-  DatasetCollector: 19
-  tools (Render fix): 6
-  orchestrator: 4
-  architect/scaffold/security/worker/validator models: ~35
-  legal (unit only): 6
+## What was built this session (2026-06-08)
 
-Ollama-dependent tests (test_agents.py + *FromAgent): passing but slow
+### master → main merge (`583ffdd`)
 
-## models/ package structure
+Resolved unrelated-history merge. Conflict strategy:
+- Python / config / docs → master's version (ForgeADK, GBrainLogger, ScaffoldAgent migration, PMAgent migration)
+- `forgeos-ui/` → both branches had identical landing page content
 
-models/
-  __init__.py
-  outputs/
-    architect_output.py, scaffold_output.py, security_output.py
-    worker_output.py, validator_output.py, legal_output.py
-    pm_output.py        ← added Day 151
-    eval_output.py      ← added Day 151
+New in main from master:
+- `forge_sdk/` — ForgeAgent + GBrainLogger (ForgeADK v0.1)
+- `gbrain/` — persistent knowledge directory (technical + legal patterns)
+- `forgeos/` — pip CLI (build/status/init)
+- `agents/scaffold.py` → ForgeAgent
+- `agents/architect.py` → ForgeAgent
+- `agents/pm_agent.py` → ForgeAgent
+- `models.py` — canonical LLM models
+- VoiceAgent (from origin/main) now in both branches
 
-## Branch
+### CoderAgent migration (`6b72217`)
 
-main — active, pushed
+`CoderAgent` extends `ForgeAgent` (was `BaseAgent`).
+`capabilities = ["project/code"]` | `requires = ["tasks", "stack"]` | `budget_usd = 0.0`
 
-## Day 152 summary (2026-06-06)
+### SecurityAgent migration (`2b78129`)
 
-### VoiceAgent shipped
-- File: agents/voice_agent.py
-- TTS: edge-tts (free, no API key), default voice en-GB-RyanNeural
-- Playback: mpg123 non-blocking Popen; silent fallback if missing
-- 9 agents × 3 events = 27 canned voice lines (AGENT_VOICE_LINES)
-- silent=True mode: prints 🔊 [AGENT]: <text>, never crashes
-- Constructor params: voice_id, silent
+`SecurityAgent` extends `ForgeAgent` (was `BaseAgent`).
+`capabilities = ["SECURITY.md", "supabase/policies.sql", "trivy.yaml", ".snyk"]`
+`requires = ["project/"]` | `budget_usd = 0.0` (deterministic — no LLM calls)
 
-### Wired into pipeline
-- orchestrator.py (V1): voice.say(agent, start/done/fail) in _run_agent();
-  pipeline start/done in run(); --silent CLI flag
-- agents/hermes.py (V2): VoiceAgent(silent) in __init__; pipeline
-  start/done/fail in run(); per-stage in _run_stage() with name map
-  (pm_agent→pm, eval_agent→eval, mission_work→worker)
+### EvalAgent migration (`8bb7b79`)
 
-### Fixes
-- queue.py renamed to job_queue.py — was shadowing stdlib queue,
-  breaking edge_tts internally (from queue import Queue)
-- HermesOrchestrator.__init__ gained build_id=None param (fixes
-  pre-existing TypeError in run_pipeline())
+`EvalAgent` extends `ForgeAgent` (was `BaseAgent`).
+`capabilities = ["eval_output"]`
+`requires = ["idea", "spec", "architecture", "security_output"]` | `budget_usd = 0.0`
 
-### Audio status
-- edge-tts: MP3 generation confirmed (26 KB, real audio)
-- mpg123: NOT YET INSTALLED — run: sudo apt-get install -y mpg123
-- Until then: fallback print fires correctly
+Note: `dataset/collector.py` and `models/outputs/eval_output.py` were already in origin/main
+(`fa586c9`, `8bf4e81`) and entered the repo via the merge commit.
 
-### Tests
-- 28 green (orchestrator: 4, voice_agent: 18, tools: 6) post-rename
-- 130 total non-integration GREEN
+---
 
-## Day 152 commits (2026-06-06)
+## What was built (prior session — 2026-06-07)
 
-3af0645 feat: VoiceAgent with edge-tts and agent personality lines
-a38a693 feat: wire VoiceAgent into orchestrator pipeline
+See archived notes below.
 
-## Day 151 commits (2026-06-02)
+### README rewrite, pip packaging, ScaffoldAgent migration, GBrain wiring, PMAgent tests
 
-3f64b0d forgeos: PMAgent — demand validation stage 0
-8bf4e81 forgeos: EvalAgent — automated quality gate
-fa586c9 forgeos: dataset collector — every run logged
-ae16ff4 forgeos: pipeline updated — PM + Eval + Dataset wired
+(all details in prior STATE.md entry — now committed and in git history)
 
-## Next session
+---
 
-- DeployAgent: structured output, Render + Vercel deploy, tests
-- GameAgent: Three.js/Phaser/Godot routing, structured output
-- Fill stages 3–11 gap (GStack gates need real implementations)
-- Target: 150 total tests
+## Test status
 
-## Known issues
+| Suite | Passing | Failing | Notes |
+|-------|---------|---------|-------|
+| `test_agents.py` | 4/4 | 0 | full pass |
+| `test_architect_output.py` | 17/17 | 0 | full pass |
+| `test_dataset_collector.py` | 19/19 | 0 | full pass |
+| `test_eval_agent.py` | 19/19 | 0 | full pass |
+| `test_legal_agent.py` | 13/13 | 0 | all pass (legal mock fix came in from origin/main) |
+| `test_orchestrator.py` | 4/4 | 0 | full pass |
+| `test_pm_agent.py` | 27/27 | 0 | all integration tests mocked |
+| `test_scaffold_output.py` | 12/12 | 0 | full pass |
+| `test_security_output.py` | 15/15 | 0 | full pass |
+| `test_tools.py` | 6/6 | 0 | full pass (Render client) |
+| `test_validator_output.py` | 7/7 | 0 | full pass |
+| `test_voice_agent.py` | 18/18 | 0 | full pass (from origin/main) |
+| `test_worker_output.py` | 6/6 | 0 | full pass |
+| **TOTAL** | **167/167** | **0** | clean — all tests green |
 
-- Windows/OneDrive mirror has models.py (stale); WSL2 has models/__init__.py (live)
-- test_agents.py and *FromAgent tests require Ollama running — slow but pass
-- Windows repo (OneDrive) diverged from WSL2 repo; WSL2 is canonical
-- mpg123 not yet installed — audio falls back to print until installed
+---
+
+## Agent migration status
+
+| Agent | Base class | Migrated |
+|-------|-----------|---------|
+| ArchitectAgent | ForgeAgent | ✓ (2026-06-07) |
+| PMAgent | ForgeAgent | ✓ (2026-06-07) |
+| ScaffoldAgent | ForgeAgent | ✓ (2026-06-07) |
+| DesignAgent | ForgeAgent | ✓ structure only — `_execute` raises NotImplementedError |
+| MediaAgent | ForgeAgent | ✓ structure only — `_execute` raises NotImplementedError |
+| CoderAgent | ForgeAgent | ✓ (2026-06-08) |
+| SecurityAgent | ForgeAgent | ✓ (2026-06-08) |
+| EvalAgent | ForgeAgent | ✓ (2026-06-08) |
+| DeployAgent | BaseAgent | pending |
+| GameAgent | BaseAgent | pending |
+| GStackGate + 10 gates | BaseAgent | pending |
+| MissionOrchestrator | BaseAgent | pending |
+| MissionWorkerLoop | BaseAgent | pending |
+| MissionValidator | BaseAgent | pending |
+| VoiceAgent | BaseAgent | pending |
+
+---
+
+## Open items / next session
+
+- [ ] **Migrate remaining agents** — DeployAgent, GameAgent, all 10 GStack gates, Mission agents, VoiceAgent still extend `BaseAgent`
+- [ ] **Implement DesignAgent._execute()** — step-by-step guide is in the class docstring
+- [ ] **Implement MediaAgent._execute()** — step-by-step guide is in the class docstring
+- [ ] **Wire `gbrain/` into LegalAgent** — load `legal.json` jurisdiction rules before contract generation
+- [ ] **GBrain auto-ingest** — hook `ForgeBrain._append_dataset()` to also append to `gbrain/patterns/*.json` after each successful build
+- [ ] **Sync master with main** — master is now behind main (missing merge commit + 3 agent refactors)
+
+---
+
+## Key invariants to preserve
+
+1. `ForgeAgent.run()` is the single point of GBrainLogger lifecycle (`start` → `finish`) — never call `logger.start/finish` from `_execute`
+2. `agents/__init__.py` must keep `BaseAgent` as the only eager import — all subclasses in `_LAZY`
+3. `gbrain-events.jsonl` is append-only during a build — never truncate or rewrite
+4. `budget_usd = 0.0` means unlimited — use it for agents that run mid/late pipeline (no useful cap)
+5. All ForgeOS `from` imports are absolute (`from models import X`, not `from .models import X`)
+6. PMAgent and EvalAgent are NOT in `agents/__init__._LAZY` — they're imported directly in `hermes.py`

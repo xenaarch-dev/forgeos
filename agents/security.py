@@ -18,9 +18,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from forge_sdk.agent import ForgeAgent
 from models import ProjectContext, TaskStatus
 from models.outputs.security_output import compute_owasp_score
-from .base import BaseAgent
 
 
 _SECRET_PATTERNS = [
@@ -32,9 +32,12 @@ _SECRET_PATTERNS = [
 ]
 
 
-class SecurityAgent(BaseAgent):
-    name = "security"
-    phase = "security"
+class SecurityAgent(ForgeAgent):
+    name         = "security"
+    phase        = "security"
+    capabilities = ["SECURITY.md", "supabase/policies.sql", "trivy.yaml", ".snyk"]
+    requires     = ["project/"]
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         project_root = Path(context.workdir) / "project"

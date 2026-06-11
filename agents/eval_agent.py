@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from forge_sdk.agent import ForgeAgent
 from models import LLMError, ProjectContext
 from models.outputs.eval_output import EvalOutput
-from .base import BaseAgent
 
 
 _SYSTEM_PROMPT = """\
@@ -48,11 +48,14 @@ List recommendations for the next build cycle.
 """
 
 
-class EvalAgent(BaseAgent):
+class EvalAgent(ForgeAgent):
     """Automated quality gate — blocks deploy if score < 80 or blocking issues exist."""
 
-    name = "eval_agent"
-    phase = "eval"
+    name         = "eval_agent"
+    phase        = "eval"
+    capabilities = ["eval_output"]
+    requires     = ["idea", "spec", "architecture", "security_output"]
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         import os

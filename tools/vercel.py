@@ -50,23 +50,14 @@ class VercelClient:
         body: dict[str, Any] = {"name": name, "framework": framework}
         if github_repo:
             body["gitRepository"] = {"type": "github", "repo": github_repo}
-        # rootDirectory is set via updateProject after creation (v10 API doesn't accept it at create time)
+        if root_directory:
+            body["rootDirectory"] = root_directory
         return http_request(
             f"{self.api}/v10/projects",
             method="POST",
             headers=self._headers(),
             params=self._params(),
             json_body=body,
-        )
-
-    def update_project(self, project_id: str, root_directory: str) -> dict[str, Any]:
-        """Set rootDirectory after project creation (required for monorepos)."""
-        return http_request(
-            f"{self.api}/v9/projects/{project_id}",
-            method="PATCH",
-            headers=self._headers(),
-            params=self._params(),
-            json_body={"rootDirectory": root_directory},
         )
 
     def add_env_var(
@@ -91,29 +82,24 @@ class VercelClient:
         )
 
     def trigger_deployment(
-        self,
-        project_name: str,
-        github_repo: str,
-        ref: str = "main",
-        root_directory: str | None = None,
+        self, project_name: str, github_repo: str, ref: str = "main"
     ) -> dict[str, Any]:
         owner, _, name = github_repo.partition("/")
-        body: dict[str, Any] = {
-            "name": project_name,
-            "target": "production",
-            "gitSource": {
-                "type": "github",
-                "repo": name,
-                "org": owner,
-                "ref": ref,
-            },
-        }
         return http_request(
             f"{self.api}/v13/deployments",
             method="POST",
             headers=self._headers(),
             params=self._params(),
-            json_body=body,
+            json_body={
+                "name": project_name,
+                "target": "production",
+                "gitSource": {
+                    "type": "github",
+                    "repo": name,
+                    "org": owner,
+                    "ref": ref,
+                },
+            },
         )
 
     def get_deployment(self, deployment_id: str) -> dict[str, Any]:

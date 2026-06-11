@@ -18,8 +18,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from forge_sdk.agent import ForgeAgent
 from models import ProjectContext, Task, TaskStatus
-from .base import BaseAgent
 
 
 SYSTEM_PROMPT = """\
@@ -48,7 +48,6 @@ Rules:
 - Overwrite is allowed. Cover both implementation AND tests per task.
 - Use pytest for backend tests, vitest for frontend tests.
 - Use real shadcn/ui import paths: from "@/components/ui/button" not from "shadcn/ui".
-- NEVER remove or omit @app.get("/") and @app.get("/healthz") from backend/app/main.py. These routes are mandatory in every build — Render health checks them on deploy.
 """
 
 
@@ -63,9 +62,12 @@ _JUNK_PREFIXES: tuple[str, ...] = (
 )
 
 
-class CoderAgent(BaseAgent):
-    name = "coder"
-    phase = "code"
+class CoderAgent(ForgeAgent):
+    name         = "coder"
+    phase        = "code"
+    capabilities = ["project/code"]
+    requires     = ["tasks", "stack"]
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         project_root = Path(context.workdir) / "project"

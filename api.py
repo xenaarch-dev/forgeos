@@ -311,9 +311,19 @@ async def get_build(build_id: str) -> dict:
 
 @app.get("/builds/{build_id}/stream")
 async def stream_build(build_id: str) -> StreamingResponse:
-    """SSE endpoint. Each event is a JSON object:
-        {"type": "log",  "text": "<line>"}
-        {"type": "done", "status": "success"|"failed"}
+    """SSE endpoint. Three event shapes:
+        {"type": "log",          "text": "<line>"}
+        {"type": "agent_event",  "event": "<name>", "agent": "<name>", ...}
+        {"type": "done",         "status": "success"|"failed"}
+
+    agent_event fields mirror GBrainLogger entries verbatim:
+      start      — {agent, phase}
+      llm_call   — {model, purpose, prompt_tokens, completion_tokens, cost_usd}
+      artifact   — {relpath, size_bytes}
+      gate       — {gate, score, passed, feedback}
+      success    — {agent, output_keys}
+      error      — {agent, error}
+      finish     — {status, duration_seconds, total_cost_usd, ...}
     """
     if not build_id.isalnum():
         raise HTTPException(status_code=400, detail="Invalid build ID")
@@ -322,33 +332,78 @@ async def stream_build(build_id: str) -> StreamingResponse:
 
     async def _events() -> AsyncGenerator[str, None]:
         record = _builds[build_id]
+        gbrain_path = Path(record["workdir"]) / "gbrain-events.jsonl"
 
-        # Replay existing lines first
+        def _read_gbrain(offset: int) -> tuple[list[dict], int]:
+            """Read new GBrain JSONL events starting at byte offset."""
+            if not gbrain_path.exists():
+                return [], offset
+            try:
+                with gbrain_path.open("rb") as f:
+                    f.seek(offset)
+                    raw = f.read()
+                new_offset = offset + len(raw)
+                events: list[dict] = []
+                for line in raw.decode("utf-8", errors="replace").splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        events.append(json.loads(line))
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                return events, new_offset
+            except OSError:
+                return [], offset
+
+        # Replay existing text log lines
         cursor = 0
         for line in record["log"]:
             yield _sse_event(json.dumps({"type": "log", "text": line}))
         cursor = len(record["log"])
 
-        # Stream new lines; send a keepalive comment every 15 s to prevent
-        # the Next.js proxy and browser from timing out on idle SSE.
+        # Replay any GBrain events already written before we started listening
+        gbrain_offset = 0
+        gbrain_events, gbrain_offset = _read_gbrain(gbrain_offset)
+        for ev in gbrain_events:
+            yield _sse_event(json.dumps({"type": "agent_event", **ev}))
+
+        # Stream new events; keepalive comment every 15 s
         ticks_since_data = 0
         while record["status"] == "running":
             await asyncio.sleep(0.5)
             ticks_since_data += 1
+            emitted_something = False
+
+            # Text log
             log = record["log"]
             if len(log) > cursor:
                 for line in log[cursor:]:
                     yield _sse_event(json.dumps({"type": "log", "text": line}))
                 cursor = len(log)
+                emitted_something = True
+
+            # GBrain events (byte-offset tail — only reads new bytes)
+            gbrain_events, gbrain_offset = _read_gbrain(gbrain_offset)
+            for ev in gbrain_events:
+                yield _sse_event(json.dumps({"type": "agent_event", **ev}))
+                emitted_something = True
+
+            if emitted_something:
                 ticks_since_data = 0
             elif ticks_since_data >= 30:  # 30 × 0.5 s = 15 s
                 yield ": keepalive\n\n"
                 ticks_since_data = 0
 
-        # Flush any final lines that arrived after the status flipped
+        # Flush any final text lines that arrived after status flipped
         log = record["log"]
         for line in log[cursor:]:
             yield _sse_event(json.dumps({"type": "log", "text": line}))
+
+        # Flush any final GBrain events
+        gbrain_events, _ = _read_gbrain(gbrain_offset)
+        for ev in gbrain_events:
+            yield _sse_event(json.dumps({"type": "agent_event", **ev}))
 
         # Terminal event
         yield _sse_event(json.dumps({"type": "done", "status": record["status"]}))

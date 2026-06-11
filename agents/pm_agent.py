@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from forge_sdk.agent import ForgeAgent
 from models import LLMError, ProjectContext
 from models.outputs.pm_output import PMOutput
-from .base import BaseAgent
 
 
 _SYSTEM_PROMPT = """\
@@ -46,11 +46,14 @@ Return all fields:
 """
 
 
-class PMAgent(BaseAgent):
+class PMAgent(ForgeAgent):
     """Validate market demand before a single line of code is written."""
 
     name = "pm_agent"
     phase = "pm"
+    capabilities = ["pm_output"]           # writes context.metadata["pm_output"]
+    requires = ["idea"]
+    budget_usd = 0.10                      # one Claude structured call ~$0.01-0.05
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         import os
