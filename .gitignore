@@ -22,3 +22,5 @@ dist/
 .idea/
 .vscode/
 models_pkg/
+builds/
+.claude/
