@@ -33,6 +33,10 @@ export default function TerminalSim({
       setShown(0)
       return
     }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(lines.length)
+      return
+    }
     let i = 0
     let t: ReturnType<typeof setTimeout>
     const next = () => {

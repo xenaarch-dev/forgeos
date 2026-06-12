@@ -1,4 +1,5 @@
 import Nav from '@/components/manifesto/Nav'
+import MotionRoot from '@/components/fx/MotionRoot'
 import WaterCursor from '@/components/fx/WaterCursor'
 import S01_Hero from '@/components/manifesto/S01_Hero'
 import S02_Problem from '@/components/manifesto/S02_Problem'
@@ -16,7 +17,7 @@ import S13_CTA from '@/components/manifesto/S13_CTA'
 
 export default function Home() {
   return (
-    <>
+    <MotionRoot>
       <WaterCursor />
       <Nav />
       <main>
@@ -34,6 +35,6 @@ export default function Home() {
         <S12_Loop />
         <S13_CTA />
       </main>
-    </>
+    </MotionRoot>
   )
 }

@@ -32,6 +32,14 @@ export default function Typewriter({
       doneRef.current = false
       return
     }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setCount(text.length)
+      if (!doneRef.current) {
+        doneRef.current = true
+        onDone?.()
+      }
+      return
+    }
     let i = 0
     let iv: ReturnType<typeof setInterval>
     const t0 = setTimeout(() => {

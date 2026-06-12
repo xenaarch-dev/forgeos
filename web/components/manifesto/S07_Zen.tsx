@@ -40,6 +40,10 @@ function CodeSim({ active }: { active: boolean }) {
       setVerdict(false)
       return
     }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setCount(total)
+      return
+    }
     let c = 0
     const iv = setInterval(() => {
       c += 2

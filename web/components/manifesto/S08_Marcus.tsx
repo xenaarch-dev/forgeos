@@ -26,6 +26,10 @@ function Row({
       setState('hidden')
       return
     }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setState('ok')
+      return
+    }
     const t1 = setTimeout(() => setState('scanning'), appearMs)
     const t2 = setTimeout(() => setState('ok'), appearMs + holdMs)
     return () => {
