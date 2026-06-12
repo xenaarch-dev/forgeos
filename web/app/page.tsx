@@ -1,4 +1,5 @@
 import Nav from '@/components/manifesto/Nav'
+import WaterCursor from '@/components/fx/WaterCursor'
 import S01_Hero from '@/components/manifesto/S01_Hero'
 import S02_Problem from '@/components/manifesto/S02_Problem'
 import S03_Pipeline from '@/components/manifesto/S03_Pipeline'
@@ -16,6 +17,7 @@ import S13_CTA from '@/components/manifesto/S13_CTA'
 export default function Home() {
   return (
     <>
+      <WaterCursor />
       <Nav />
       <main>
         <S01_Hero />
