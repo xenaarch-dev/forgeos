@@ -75,7 +75,7 @@ export default function TerminalSim({
       </div>
       <div
         ref={scrollRef}
-        className="overflow-hidden px-4 py-4 text-[13px] leading-[1.9] md:text-sm"
+        className="overflow-hidden px-4 py-4 text-[15px] leading-[1.9]"
         style={{ height: 240 }}
         aria-live="off"
       >
