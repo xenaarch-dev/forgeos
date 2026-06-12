@@ -263,7 +263,15 @@ export default function WaterCursor() {
   useEffect(() => {
     const fine = window.matchMedia('(pointer: fine)').matches
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (fine && !reduced) setEnabled(true)
+    if (!fine || reduced) return
+    // ambient layer — boot after idle so it never competes with hydration
+    const enable = () => setEnabled(true)
+    if ('requestIdleCallback' in window) {
+      const id = (window as Window & typeof globalThis).requestIdleCallback(enable, { timeout: 2500 })
+      return () => cancelIdleCallback(id)
+    }
+    const t = setTimeout(enable, 1500)
+    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
