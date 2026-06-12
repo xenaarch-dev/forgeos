@@ -3,23 +3,42 @@
 @tailwind utilities;
 
 /* ============================================================
-   THE NIGHT FORGE — design tokens (locked)
+   THE COSMIC GARDEN — design tokens (portal-v3, locked)
    ============================================================ */
 :root {
-  --bg: #060D08;          /* forge black-green. THE page background. */
-  --cel: #3EB489;         /* celadon — complete / shipped / success */
-  --fire: #D9832A;        /* amber — running / energy / CTA */
-  --blue: #1D5FC5;        /* interactive elements only */
-  --w: #E8E3D2;           /* warm cream — all body text */
-  --w-dim: rgba(232, 227, 210, 0.55);
-  --glass: rgba(6, 13, 8, 0.35);
-  --glass-border: rgba(62, 180, 137, 0.18);
-  --glass-highlight: rgba(232, 227, 210, 0.06);
+  /* ── FOUNDATIONS ── */
+  --void: #000008;          /* true space black — the base */
+  --deep: #060318;          /* deep violet-black — lifted surfaces */
+
+  /* ── COSMIC PALETTE ── */
+  --teal: #00E5CC;          /* the machine's primary light */
+  --teal-dim: rgba(0, 229, 204, 0.15);
+  --gold: #E8961F;          /* organic warmth, CTA energy */
+  --gold-dim: rgba(232, 150, 31, 0.15);
+  --violet: #7C3AED;        /* deep space accent */
+  --violet-dim: rgba(124, 58, 237, 0.12);
+  --azure: #3B82F6;         /* data stream, code */
+
+  /* ── TEXT ── */
+  --w: #F0EDE8;             /* warm white — all text */
+  --w-dim: rgba(240, 237, 232, 0.55);
+  --w-ghost: rgba(240, 237, 232, 0.28);
+  --hud: rgba(240, 237, 232, 0.62);
+
+  /* ── GLASS ── */
+  --glass-fill: rgba(6, 3, 24, 0.35);
+  --glass-blur: blur(36px) saturate(1.6) brightness(1.05);
+
+  /* compat aliases — fx primitives (Typewriter/TerminalSim/SvgDraw/
+     Ember) and the verbatim sims reference --cel/--fire; they now
+     resolve to the cosmic palette */
+  --cel: var(--teal);
+  --fire: var(--gold);
+  --bg: var(--void);
 
   --font-body: var(--font-mono), 'Space Mono', ui-monospace, monospace;
   --font-serif: var(--font-display), 'Cormorant Garamond', serif;
 
-  /* one easing family — custom out-quint feel */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -32,7 +51,7 @@
 }
 
 html {
-  background-color: var(--bg);
+  background-color: var(--void);
   color: var(--w);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -46,15 +65,15 @@ html {
 
 body {
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.7;
-  background-color: var(--bg);
+  font-size: 18px;
+  line-height: 1.8;
+  background-color: var(--void);
   color: var(--w);
   overflow-x: hidden;
 }
 
 ::selection {
-  background: rgba(62, 180, 137, 0.35);
+  background: rgba(0, 229, 204, 0.32);
   color: var(--w);
 }
 
@@ -76,45 +95,177 @@ input {
 }
 
 :focus-visible {
-  outline: 2px solid var(--cel);
+  outline: 2px solid var(--teal);
   outline-offset: 3px;
   border-radius: 2px;
 }
 
 /* ============================================================
-   Glass — the ONLY glass recipe on this page
-   radius scale: 8 (chips) / 16 (panels) / 24 (hero input)
+   Glass — iridescent chromatic panel (the ONE glass recipe)
+   radius scale: 10 (chips) / 20 (panels) / 32 (hero CTA)
    ============================================================ */
 .glass {
-  background: var(--glass);
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-highlight); /* light catches the top edge */
-  border-radius: 16px;
+  --panel-tint: transparent;
+  position: relative;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  border: 1px solid transparent;
+  background-image:
+    linear-gradient(var(--panel-tint), var(--panel-tint)),
+    linear-gradient(var(--glass-fill), var(--glass-fill)),
+    linear-gradient(
+      135deg,
+      rgba(0, 229, 204, 0.45) 0%,
+      rgba(124, 58, 237, 0.3) 30%,
+      rgba(232, 150, 31, 0.25) 60%,
+      rgba(59, 130, 246, 0.2) 100%
+    );
+  background-origin: border-box;
+  background-clip: padding-box, padding-box, border-box;
+
+  border-radius: 20px;
+
   box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 var(--glass-highlight);
+    0 40px 100px rgba(0, 0, 5, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 229, 204, 0.05),
+    0 0 60px rgba(0, 229, 204, 0.04),
+    0 0 120px rgba(124, 58, 237, 0.03);
+
+  overflow: hidden;
+}
+
+.glass-cosmic { --panel-tint: rgba(0, 229, 204, 0.08); }
+.glass-warm   { --panel-tint: rgba(232, 150, 31, 0.08); }
+.glass-deep   { --panel-tint: rgba(124, 58, 237, 0.08); }
+
+/* Light sweep on viewport entry — once, not looping.
+   JS adds .swept when IntersectionObserver fires. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.07) 45%,
+    rgba(0, 229, 204, 0.04) 55%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  transition: none;
+  pointer-events: none;
+  z-index: 1;
+}
+.glass.swept::before {
+  transform: translateX(120%);
+  transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Cursor-reactive inner glow — JS updates --cx --cy custom props */
+.glass::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 229, 204, 0.06) 0%,
+    transparent 70%
+  );
+  transform: translate(
+    calc(var(--cx, 50%) - 160px),
+    calc(var(--cy, 50%) - 160px)
+  );
+  pointer-events: none;
+  z-index: 1;
+  transition: transform 0.1s linear;
 }
 
 /* ============================================================
-   Type scale
+   Ambient glow system — positioned div BEHIND every glass panel
+   ============================================================ */
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+}
+.glow-teal   { background: radial-gradient(circle, rgba(0, 229, 204, 0.14) 0%, transparent 65%); }
+.glow-gold   { background: radial-gradient(circle, rgba(232, 150, 31, 0.14) 0%, transparent 65%); }
+.glow-violet { background: radial-gradient(circle, rgba(124, 58, 237, 0.14) 0%, transparent 65%); }
+.glow-azure  { background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, transparent 65%); }
+.glow-red    { background: radial-gradient(circle, rgba(239, 68, 68, 0.12) 0%, transparent 65%); }
+
+/* ============================================================
+   HUD annotation system — wireframe data panels
+   ============================================================ */
+.hud-panel {
+  position: absolute;
+  border: 1px solid rgba(0, 229, 204, 0.35);
+  padding: 12px 16px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--hud);
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  white-space: pre-line;
+  background: rgba(0, 0, 8, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.hud-panel::before,
+.hud-panel::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--teal);
+  border-style: solid;
+}
+.hud-panel::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+.hud-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+/* ============================================================
+   Typography — cinematic scale
+   feeling → Cormorant · fact → Space Mono
    ============================================================ */
 .type-hero {
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 500;
-  font-size: clamp(56px, 11vw, 120px);
+  font-size: clamp(80px, 13vw, 180px);
+  line-height: 0.95;
+  color: var(--w);
+}
+
+.type-agent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(64px, 10vw, 144px);
   line-height: 0.95;
   color: var(--w);
 }
 
 .type-chapter {
   font-family: var(--font-serif);
+  font-style: italic;
   font-weight: 500;
-  font-size: clamp(44px, 7.5vw, 96px);
+  font-size: clamp(48px, 7vw, 96px);
   line-height: 1.02;
-  letter-spacing: 0.045em;
   color: var(--w);
 }
 
@@ -123,12 +274,13 @@ input {
   font-size: 13px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
+  color: var(--teal);
 }
 
 /* ============================================================
-   Reduced motion — non-negotiable
-   Canvas layers (water cursor, constellation, particles) check
-   the media query in JS and unmount; this kills the rest.
+   Reduced motion — non-negotiable.
+   Canvas layers check the media query in JS and render a single
+   static frame; this kills the rest.
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   *,

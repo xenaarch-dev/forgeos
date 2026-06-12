@@ -60,6 +60,7 @@ precision highp float;
 varying vec2 vUv;
 uniform sampler2D uField;
 uniform vec2 uTexel;
+uniform float uMax;   // max specular alpha — 0.13 over imagery, 0.08 elsewhere
 float H(vec2 uv) { return texture2D(uField, uv).r * 2. - 1.; }
 void main() {
   float hx = H(vUv + vec2(uTexel.x, 0.)) - H(vUv - vec2(uTexel.x, 0.));
@@ -69,11 +70,11 @@ void main() {
   float spec = pow(max(dot(n, light), 0.), 24.);
   float h = H(vUv);
   float crest = smoothstep(0.004, 0.05, h);
-  // premultiplied: cream specular + celadon crest tint
-  vec3 cream = vec3(0.91, 0.89, 0.82);
-  vec3 cel = vec3(0.24, 0.71, 0.54);
-  float a = spec * 0.10 + crest * 0.04;
-  gl_FragColor = vec4(cream * spec * 0.10 + cel * crest * 0.04, a);
+  // premultiplied: teal-tinted specular (teal 70 / white 30) + teal crest
+  vec3 tealMix = vec3(0.30, 0.93, 0.86);
+  vec3 teal = vec3(0.0, 0.90, 0.80);
+  float a = spec * uMax + crest * 0.04;
+  gl_FragColor = vec4(tealMix * spec * uMax + teal * crest * 0.04, a);
 }
 `
 
@@ -162,12 +163,29 @@ function boot(canvas: HTMLCanvasElement, simDiv: number): (() => void) | null {
   }
   window.addEventListener('mousemove', onMove, { passive: true })
 
-  let nextIdle = performance.now() + 4000 + Math.random() * 3000
+  let nextIdle = performance.now() + 5000 + Math.random() * 3000
   let raf = 0
   let frameCost = 0
   let frameCount = 0
   let degraded = simDiv > 2
   let rebooted: (() => void) | null = null
+
+  // specular ceiling — 0.13 while an imagery section crosses the
+  // viewport centre, 0.08 elsewhere; lerped so the change is invisible
+  let specMax = 0.08
+  let specTarget = 0.08
+  const imagery = Array.from(document.querySelectorAll('[data-imagery]'))
+  const checkImagery = () => {
+    const mid = window.innerHeight / 2
+    specTarget = imagery.some((el) => {
+      const r = el.getBoundingClientRect()
+      return r.top < mid && r.bottom > mid
+    })
+      ? 0.13
+      : 0.08
+  }
+  checkImagery()
+  window.addEventListener('scroll', checkImagery, { passive: true })
 
   const tick = () => {
     raf = requestAnimationFrame(tick)
@@ -187,8 +205,8 @@ function boot(canvas: HTMLCanvasElement, simDiv: number): (() => void) | null {
     } else if (t0 >= nextIdle) {
       dx = Math.random()
       dy = Math.random()
-      strength = 0.11 // ambient drop — 20% of full
-      nextIdle = t0 + 4000 + Math.random() * 3000
+      strength = 0.0825 // ambient drop — 15% of full
+      nextIdle = t0 + 5000 + Math.random() * 3000
     }
 
     // sim step: read a → write b
@@ -214,6 +232,8 @@ function boot(canvas: HTMLCanvasElement, simDiv: number): (() => void) | null {
     gl.bindTexture(gl.TEXTURE_2D, b!.tex)
     gl.uniform1i(gl.getUniformLocation(drawProg, 'uField'), 0)
     gl.uniform2f(gl.getUniformLocation(drawProg, 'uTexel'), 1 / sw, 1 / sh)
+    specMax += (specTarget - specMax) * 0.05
+    gl.uniform1f(gl.getUniformLocation(drawProg, 'uMax'), specMax)
     setupAttrib(drawProg)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
 
@@ -238,6 +258,7 @@ function boot(canvas: HTMLCanvasElement, simDiv: number): (() => void) | null {
   const cleanup = () => {
     cancelAnimationFrame(raf)
     window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('scroll', checkImagery)
     if (a) {
       gl.deleteTexture(a.tex)
       gl.deleteFramebuffer(a.fbo)
