@@ -141,6 +141,7 @@ function CodeSim({ active }: { active: boolean }) {
 export default function S07_Zen() {
   return (
     <AgentChapter
+      id="zen"
       eyebrow="// Zen → WorkerLoopAgent"
       name="Zen"
       role="He writes the code. Then rewrites it."

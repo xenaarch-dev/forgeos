@@ -84,6 +84,7 @@ function ClausesSim({ active }: { active: boolean }) {
 export default function S09_Lexi() {
   return (
     <AgentChapter
+      id="lexi"
       eyebrow="// Lexi → LegalAgent"
       name="Lexi"
       role="She knows Indian law. By design."

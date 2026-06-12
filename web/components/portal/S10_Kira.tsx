@@ -7,6 +7,7 @@ import { kiraDeploy, kiraCaption } from '@/data/simulations'
 export default function S10_Kira() {
   return (
     <AgentChapter
+      id="kira"
       eyebrow="// Kira → DeployAgent"
       name="Kira"
       role="She ships it. To production. Tonight."

@@ -130,6 +130,7 @@ function ArchSim({ active }: { active: boolean }) {
 export default function S05_Aria() {
   return (
     <AgentChapter
+      id="aria"
       eyebrow="// Aria → ArchitectAgent"
       name="Aria"
       role="She draws the system before it exists."

@@ -7,6 +7,7 @@ import { rexScaffold } from '@/data/simulations'
 export default function S06_Rex() {
   return (
     <AgentChapter
+      id="rex"
       eyebrow="// Rex → ScaffoldAgent"
       name="Rex"
       role="He builds the skeleton in 90 seconds."

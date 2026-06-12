@@ -109,6 +109,7 @@ function MatrixSim({ active }: { active: boolean }) {
 export default function S08_Marcus() {
   return (
     <AgentChapter
+      id="marcus"
       eyebrow="// Marcus → SecurityAgent"
       name="Marcus"
       role="He attacks it before anyone else can."

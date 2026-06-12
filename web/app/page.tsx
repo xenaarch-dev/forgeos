@@ -16,6 +16,23 @@ import S11_Proof from '@/components/portal/S11_Proof'
 import S12_Loop from '@/components/portal/S12_Loop'
 import S13_CTA from '@/components/portal/S13_CTA'
 
+/* section transition — a thin amber thread pulling the visitor down */
+function Thread() {
+  return (
+    <div aria-hidden className="flex justify-center py-2">
+      <span
+        style={{
+          display: 'block',
+          width: 1,
+          height: 64,
+          background:
+            'linear-gradient(to bottom, transparent, rgba(232,150,31,0.5), transparent)',
+        }}
+      />
+    </div>
+  )
+}
+
 export default function Home() {
   return (
     <MotionRoot>
@@ -25,7 +42,9 @@ export default function Home() {
       <main>
         <S01_Hero />
         <S02_Problem />
+        <Thread />
         <S03_Pipeline />
+        <Thread />
         <S04_Maya />
         <S05_Aria />
         <S06_Rex />
@@ -33,8 +52,11 @@ export default function Home() {
         <S08_Marcus />
         <S09_Lexi />
         <S10_Kira />
+        <Thread />
         <S11_Proof />
+        <Thread />
         <S12_Loop />
+        <Thread />
         <S13_CTA />
       </main>
     </MotionRoot>
