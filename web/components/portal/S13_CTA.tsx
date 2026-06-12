@@ -82,7 +82,7 @@ export default function S13_CTA() {
       <footer className="absolute bottom-8 left-0 right-0 px-6">
         <p
           className="text-center text-[12px]"
-          style={{ color: 'var(--w-ghost)', letterSpacing: '0.06em' }}
+          style={{ color: 'var(--w-dim)', letterSpacing: '0.06em' }}
         >
           ForgeOS — built in Mumbai by xenarch ·{' '}
           <a

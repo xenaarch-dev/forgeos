@@ -10,6 +10,7 @@ import {
   useTransform,
 } from 'framer-motion'
 import PortalScene from '@/components/portal/PortalScene'
+import useScrollOpacity from '@/components/fx/useScrollOpacity'
 
 /**
  * AgentChapter — the Image-5 scaffold shared by all seven agents.
@@ -59,6 +60,8 @@ export default function AgentChapter({
   const reduced = useReducedMotion() ?? false
   const outerRef = useRef<HTMLElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const nameRef = useRef<HTMLDivElement>(null)
+  const panelWrapRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(false)
 
   // reduced-motion fallback: sim plays when panel is half in view
@@ -79,6 +82,10 @@ export default function AgentChapter({
   // Beat B — the panel
   const panelY = useTransform(scrollYProgress, [0.25, 0.55], [100, 0])
   const panelOpacity = useTransform(scrollYProgress, [0.25, 0.55], [0, 1])
+
+  // opacity via direct DOM writes — survives mid-scroll re-renders
+  useScrollOpacity(nameOpacity, nameRef, reduced)
+  useScrollOpacity(panelOpacity, panelWrapRef, reduced)
 
   // sim trigger: panel opacity ≥ 0.8 → progress ≥ 0.49; replay on re-entry
   useMotionValueEvent(scrollYProgress, 'change', (p) => {
@@ -153,10 +160,9 @@ export default function AgentChapter({
         <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-end pb-[5vh]">
           <div className="relative w-full max-w-[900px] px-4 md:px-6">
             <motion.div
+              ref={nameRef}
               className="relative z-[5]"
-              style={
-                reduced ? undefined : { y: nameY, opacity: nameOpacity }
-              }
+              style={reduced ? undefined : { y: nameY }}
             >
               <p className="eyebrow">{eyebrow}</p>
               <h2
@@ -168,10 +174,9 @@ export default function AgentChapter({
             </motion.div>
 
             <motion.div
+              ref={panelWrapRef}
               className="relative"
-              style={
-                reduced ? undefined : { y: panelY, opacity: panelOpacity }
-              }
+              style={reduced ? undefined : { y: panelY }}
             >
               {/* ambient glow — always BEHIND the glass, never inside */}
               <div

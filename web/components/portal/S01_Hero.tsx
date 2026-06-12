@@ -10,6 +10,7 @@ import {
 import Ember from '@/components/fx/Ember'
 import PortalScene from '@/components/portal/PortalScene'
 import HudPanel from '@/components/portal/HudPanel'
+import useScrollOpacity from '@/components/fx/useScrollOpacity'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 const LINE1 = 'One sentence in.'
@@ -28,6 +29,11 @@ STATUS: OPERATIONAL`
 export default function S01_Hero() {
   const reduced = useReducedMotion() ?? false
   const outerRef = useRef<HTMLElement>(null)
+  const titleRef = useRef<HTMLDivElement>(null)
+  const subRef = useRef<HTMLParagraphElement>(null)
+  const hudLRef = useRef<HTMLDivElement>(null)
+  const hudRRef = useRef<HTMLDivElement>(null)
+  const cueRef = useRef<HTMLDivElement>(null)
   const [c1, setC1] = useState(0)
   const [c2, setC2] = useState(0)
   const [typingDone, setTypingDone] = useState(false)
@@ -83,6 +89,13 @@ export default function S01_Hero() {
   const hudRightY = useTransform(scrollYProgress, [0, 1], [0, -280])
   const hudOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0])
 
+  // opacity via direct DOM writes — survives typewriter re-renders
+  useScrollOpacity(titleOpacity, titleRef, reduced)
+  useScrollOpacity(subOpacity, subRef, reduced)
+  useScrollOpacity(hudOpacity, hudLRef, reduced)
+  useScrollOpacity(hudOpacity, hudRRef, reduced)
+  useScrollOpacity(hudOpacity, cueRef, reduced)
+
   return (
     <section
       id="hero"
@@ -106,7 +119,8 @@ export default function S01_Hero() {
 
         {/* HUD panels — wireframe annotations at different Z depths */}
         <motion.div
-          style={reduced ? undefined : { y: hudLeftY, opacity: hudOpacity }}
+          ref={hudLRef}
+          style={reduced ? undefined : { y: hudLeftY }}
         >
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -117,7 +131,8 @@ export default function S01_Hero() {
           </motion.div>
         </motion.div>
         <motion.div
-          style={reduced ? undefined : { y: hudRightY, opacity: hudOpacity }}
+          ref={hudRRef}
+          style={reduced ? undefined : { y: hudRightY }}
         >
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -133,8 +148,9 @@ export default function S01_Hero() {
         {/* title block — the founder looks up */}
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
           <motion.div
+            ref={titleRef}
             className="flex flex-col items-center"
-            style={reduced ? undefined : { y: titleY, opacity: titleOpacity }}
+            style={reduced ? undefined : { y: titleY }}
           >
             <motion.h1
               className="type-hero"
@@ -146,18 +162,11 @@ export default function S01_Hero() {
             </motion.h1>
 
             <motion.p
+              ref={subRef}
               className="mt-8 flex h-7 items-baseline text-lg"
-              style={
-                reduced
-                  ? { color: 'var(--w)', letterSpacing: '0.02em' }
-                  : {
-                      color: 'var(--w)',
-                      letterSpacing: '0.02em',
-                      opacity: subOpacity,
-                    }
-              }
-              aria-label={`${LINE1} ${LINE2}`}
+              style={{ color: 'var(--w)', letterSpacing: '0.02em' }}
             >
+              <span className="sr-only">{`${LINE1} ${LINE2}`}</span>
               <span aria-hidden>
                 {LINE1.slice(0, c1)}
                 {c1 >= LINE1.length && <span className="inline-block w-3" />}
@@ -188,11 +197,11 @@ export default function S01_Hero() {
 
         {/* scroll cue */}
         <motion.div
+          ref={cueRef}
           className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: reduced ? 0 : 3.4, duration: 1, ease: EASE }}
-          style={reduced ? undefined : { opacity: hudOpacity }}
         >
           <span
             className="text-[11px] uppercase"
