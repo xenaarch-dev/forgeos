@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Glow from '@/components/fx/Glow'
+import PortalScene from '@/components/fx/PortalScene'
 import S12_LoopFallback from '@/components/manifesto/S12_LoopFallback'
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -9,7 +10,8 @@ const EASE = [0.22, 1, 0.36, 1] as const
 export default function S12_Loop() {
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden py-32">
-      <div className="w-full max-w-4xl px-6 md:px-10">
+      <PortalScene variant="loop" />
+      <div className="relative z-10 w-full max-w-4xl px-6 md:px-10">
         <motion.p
           className="eyebrow"
           style={{ color: 'var(--cel)' }}
@@ -48,7 +50,7 @@ export default function S12_Loop() {
       </div>
 
       <motion.div
-        className="relative mt-12 w-full px-6"
+        className="relative z-10 mt-12 w-full px-6"
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '0px 0px -10% 0px' }}

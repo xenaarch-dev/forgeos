@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   motion,
   useMotionTemplate,
@@ -9,112 +9,18 @@ import {
   useTransform,
 } from 'framer-motion'
 import Ember from '@/components/fx/Ember'
+import PortalScene from '@/components/fx/PortalScene'
+import HUD from '@/components/fx/HUD'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 const LINE1 = 'One sentence in.'
 const LINE2 = 'Full SaaS out.'
 
-/* ------------------------------------------------------------------
-   Forge sparks — 40-60 canvas particles drifting upward, pushed
-   gently away by the cursor. DPR capped 1.5, paused when hidden.
-   ------------------------------------------------------------------ */
-function Sparks() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
-    let w = 0
-    let h = 0
-    const resize = () => {
-      w = canvas.offsetWidth
-      h = canvas.offsetHeight
-      canvas.width = w * dpr
-      canvas.height = h * dpr
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-    resize()
-
-    const count = w < 768 ? 40 : 56
-    const parts = Array.from({ length: count }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: 1 + Math.random(),
-      vy: -(0.08 + Math.random() * 0.18),
-      vx: 0,
-      drift: (Math.random() - 0.5) * 0.04,
-      a: 0.1 + Math.random() * 0.1,
-    }))
-
-    const mouse = { x: -9999, y: -9999 }
-    const fine = window.matchMedia('(pointer: fine)').matches
-    const onMove = (e: MouseEvent) => {
-      const r = canvas.getBoundingClientRect()
-      mouse.x = e.clientX - r.left
-      mouse.y = e.clientY - r.top
-    }
-    if (fine) window.addEventListener('mousemove', onMove, { passive: true })
-
-    let raf = 0
-    let visible = true
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting
-    })
-    io.observe(canvas)
-
-    const tick = () => {
-      raf = requestAnimationFrame(tick)
-      if (!visible || document.hidden) return
-      ctx.clearRect(0, 0, w, h)
-      for (const p of parts) {
-        // cursor repulsion — gentle push within 110px
-        const dx = p.x - mouse.x
-        const dy = p.y - mouse.y
-        const d = Math.hypot(dx, dy)
-        if (d < 110 && d > 0.01) {
-          const f = ((110 - d) / 110) * 0.5
-          p.vx += (dx / d) * f
-          p.vy += (dy / d) * f * 0.3
-        }
-        p.vx = p.vx * 0.92 + p.drift
-        p.vy = Math.min(p.vy * 0.98, -0.06)
-        p.x += p.vx
-        p.y += p.vy
-        if (p.y < -4) {
-          p.y = h + 4
-          p.x = Math.random() * w
-        }
-        if (p.x < -4) p.x = w + 4
-        if (p.x > w + 4) p.x = -4
-        ctx.fillStyle = `rgba(62,180,137,${p.a})`
-        ctx.fillRect(p.x, p.y, p.r, p.r)
-      }
-    }
-    tick()
-
-    const onResize = () => resize()
-    window.addEventListener('resize', onResize)
-    return () => {
-      cancelAnimationFrame(raf)
-      io.disconnect()
-      window.removeEventListener('resize', onResize)
-      if (fine) window.removeEventListener('mousemove', onMove)
-    }
-  }, [])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden
-      className="absolute inset-0 h-full w-full"
-    />
-  )
-}
+const HERO_NOTES = [
+  { label: 'FORGE CORE // ONLINE', x: 64, y: 32, depth: 0 as const },
+  { label: 'PIPELINE 18 STAGES', x: 15, y: 57, depth: 1 as const },
+  { label: 'DAY 157 — MUMBAI', x: 81, y: 73, side: 'left' as const, depth: 2 as const },
+]
 
 export default function S01_Hero() {
   const reduced = useReducedMotion()
@@ -171,10 +77,11 @@ export default function S01_Hero() {
       className="relative flex h-[100svh] flex-col items-center justify-center overflow-hidden"
       style={{ background: 'var(--bg)' }}
     >
-      <Sparks />
+      <PortalScene variant="hero" />
+      <HUD notes={HERO_NOTES} />
 
       <motion.div
-        className="relative flex flex-col items-center px-6 text-center"
+        className="relative z-10 flex flex-col items-center px-6 text-center"
         style={reduced ? undefined : { scale, filter }}
       >
         <motion.h1
@@ -220,7 +127,7 @@ export default function S01_Hero() {
 
       {/* scroll cue */}
       <motion.div
-        className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3"
+        className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: reduced ? 0 : 3.4, duration: 1, ease: EASE }}

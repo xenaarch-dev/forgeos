@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useInView, useReducedMotion } from 'framer-motion'
 import Glow from '@/components/fx/Glow'
+import PortalScene from '@/components/fx/PortalScene'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -132,8 +133,9 @@ export default function S02_Problem() {
   const allStruck = struckCount >= TASKS.length
 
   return (
-    <section className="relative flex min-h-screen items-center py-32">
-      <div className="mx-auto w-full max-w-6xl px-6 md:px-10">
+    <section className="relative flex min-h-screen items-center overflow-hidden py-32">
+      <PortalScene variant="field" />
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-6 md:px-10">
         <motion.p
           className="eyebrow mb-16"
           style={{ color: 'var(--cel)' }}

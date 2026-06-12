@@ -2,8 +2,16 @@
 
 import { motion } from 'framer-motion'
 import Glow from '@/components/fx/Glow'
+import PortalScene from '@/components/fx/PortalScene'
+import HUD from '@/components/fx/HUD'
 
 const EASE = [0.22, 1, 0.36, 1] as const
+
+const PROOF_NOTES = [
+  { label: 'CONTRACTFORGE // LIVE', x: 13, y: 24, depth: 0 as const },
+  { label: '₹2,499/MO', x: 86, y: 38, side: 'left' as const, depth: 1 as const },
+  { label: 'BUILT BY FORGEOS', x: 84, y: 80, side: 'left' as const, depth: 2 as const },
+]
 
 /* ContractForge's real brand — visibly NOT the Night Forge.
    Proof that ForgeOS products get their own identity. */
@@ -84,7 +92,9 @@ export default function S11_Proof() {
       id="proof"
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden py-32"
     >
-      <div className="w-full max-w-4xl px-6 md:px-10">
+      <PortalScene variant="garden" />
+      <HUD notes={PROOF_NOTES} />
+      <div className="relative z-10 w-full max-w-4xl px-6 md:px-10">
         <motion.p
           className="eyebrow"
           style={{ color: 'var(--cel)' }}
@@ -109,7 +119,7 @@ export default function S11_Proof() {
         </div>
       </div>
 
-      <div className="relative mt-14 w-full max-w-3xl px-6 md:px-10">
+      <div className="relative z-10 mt-14 w-full max-w-3xl px-6 md:px-10">
         <Glow
           color="rgba(62,180,137,0.09)"
           size={620}
