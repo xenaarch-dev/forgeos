@@ -1,10 +1,82 @@
 'use client'
 
+import { Component, ReactNode, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import Glow from '@/components/fx/Glow'
 import S12_LoopFallback from '@/components/manifesto/S12_LoopFallback'
 
 const EASE = [0.22, 1, 0.36, 1] as const
+
+// Three.js loads only on the client, only when needed; the SVG
+// fallback stands in while it loads.
+const LoopScene = dynamic(() => import('@/components/manifesto/LoopScene'), {
+  ssr: false,
+  loading: () => <S12_LoopFallback />,
+})
+
+/* Any error inside the 3D scene renders the fallback — the page can
+   never break on Three.js. */
+class SceneBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch() {
+    try {
+      sessionStorage.setItem('forgeos-loop3d', 'failed')
+    } catch {}
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
+}
+
+function Constellation() {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [mode, setMode] = useState<'fallback' | 'three'>('fallback')
+
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const smallTouch =
+      window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 768
+    let failedBefore = false
+    try {
+      failedBefore = sessionStorage.getItem('forgeos-loop3d') === 'failed'
+    } catch {}
+    if (reduced || smallTouch || failedBefore) return
+
+    // mount Three only once the section is within one viewport
+    const el = hostRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setMode('three')
+          io.disconnect()
+        }
+      },
+      { rootMargin: '100% 0px 100% 0px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  return (
+    <div ref={hostRef}>
+      {mode === 'three' ? (
+        <SceneBoundary fallback={<S12_LoopFallback />}>
+          <LoopScene onFail={() => setMode('fallback')} />
+        </SceneBoundary>
+      ) : (
+        <S12_LoopFallback />
+      )}
+    </div>
+  )
+}
 
 export default function S12_Loop() {
   return (
@@ -59,7 +131,7 @@ export default function S12_Loop() {
           size={560}
           style={{ top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }}
         />
-        <S12_LoopFallback />
+        <Constellation />
       </motion.div>
     </section>
   )
