@@ -1,9 +1,26 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-11  
-**Branch:** main  
+**Date:** 2026-06-13  
+**Branch:** portal-v3  
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)  
-**Session focus:** Day 156 — Landing page bug fixes (nav anchors, GBrain counter, agent roster)
+**Session focus:** Day 158 — HUD right panel fix (dynamic day counter + live MRR)
+
+---
+
+## Day 158 fixes (2026-06-13)
+
+| Fix | Status | Commit |
+|-----|--------|--------|
+| Dynamic day counter in S01_Hero.tsx | ✅ | `4d6accd` |
+| MRR updated to ₹2,499 | ✅ | `4d6accd` |
+
+### Detail
+- `web/components/portal/S01_Hero.tsx`: Replaced hardcoded `DAY 157` with `DAY_NUMBER` computed from Jan 6 2026 epoch (`Math.floor((Date.now() - new Date('2026-01-06').getTime()) / 86_400_000) + 1`). Auto-advances daily — no manual update needed.
+- Same commit: `MRR: INITIALIZING...` → `MRR: ₹2,499`
+- Branch: portal-v3. Pushed to origin.
+- Original 3 bugs from Day 156 (nav anchors, GBrain counter, agent roster) confirmed NOT present in portal-v3 — those were fixed in old landing page components that no longer exist.
+
+---
 
 ---
 
