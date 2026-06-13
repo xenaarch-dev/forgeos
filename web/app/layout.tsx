@@ -27,6 +27,13 @@ export const metadata: Metadata = {
     siteName: 'ForgeOS',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ForgeOS — One sentence in. Full SaaS out.',
+    description:
+      'ForgeOS builds, deploys, and operates complete software businesses — autonomously. Proof: contractforge.co.in — live, real, built by ForgeOS.',
+    creator: '@xenaarch',
+  },
 }
 
 export const viewport: Viewport = {
