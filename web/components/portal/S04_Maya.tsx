@@ -82,10 +82,12 @@ function PRDSim({ active }: { active: boolean }) {
         })}
       </dl>
       {!allDone && active && (
-        <span
+        <motion.span
           aria-hidden
           className="mt-2 inline-block h-[14px] w-[8px] align-middle"
-          style={{ background: 'rgba(240,237,232,0.0)' }}
+          style={{ background: 'rgba(240,237,232,0.6)' }}
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 0.9, repeat: Infinity }}
         />
       )}
     </div>
