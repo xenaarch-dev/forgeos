@@ -3,11 +3,26 @@
 **Date:** 2026-06-13  
 **Branch:** portal-v3  
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)  
-**Session focus:** Day 158 — HUD right panel fix (dynamic day counter + live MRR)
+**Session focus:** Day 158 — portal-v3 bug sweep (5 fixes) + HUD right panel fix
 
 ---
 
-## Day 158 fixes (2026-06-13)
+## Day 158 bug fixes — portal-v3 (2026-06-13)
+
+| Bug | File | Fix | Commit |
+|-----|------|-----|--------|
+| PRDSim cursor invisible | S04_Maya.tsx | `rgba(0.0)` → `rgba(0.6)` + blink | `a436601` |
+| zenVerdict refs "Nova" (no portal section) | simulations.ts | credit → `EvalAgent — all 32 scenarios passed` | `ae4c4d9` |
+| Missing Twitter card metadata | layout.tsx | Added `twitter: { card, title, description, creator }` | `786eb7f` |
+| CTA placeholder color unset | S13_CTA.tsx | Added `placeholder:text-[rgba(240,237,232,0.35)]` | `dcce4c3` |
+| `rand(0.9,0.9)` no-op — all loop arcs same length | PortalScene.tsx | Replaced with `ARC_SPANS = [2.1,3.4,1.8,4.0,2.6,3.1,2.9]` | `8ef444a` |
+
+**Preview deployment:** `8ef444a` — state: success  
+**Production (`forgeos-eight.vercel.app`):** still at `c875040` — needs portal-v3 → main merge to promote  
+
+---
+
+## Day 158 HUD fixes (earlier — 2026-06-13)
 
 | Fix | Status | Commit |
 |-----|--------|--------|
