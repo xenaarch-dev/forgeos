@@ -375,7 +375,8 @@ export default function PortalScene({
           ctx.fillStyle = `rgba(240,237,232,${0.18 + tw * 0.35})`
           ctx.fillRect(s.x, s.y, s.r, s.r)
         }
-        // 7 orbital arcs
+        // 7 orbital arcs — varied spans so each orbit looks distinct
+        const ARC_SPANS = [2.1, 3.4, 1.8, 4.0, 2.6, 3.1, 2.9]
         const cx = w / 2
         const cy = h * 0.46
         for (let i = 0; i < 7; i++) {
@@ -384,7 +385,7 @@ export default function PortalScene({
           ctx.strokeStyle = rgba(i % 2 ? VIOLET : TEAL, 0.16)
           ctx.lineWidth = 1
           ctx.beginPath()
-          ctx.arc(cx, cy, r, a0, a0 + Math.PI * rand(0.9, 0.9) + 0.9)
+          ctx.arc(cx, cy, r, a0, a0 + ARC_SPANS[i])
           ctx.stroke()
         }
       }
