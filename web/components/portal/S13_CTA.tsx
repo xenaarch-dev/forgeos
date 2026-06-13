@@ -47,7 +47,7 @@ export default function S13_CTA() {
             type="text"
             placeholder="Your idea. One sentence."
             autoComplete="off"
-            className="relative z-10 h-full flex-1 bg-transparent pl-7 pr-2 text-[15px] outline-none placeholder:text-[15px]"
+            className="relative z-10 h-full flex-1 bg-transparent pl-7 pr-2 text-[15px] outline-none placeholder:text-[15px] placeholder:text-[rgba(240,237,232,0.35)]"
             style={{ color: 'var(--w)', caretColor: 'var(--gold)' }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
