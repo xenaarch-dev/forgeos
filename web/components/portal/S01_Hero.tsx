@@ -21,9 +21,11 @@ PIPELINE: 18 STAGES
 AGENTS: 7 ACTIVE
 BUILD TIME: 04:07:32`
 
-const HUD_RIGHT = `DAY 157 — MUMBAI, INDIA
+const DAY_NUMBER = Math.floor((Date.now() - new Date('2026-01-06').getTime()) / 86_400_000) + 1
+
+const HUD_RIGHT = `DAY ${DAY_NUMBER} — MUMBAI, INDIA
 CONTRACTFORGE: LIVE
-MRR: INITIALIZING...
+MRR: ₹2,499
 STATUS: OPERATIONAL`
 
 export default function S01_Hero() {
