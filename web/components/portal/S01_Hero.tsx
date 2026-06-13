@@ -25,7 +25,7 @@ const DAY_NUMBER = Math.floor((Date.now() - new Date('2026-01-06').getTime()) / 
 
 const HUD_RIGHT = `DAY ${DAY_NUMBER} — MUMBAI, INDIA
 CONTRACTFORGE: LIVE
-MRR: ₹2,499
+PRICE: ₹2,499/MO
 STATUS: OPERATIONAL`
 
 export default function S01_Hero() {
