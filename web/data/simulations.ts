@@ -160,7 +160,7 @@ export const zenCode: CodeLine[] = [
 
 export const zenVerdict = {
   status: 'tests: 32/32 passed ✓',
-  credit: '// verified by Nova → EvalAgent',
+  credit: '// EvalAgent — all 32 scenarios passed',
 }
 
 /* ---------------------------------------------------------------- */
