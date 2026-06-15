@@ -4,7 +4,7 @@
 **Day:** 155
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 155 — HUD label + day epoch fixes; VoiceAgent analysis
+**Session focus:** Day 155 closeout — GameAgent migrated (a638c80); VoiceAgent migration N/A confirmed
 
 ---
 
@@ -31,8 +31,7 @@
 
 ## Known Issues (next session)
 
-- **VoiceAgent** plain class (no base), not `ForgeAgent` — pending migration (see below)
-- **GameAgent origin unknown** — needs investigation before migration
+*(none — all Day 155 items resolved)*
 
 ---
 
@@ -41,7 +40,7 @@
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `f610cee` |
+| main branch | `a638c80` |
 | Test suite | 167/167 passing |
 | MRR | ₹0 |
 
@@ -49,8 +48,7 @@
 
 ## Next Session Starts With
 
-1. VoiceAgent migration — plain class, no base. Design question: is ForgeAgent the right fit? (see VoiceAgent notes below)
-2. GameAgent investigation — origin unknown before migration
+1. DeployAgent migration — extends BaseAgent directly; investigate + migrate to ForgeAgent
 
 ---
 
@@ -99,9 +97,9 @@
 | SecurityAgent | ForgeAgent | ✓ (2026-06-08) |
 | EvalAgent | ForgeAgent | ✓ (2026-06-08) |
 | DeployAgent | BaseAgent | pending |
-| GameAgent | BaseAgent | pending — origin unknown, investigate first |
+| GameAgent | ForgeAgent | ✓ (2026-06-15) |
 | GStackGate + 10 gates | BaseAgent | pending |
 | MissionOrchestrator | BaseAgent | pending |
 | MissionWorkerLoop | BaseAgent | pending |
 | MissionValidator | BaseAgent | pending |
-| VoiceAgent | *none* (plain class) | pending — design question: ForgeAgent doesn't fit |
+| VoiceAgent | *none* (plain class) | N/A — standalone TTS utility, no pipeline base needed |
