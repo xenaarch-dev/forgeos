@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from models import MissionHandoff, ProjectContext, Task, TaskStatus
-from .base import BaseAgent
+from forge_sdk.agent import ForgeAgent
 
 
 _MISSION_SYSTEM = """\
@@ -49,11 +49,14 @@ If you cannot confirm an assertion is implemented, mark it UNVERIFIED.
 """
 
 
-class MissionOrchestrator(BaseAgent):
+class MissionOrchestrator(ForgeAgent):
     """Plans the mission: breaks idea into features, writes ValidationContract."""
 
-    name = "mission_orchestrator"
-    phase = "planning"
+    name         = "mission_orchestrator"
+    phase        = "planning"
+    capabilities = ["VALIDATION_CONTRACT.json"]
+    requires     = ["idea", "tasks"]
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         features = self._extract_features(context)
@@ -290,11 +293,15 @@ class MissionWorker:
             sys.stderr.write(f"[worker] git commit failed (non-fatal): {e}\n")
 
 
-class MissionWorkerLoop(BaseAgent):
-    """BaseAgent that drives all MissionWorkers serially."""
+class MissionWorkerLoop(ForgeAgent):
+    """ForgeAgent that drives all MissionWorkers serially."""
 
-    name = "mission_worker_loop"
-    phase = "code"
+    name         = "mission_worker_loop"
+    phase        = "code"
+    capabilities = []        # files written by MissionWorker; loop writes metadata only
+    requires     = ["tasks"]
+    budget_usd   = 0.0       # most expensive stage — unlimited by design
+    # depends on ScaffoldAgent having written project/ (filesystem check, not a context field)
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         project_root = Path(context.workdir) / "project"
@@ -338,11 +345,14 @@ class MissionWorkerLoop(BaseAgent):
         }
 
 
-class MissionValidator(BaseAgent):
+class MissionValidator(ForgeAgent):
     """Adversarial validator — tests every assertion in the ValidationContract."""
 
-    name = "mission_validator"
-    phase = "qa"
+    name         = "mission_validator"
+    phase        = "qa"
+    capabilities = []        # writes to context.metadata only — no file artifacts
+    requires     = ["idea"]  # validation_contract is a metadata key; has self-healing fallback
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         contract = context.metadata.get("validation_contract", {})
