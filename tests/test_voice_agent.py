@@ -50,7 +50,7 @@ class TestVoiceAgentInstantiation:
 
 class TestSilentMode:
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
 
     def test_speak_silent_prints_fallback(self, capsys):
         agent = VoiceAgent(silent=True)
@@ -84,7 +84,7 @@ class TestSilentMode:
 
 class TestFallbackOnError:
     def _run(self, coro):
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
 
     def test_speak_falls_back_when_tts_raises(self, capsys):
         agent = VoiceAgent(silent=False)
@@ -104,7 +104,7 @@ class TestFallbackOnError:
         agent = VoiceAgent(silent=False)
         with patch.object(agent, "_tts_and_play", side_effect=Exception("boom")):
             # Must not propagate
-            asyncio.get_event_loop().run_until_complete(agent.speak("safe"))
+            asyncio.run(agent.speak("safe"))
 
 
 # ---------------------------------------------------------------------------
