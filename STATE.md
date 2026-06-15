@@ -1,14 +1,15 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-16
-**Day:** 158
+**Date:** 2026-06-15
+**Day:** 157
+**Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 158 — Mission* trio migrated to ForgeAgent (`9b8a777`); voice_agent asyncio test harness fixed — 171/171 fully green (`9d61e71`)
+**Session focus:** Day 157 — Mission* trio migrated to ForgeAgent (`9b8a777`); voice_agent asyncio test harness fixed — 171/171 fully green (`9d61e71`)
 
 ---
 
-## Day 158 — Completed (2026-06-16)
+## Day 157 — Continued (2026-06-15)
 
 ### Migrations
 - MissionOrchestrator → ForgeAgent (`9b8a777`) — `capabilities=["VALIDATION_CONTRACT.json"]`, `requires=["idea","tasks"]`, `budget_usd=0.0`
@@ -180,7 +181,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | GameAgent | ForgeAgent | ✓ (2026-06-15) |
 | LaunchAgent | ForgeAgent | spec only (`agents/SPEC_LaunchAgent.md`) — not yet implemented |
 | GStackGate + 10 gates | ForgeAgent | ✓ (2026-06-15) — base `63117e0` + per-gate requires `fe2eaab` |
-| MissionOrchestrator | ForgeAgent | ✓ (2026-06-16) |
-| MissionWorkerLoop | ForgeAgent | ✓ (2026-06-16) — `capabilities=[]`: files written by MissionWorker helper, not the loop |
-| MissionValidator | ForgeAgent | ✓ (2026-06-16) |
+| MissionOrchestrator | ForgeAgent | ✓ (2026-06-15) |
+| MissionWorkerLoop | ForgeAgent | ✓ (2026-06-15) — `capabilities=[]`: files written by MissionWorker helper, not the loop |
+| MissionValidator | ForgeAgent | ✓ (2026-06-15) |
 | VoiceAgent | *none* (plain class) | N/A — standalone TTS utility, no pipeline base needed |
