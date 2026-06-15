@@ -4,7 +4,7 @@
 **Day:** 157
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 157 — DeployAgent migrated (e9d891d); repo hygiene completed
+**Session focus:** Day 157 — LaunchAgent SPEC.md authored; Day-N reconciled (formula=157=STATE.md)
 
 ---
 
@@ -57,7 +57,7 @@
 
 ## Next Session Starts With
 
-1. LaunchAgent SPEC.md — Day 2 of current sprint: author spec doc for new LaunchAgent (not a migration)
+1. GStackGate + 10 gates investigation — read `agents/gstack.py`, map all 10 gate classes, determine migration order and ForgeAgent compatibility for pending BaseAgent gates
 
 ---
 
