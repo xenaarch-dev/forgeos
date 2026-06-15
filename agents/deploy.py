@@ -26,12 +26,15 @@ from tools import (
     UptimeRobotClient,
     VercelClient,
 )
-from .base import BaseAgent
+from forge_sdk.agent import ForgeAgent
 
 
-class DeployAgent(BaseAgent):
-    name = "deploy"
-    phase = "deploy"
+class DeployAgent(ForgeAgent):
+    name         = "deploy"
+    phase        = "deploy"
+    capabilities = ["DEPLOYMENT.md"]
+    requires     = ["idea", "project_id"]
+    budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         project_root = Path(context.workdir) / "project"
