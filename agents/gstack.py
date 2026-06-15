@@ -112,6 +112,7 @@ class OfficeHoursGate(GStackGate):
     gate_name = "office_hours"
     phase = "planning"
     min_score = 6.0
+    requires = ["idea"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         return self._gate_call(
@@ -139,6 +140,7 @@ class CEOReviewGate(GStackGate):
     gate_name = "ceo_review"
     phase = "planning"
     min_score = 6.0
+    requires = ["idea", "spec"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         spec = context.spec or "(no spec yet — evaluating idea only)"
@@ -175,6 +177,7 @@ class EngReviewGate(GStackGate):
     gate_name = "eng_review"
     phase = "design"
     min_score = 6.0
+    requires = ["idea", "architecture"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         arch = context.architecture or "(no architecture yet)"
@@ -207,6 +210,7 @@ class DesignShotgunGate(GStackGate):
     phase = "design"
     min_score = 5.0
     blocking = False  # Advisory only
+    requires = ["idea", "stack"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         stack_json = (
@@ -249,6 +253,7 @@ class ReviewGate(GStackGate):
     gate_name = "review"
     phase = "review"
     min_score = 6.0
+    requires = ["idea", "workdir"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
@@ -281,6 +286,7 @@ class AdversarialGate(GStackGate):
     gate_name = "adversarial"
     phase = "review"
     min_score = 5.0
+    requires = ["idea", "workdir"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
@@ -315,6 +321,7 @@ class ScoreGate(GStackGate):
     gate_name = "score"
     phase = "review"
     min_score = 7.0
+    requires = ["idea", "workdir"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         inventory = _get_code_inventory(context)
@@ -353,6 +360,7 @@ class CSOGate(GStackGate):
     gate_name = "cso"
     phase = "security"
     min_score = 6.0
+    requires = ["idea", "workdir"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         security_md = _read_artifact(context, "SECURITY.md")
@@ -396,6 +404,7 @@ class QAGate(GStackGate):
     gate_name = "qa"
     phase = "qa"
     min_score = 7.0
+    requires = ["idea", "workdir"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         contract = context.metadata.get("validation_contract", {})
@@ -451,6 +460,7 @@ class ShipGate(GStackGate):
     gate_name = "ship"
     phase = "ship"
     min_score = 7.0
+    requires = ["metadata.gates"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
         gates = context.metadata.get("gates", [])
