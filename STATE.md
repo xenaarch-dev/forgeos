@@ -1,10 +1,24 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-15
-**Day:** 157
+**Date:** 2026-06-16
+**Day:** 158
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 157 — GameAgent + DeployAgent migrated; LaunchAgent SPEC.md; GStackGate + 10 gates classified; GStackGate base migrated to ForgeAgent (`63117e0`); per-gate requires complete (`fe2eaab`)
+**Session focus:** Day 158 — Mission* trio migrated to ForgeAgent (`9b8a777`); voice_agent asyncio test harness fixed — 171/171 fully green (`9d61e71`)
+
+---
+
+## Day 158 — Completed (2026-06-16)
+
+### Migrations
+- MissionOrchestrator → ForgeAgent (`9b8a777`) — `capabilities=["VALIDATION_CONTRACT.json"]`, `requires=["idea","tasks"]`, `budget_usd=0.0`
+- MissionWorkerLoop → ForgeAgent (`9b8a777`) — `capabilities=[]` (files written by MissionWorker helper, not the loop itself; key nuance for agent-organizer routing), `requires=["tasks"]`, `budget_usd=0.0`; filesystem dep on ScaffoldAgent's `project/` dir is documented in-class comment
+- MissionValidator → ForgeAgent (`9b8a777`) — `capabilities=[]`, `requires=["idea"]` (`validation_contract` is a metadata key with self-healing fallback), `budget_usd=0.0`
+- Shared import: `from .base import BaseAgent` → `from forge_sdk.agent import ForgeAgent` in `agents/mission.py`
+
+### Test Fixes
+- voice_agent asyncio harness — replaced `asyncio.get_event_loop().run_until_complete(coro)` with `asyncio.run(coro)` in `TestSilentMode._run`, `TestFallbackOnError._run`, and `test_speak_never_raises` direct call (`9d61e71`)
+- Result: 171/171 — fully green (was 166/171)
 
 ---
 
@@ -97,10 +111,6 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ---
 
-## Known Issues (next session)
-
-- **voice_agent.py — 5 pre-existing test failures (dormant):** `test_voice_agent.py` fails on 5 asyncio tests under Python 3.14 Windows because `asyncio.get_event_loop()` no longer auto-creates an event loop when called from the main thread. The test harness uses `asyncio.get_event_loop().run_until_complete(coro)` (Python ≤3.9 pattern). VoiceAgent is unused in the V2 pipeline currently, so these failures are dormant noise. Will resurface when Phase 2 STT integration touches `agents/voice_agent.py` — fix at that point by replacing `get_event_loop()` with `asyncio.run()` in the test harness.
-
 ---
 
 ## Current State
@@ -108,8 +118,8 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `fe2eaab` |
-| Test suite | 166/171 passing (5 pre-existing voice_agent asyncio failures on Python 3.14 Windows; unrelated to migration) |
+| main branch | `9d61e71` |
+| Test suite | 171/171 passing — fully green |
 | MRR | ₹0 |
 
 ---
@@ -147,10 +157,10 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_security_output.py` | 15/15 | 0 | full pass |
 | `test_tools.py` | 6/6 | 0 | full pass |
 | `test_validator_output.py` | 7/7 | 0 | full pass |
-| `test_voice_agent.py` | 13/18 | 5 | asyncio event loop error on Python 3.14 Windows — pre-existing, unrelated to ForgeAgent migration |
+| `test_voice_agent.py` | 18/18 | 0 | fixed: asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
 | `test_gstack.py` | 4/4 | 0 | new — gate-failure + pass + subclass + base-attr tests |
-| **TOTAL** | **166/171** | **5** | 5 pre-existing voice_agent failures on Python 3.14 Windows |
+| **TOTAL** | **171/171** | **0** | fully green |
 
 ---
 
@@ -170,7 +180,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | GameAgent | ForgeAgent | ✓ (2026-06-15) |
 | LaunchAgent | ForgeAgent | spec only (`agents/SPEC_LaunchAgent.md`) — not yet implemented |
 | GStackGate + 10 gates | ForgeAgent | ✓ (2026-06-15) — base `63117e0` + per-gate requires `fe2eaab` |
-| MissionOrchestrator | BaseAgent | pending |
-| MissionWorkerLoop | BaseAgent | pending |
-| MissionValidator | BaseAgent | pending |
+| MissionOrchestrator | ForgeAgent | ✓ (2026-06-16) |
+| MissionWorkerLoop | ForgeAgent | ✓ (2026-06-16) — `capabilities=[]`: files written by MissionWorker helper, not the loop |
+| MissionValidator | ForgeAgent | ✓ (2026-06-16) |
 | VoiceAgent | *none* (plain class) | N/A — standalone TTS utility, no pipeline base needed |
