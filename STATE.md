@@ -4,7 +4,7 @@
 **Day:** 157
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 157 — GameAgent + DeployAgent migrated; LaunchAgent SPEC.md; GStackGate + 10 gates classified; GStackGate base migrated to ForgeAgent (`63117e0`)
+**Session focus:** Day 157 — GameAgent + DeployAgent migrated; LaunchAgent SPEC.md; GStackGate + 10 gates classified; GStackGate base migrated to ForgeAgent (`63117e0`); per-gate requires complete (`fe2eaab`)
 
 ---
 
@@ -13,7 +13,8 @@
 ### Migrations
 - GameAgent → ForgeAgent (`a638c80`)
 - DeployAgent → ForgeAgent (`e9d891d`)
-- GStackGate base → ForgeAgent (`63117e0`) — 10 gate subclasses inherit transitively; per-gate capabilities/requires added in Step 3 next session
+- GStackGate base → ForgeAgent (`63117e0`) — 10 gate subclasses inherit transitively
+- Per-gate `requires` for all 10 GStackGate subclasses (`fe2eaab`) — GStackGate migration fully complete
 
 ### Repo Hygiene
 - `portal-v3` — deleted local + remote (confirmed fast-forward merged to main, Day 155)
@@ -98,7 +99,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ## Known Issues (next session)
 
-*(none)*
+- **voice_agent.py — 5 pre-existing test failures (dormant):** `test_voice_agent.py` fails on 5 asyncio tests under Python 3.14 Windows because `asyncio.get_event_loop()` no longer auto-creates an event loop when called from the main thread. The test harness uses `asyncio.get_event_loop().run_until_complete(coro)` (Python ≤3.9 pattern). VoiceAgent is unused in the V2 pipeline currently, so these failures are dormant noise. Will resurface when Phase 2 STT integration touches `agents/voice_agent.py` — fix at that point by replacing `get_event_loop()` with `asyncio.run()` in the test harness.
 
 ---
 
@@ -107,7 +108,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `63117e0` |
+| main branch | `fe2eaab` |
 | Test suite | 166/171 passing (5 pre-existing voice_agent asyncio failures on Python 3.14 Windows; unrelated to migration) |
 | MRR | ₹0 |
 
@@ -115,30 +116,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ## Next Session Starts With
 
-**Step 3: per-gate `capabilities`/`requires` for all 10 GStackGate subclasses**
-
-Steps 1 and 2 are done (`63117e0`). Key findings from Step 1 (read before touching gate code):
-
-- GStackGate._execute's `RuntimeError` is **always caught by `ForgeAgent.run()`** (`except Exception`) and converted to `AgentResult(status=FAILED)` — it never propagates to hermes.py. Hermes halts via its own separate check: `if result.status == "failed" and is_gate: raise RuntimeError(...)` (hermes.py:332).
-- Invariant 7 in STATE.md was imprecise: the halt mechanism is `result.status == "failed"`, not the internal RuntimeError escaping from `_execute`.
-- `tests/test_gstack.py` now covers gate-failure path (4 tests, all green).
-
-Step 3 work: add `capabilities` and `requires` to each of the 10 concrete gate classes. Use the classification table below. `capabilities = []` for all (gates write to `context.metadata`, not files). `requires` varies per gate.
-
-| Gate class | Suggested `requires` |
-|-----------|---------------------|
-| OfficeHoursGate | `["idea"]` |
-| CEOReviewGate | `["idea", "spec"]` |
-| EngReviewGate | `["idea", "architecture"]` |
-| DesignShotgunGate | `["idea", "stack"]` |
-| ReviewGate | `["idea", "workdir"]` |
-| AdversarialGate | `["idea", "workdir"]` |
-| ScoreGate | `["idea", "workdir"]` |
-| CSOGate | `["idea", "workdir"]` |
-| QAGate | `["idea", "workdir"]` |
-| ShipGate | `["gates_metadata"]` — **non-standard**: ShipGate reads `context.metadata["gates"]`, not a ProjectContext top-level attr. Resolve explicitly: either use `[]` as placeholder or define a convention for metadata-key requires. |
-
-After Step 3: update Agent Migration Status table below — GStackGate row → fully migrated.
+**TBD**
 
 ---
 
@@ -191,7 +169,7 @@ After Step 3: update Agent Migration Status table below — GStackGate row → f
 | DeployAgent | ForgeAgent | ✓ (2026-06-15) |
 | GameAgent | ForgeAgent | ✓ (2026-06-15) |
 | LaunchAgent | ForgeAgent | spec only (`agents/SPEC_LaunchAgent.md`) — not yet implemented |
-| GStackGate + 10 gates | ForgeAgent (base migrated `63117e0`) | base done — per-gate capabilities/requires pending (Step 3) |
+| GStackGate + 10 gates | ForgeAgent | ✓ (2026-06-15) — base `63117e0` + per-gate requires `fe2eaab` |
 | MissionOrchestrator | BaseAgent | pending |
 | MissionWorkerLoop | BaseAgent | pending |
 | MissionValidator | BaseAgent | pending |
