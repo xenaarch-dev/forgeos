@@ -1,10 +1,10 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-13
-**Day:** 155
+**Date:** 2026-06-15
+**Day:** 157
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 155 closeout — GameAgent migrated (a638c80); VoiceAgent migration N/A confirmed
+**Session focus:** Day 157 — DeployAgent migrated (e9d891d); repo hygiene completed
 
 ---
 
@@ -29,6 +29,15 @@
 
 ---
 
+## Repo Hygiene (2026-06-15)
+
+- `portal-v3` — deleted local + remote (confirmed fast-forward merged to main, Day 155)
+- `act-ii-portal` — pushed to `origin/act-ii-portal` (local backup preserved; 2 commits ahead of dark-manifesto; unmerged, decision pending)
+- `web/.next/` — verified already gitignored (line 13) and never tracked; no action needed
+- `worktree-dark-manifesto`'s only unmerged content (WaterCursor.tsx) is now superseded by main's Lighthouse-99-optimized version — flagged for deletion next hygiene pass, not deleted this session.
+
+---
+
 ## Known Issues (next session)
 
 *(none — all Day 155 items resolved)*
@@ -40,7 +49,7 @@
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `a638c80` |
+| main branch | `e9d891d` |
 | Test suite | 167/167 passing |
 | MRR | ₹0 |
 
@@ -48,7 +57,7 @@
 
 ## Next Session Starts With
 
-1. DeployAgent migration — extends BaseAgent directly; investigate + migrate to ForgeAgent
+1. LaunchAgent SPEC.md — Day 2 of current sprint: author spec doc for new LaunchAgent (not a migration)
 
 ---
 
@@ -96,7 +105,7 @@
 | CoderAgent | ForgeAgent | ✓ (2026-06-08) |
 | SecurityAgent | ForgeAgent | ✓ (2026-06-08) |
 | EvalAgent | ForgeAgent | ✓ (2026-06-08) |
-| DeployAgent | BaseAgent | pending |
+| DeployAgent | ForgeAgent | ✓ (2026-06-15) |
 | GameAgent | ForgeAgent | ✓ (2026-06-15) |
 | GStackGate + 10 gates | BaseAgent | pending |
 | MissionOrchestrator | BaseAgent | pending |
