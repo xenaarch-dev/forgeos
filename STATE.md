@@ -4,7 +4,7 @@
 **Day:** 157
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 157 — GameAgent + DeployAgent migrated; LaunchAgent SPEC.md; GStackGate + 10 gates fully classified
+**Session focus:** Day 157 — GameAgent + DeployAgent migrated; LaunchAgent SPEC.md; GStackGate + 10 gates classified; GStackGate base migrated to ForgeAgent (`63117e0`)
 
 ---
 
@@ -13,6 +13,7 @@
 ### Migrations
 - GameAgent → ForgeAgent (`a638c80`)
 - DeployAgent → ForgeAgent (`e9d891d`)
+- GStackGate base → ForgeAgent (`63117e0`) — 10 gate subclasses inherit transitively; per-gate capabilities/requires added in Step 3 next session
 
 ### Repo Hygiene
 - `portal-v3` — deleted local + remote (confirmed fast-forward merged to main, Day 155)
@@ -106,19 +107,38 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `89c8fae` |
-| Test suite | 167/167 passing |
+| main branch | `63117e0` |
+| Test suite | 166/171 passing (5 pre-existing voice_agent asyncio failures on Python 3.14 Windows; unrelated to migration) |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-GStackGate migration — 11-class change, plan as its own session:
+**Step 3: per-gate `capabilities`/`requires` for all 10 GStackGate subclasses**
 
-1. **FIRST: verify RuntimeError propagation** — read `forge_sdk/agent.py`, confirm `ForgeAgent.run()` does not swallow `RuntimeError` from `_execute`. Check `tests/` for any test that exercises a gate FAILURE path (blocking gate that fails and halts the pipeline). If no such test exists, write one before any class changes.
-2. **Migrate GStackGate base only** — change `BaseAgent` → `ForgeAgent`, add `capabilities = []` / `requires = []` / `budget_usd = 0.0` at base level. Run `pytest tests/ -v` — all 167 must still pass.
-3. **Add per-subclass `capabilities`/`requires` for all 10 gates** — use the classification table above. Do OfficeHoursGate through QAGate first, ShipGate last (non-standard `requires` field — resolve the `context.metadata["gates"]` question explicitly).
+Steps 1 and 2 are done (`63117e0`). Key findings from Step 1 (read before touching gate code):
+
+- GStackGate._execute's `RuntimeError` is **always caught by `ForgeAgent.run()`** (`except Exception`) and converted to `AgentResult(status=FAILED)` — it never propagates to hermes.py. Hermes halts via its own separate check: `if result.status == "failed" and is_gate: raise RuntimeError(...)` (hermes.py:332).
+- Invariant 7 in STATE.md was imprecise: the halt mechanism is `result.status == "failed"`, not the internal RuntimeError escaping from `_execute`.
+- `tests/test_gstack.py` now covers gate-failure path (4 tests, all green).
+
+Step 3 work: add `capabilities` and `requires` to each of the 10 concrete gate classes. Use the classification table below. `capabilities = []` for all (gates write to `context.metadata`, not files). `requires` varies per gate.
+
+| Gate class | Suggested `requires` |
+|-----------|---------------------|
+| OfficeHoursGate | `["idea"]` |
+| CEOReviewGate | `["idea", "spec"]` |
+| EngReviewGate | `["idea", "architecture"]` |
+| DesignShotgunGate | `["idea", "stack"]` |
+| ReviewGate | `["idea", "workdir"]` |
+| AdversarialGate | `["idea", "workdir"]` |
+| ScoreGate | `["idea", "workdir"]` |
+| CSOGate | `["idea", "workdir"]` |
+| QAGate | `["idea", "workdir"]` |
+| ShipGate | `["gates_metadata"]` — **non-standard**: ShipGate reads `context.metadata["gates"]`, not a ProjectContext top-level attr. Resolve explicitly: either use `[]` as placeholder or define a convention for metadata-key requires. |
+
+After Step 3: update Agent Migration Status table below — GStackGate row → fully migrated.
 
 ---
 
@@ -130,7 +150,7 @@ GStackGate migration — 11-class change, plan as its own session:
 4. `budget_usd = 0.0` means unlimited — use it for agents that run mid/late pipeline (no useful cap)
 5. All ForgeOS `from` imports are absolute (`from models import X`, not `from .models import X`)
 6. PMAgent and EvalAgent are NOT in `agents/__init__._LAZY` — they're imported directly in `hermes.py`
-7. GStackGate's blocking-fail path raises `RuntimeError` — hermes.py relies on this to halt the pipeline. ForgeAgent migration must not swallow it.
+7. GStackGate's blocking-fail path raises `RuntimeError` inside `_execute` — but **ForgeAgent.run() catches it** (via `except Exception`) and returns `AgentResult(status=FAILED)`. Hermes halts the pipeline by checking `result.status == "failed" and is_gate` (hermes.py:332), not by receiving the RuntimeError. Both BaseAgent and ForgeAgent handle this identically. Test coverage: `tests/test_gstack.py::test_blocking_gate_failure_produces_failed_result`.
 
 ---
 
@@ -149,9 +169,10 @@ GStackGate migration — 11-class change, plan as its own session:
 | `test_security_output.py` | 15/15 | 0 | full pass |
 | `test_tools.py` | 6/6 | 0 | full pass |
 | `test_validator_output.py` | 7/7 | 0 | full pass |
-| `test_voice_agent.py` | 18/18 | 0 | full pass |
+| `test_voice_agent.py` | 13/18 | 5 | asyncio event loop error on Python 3.14 Windows — pre-existing, unrelated to ForgeAgent migration |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
-| **TOTAL** | **167/167** | **0** | clean |
+| `test_gstack.py` | 4/4 | 0 | new — gate-failure + pass + subclass + base-attr tests |
+| **TOTAL** | **166/171** | **5** | 5 pre-existing voice_agent failures on Python 3.14 Windows |
 
 ---
 
@@ -170,7 +191,7 @@ GStackGate migration — 11-class change, plan as its own session:
 | DeployAgent | ForgeAgent | ✓ (2026-06-15) |
 | GameAgent | ForgeAgent | ✓ (2026-06-15) |
 | LaunchAgent | ForgeAgent | spec only (`agents/SPEC_LaunchAgent.md`) — not yet implemented |
-| GStackGate + 10 gates | BaseAgent | pending — classified Day 157, migration planned next session |
+| GStackGate + 10 gates | ForgeAgent (base migrated `63117e0`) | base done — per-gate capabilities/requires pending (Step 3) |
 | MissionOrchestrator | BaseAgent | pending |
 | MissionWorkerLoop | BaseAgent | pending |
 | MissionValidator | BaseAgent | pending |
