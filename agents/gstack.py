@@ -24,7 +24,7 @@ from typing import Any
 
 from llm.router import complete as llm_complete
 from models import GateResult, ProjectContext
-from .base import BaseAgent
+from forge_sdk.agent import ForgeAgent
 
 
 _GATE_SYSTEM = (
@@ -36,13 +36,16 @@ _GATE_SYSTEM = (
 )
 
 
-class GStackGate(BaseAgent):
+class GStackGate(ForgeAgent):
     """Abstract base for all GStack quality gates."""
 
     gate_name: str = "gate"
     phase: str = "gate"
     min_score: float = 6.0
     blocking: bool = True
+    capabilities: list[str] = []
+    requires: list[str] = ["idea"]
+    budget_usd: float = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
         result = self._evaluate(context)
