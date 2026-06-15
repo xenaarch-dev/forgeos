@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from models import ProjectContext
-from .base import BaseAgent
+from forge_sdk.agent import ForgeAgent
 
 
 # ---------------------------------------------------------------------------
@@ -343,9 +343,12 @@ STACK_LABELS = {
 # Agent
 # ---------------------------------------------------------------------------
 
-class GameAgent(BaseAgent):
-    name = "game"
-    phase = "code"
+class GameAgent(ForgeAgent):
+    name         = "game"
+    phase        = "code"
+    capabilities = ["project/game/"]
+    requires     = ["idea"]
+    budget_usd   = 0.0
 
     # Slug helper
     @staticmethod
