@@ -4,7 +4,7 @@
 **Day:** 155
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 155 — portal-v3 bug sweep + merge to main
+**Session focus:** Day 155 — HUD label + day epoch fixes; VoiceAgent analysis
 
 ---
 
@@ -31,9 +31,7 @@
 
 ## Known Issues (next session)
 
-- **Hero HUD shows `MRR: ₹2,499`** — should be `PRICE: ₹2,499/MO` (MRR is ₹0)
-- **Day counter shows 159, should be 155** — epoch calculation wrong (Jan 6 2026 off by ~4 days)
-- **VoiceAgent** still on `BaseAgent`, not `ForgeAgent` — pending migration
+- **VoiceAgent** plain class (no base), not `ForgeAgent` — pending migration (see below)
 - **GameAgent origin unknown** — needs investigation before migration
 
 ---
@@ -51,9 +49,8 @@
 
 ## Next Session Starts With
 
-1. Fix `MRR: ₹2,499` → `PRICE: ₹2,499/MO` in `S01_Hero.tsx` HUD_RIGHT
-2. Fix day counter epoch in `S01_Hero.tsx` (`new Date('2026-01-06')` → correct epoch)
-3. VoiceAgent migration to ForgeAgent
+1. VoiceAgent migration — plain class, no base. Design question: is ForgeAgent the right fit? (see VoiceAgent notes below)
+2. GameAgent investigation — origin unknown before migration
 
 ---
 
@@ -107,4 +104,4 @@
 | MissionOrchestrator | BaseAgent | pending |
 | MissionWorkerLoop | BaseAgent | pending |
 | MissionValidator | BaseAgent | pending |
-| VoiceAgent | BaseAgent | pending — next session |
+| VoiceAgent | *none* (plain class) | pending — design question: ForgeAgent doesn't fit |
