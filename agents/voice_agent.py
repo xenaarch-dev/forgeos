@@ -1,14 +1,20 @@
 """
 VoiceAgent — text-to-speech narrator for the ForgeOS pipeline.
 
-Uses edge-tts (free, no API key) to generate MP3s and plays them via
-mpg123.  Falls back to a plain print if mpg123 is absent or any error
-occurs — never crashes the pipeline.
+Uses ElevenLabs to generate MP3s (requires ELEVENLABS_API_KEY env var)
+and plays them via mpg123.  Falls back to a plain print if the key is
+absent, the package is missing, or any error occurs — never crashes the
+pipeline.
+
+voice_id must be a valid ElevenLabs voice ID (not an edge-tts neural
+voice name).  The default _DEFAULT_VOICE is a placeholder — set a real
+ElevenLabs voice ID before use.
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 import subprocess
 import sys
 from typing import Literal
@@ -71,12 +77,13 @@ _TMP_MP3 = "/tmp/forgeos_voice.mp3"
 
 
 class VoiceAgent:
-    """Narrates pipeline events with edge-tts + mpg123.
+    """Narrates pipeline events with ElevenLabs TTS + mpg123.
 
     Parameters
     ----------
     voice_id:
-        Any edge-tts voice name.  Defaults to en-GB-RyanNeural.
+        An ElevenLabs voice ID (e.g. "21m00Tcm4TlvDq8ikWAM").
+        Defaults to _DEFAULT_VOICE — replace with a real ElevenLabs ID.
     silent:
         When True the agent never calls TTS or mpg123 — useful for CI and
         test environments where audio is unwanted.
@@ -137,10 +144,23 @@ class VoiceAgent:
     # ------------------------------------------------------------------
 
     async def _tts_and_play(self, text: str) -> None:
-        import edge_tts  # imported lazily so missing package = fallback only
+        from elevenlabs import ElevenLabs  # lazy import — missing package → fallback
 
-        communicate = edge_tts.Communicate(text, self.voice_id)
-        await communicate.save(_TMP_MP3)
+        api_key = os.environ.get("ELEVENLABS_API_KEY")
+        if not api_key:
+            raise RuntimeError("ELEVENLABS_API_KEY not set")
+
+        client = ElevenLabs(api_key=api_key)
+        audio = client.text_to_speech.convert(
+            voice_id=self.voice_id,
+            text=text,
+            model_id="eleven_multilingual_v2",
+            output_format="mp3_44100_128",
+        )
+        with open(_TMP_MP3, "wb") as f:
+            for chunk in audio:
+                if chunk:
+                    f.write(chunk)
         self._play_mp3(_TMP_MP3)
 
     def _play_mp3(self, path: str) -> None:
