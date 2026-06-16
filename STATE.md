@@ -21,6 +21,23 @@
 - voice_agent asyncio harness — replaced `asyncio.get_event_loop().run_until_complete(coro)` with `asyncio.run(coro)` in `TestSilentMode._run`, `TestFallbackOnError._run`, and `test_speak_never_raises` direct call (`9d61e71`)
 - Result: 171/171 — fully green (was 166/171)
 
+### VoiceAgent — ElevenLabs provider swap (`d00e531`)
+- `_tts_and_play` now calls ElevenLabs API (`eleven_multilingual_v2`, `mp3_44100_128`) — reads `ELEVENLABS_API_KEY` via `os.environ`
+- Absent key / missing `elevenlabs` package → `RuntimeError` → caught by `speak()` → `_fallback()` — pipeline never crashes
+- `_play_mp3`, `speak`, `speak_sync`, `say`, `_fallback` unchanged
+- `ELEVENLABS_API_KEY` added to `.env.example`
+- `pip install elevenlabs` required in WSL2 before first real TTS use
+- **voice_id follow-up required** (separate session): all existing voice_id values are edge-tts names, invalid as ElevenLabs IDs:
+  - `_DEFAULT_VOICE = "en-GB-RyanNeural"` (`agents/voice_agent.py:69`) — production default, needs replacement
+  - `"en-US-JennyNeural"`, `"en-AU-NatashaNeural"` — test fixtures only, no production impact
+
+### Doppler — not installed on this machine
+- Confirmed: Doppler CLI absent from WSL2 and Windows (no binary, no PATH entry, no shell config reference)
+- Actual practice: secrets stored in WSL2 `~/.bashrc` (`export ELEVENLABS_API_KEY=...` at line 153)
+- Documented convention (CLAUDE.md references Doppler/Render env) vs actual practice (`~/.bashrc`) — divergence, backlog
+- Affects: `ELEVENLABS_API_KEY` (now in `~/.bashrc`), `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` (pending, needed for HermesOrchestrator Telegram notifications)
+- Fix path when relevant: either install Doppler CLI in WSL2 (`brew install dopplerhq/cli/doppler` or `.deb`) and migrate secrets, or document `~/.bashrc` as the intentional convention
+
 ---
 
 ## Day 157 — Completed (2026-06-15)
@@ -119,7 +136,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `9d61e71` |
+| main branch | `d00e531` |
 | Test suite | 171/171 passing — fully green |
 | MRR | ₹0 |
 
