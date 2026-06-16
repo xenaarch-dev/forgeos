@@ -5,7 +5,7 @@
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 157 — Mission* trio migrated to ForgeAgent (`9b8a777`); voice_agent asyncio test harness fixed — 171/171 fully green (`9d61e71`)
+**Session focus:** Day 157 — Mission* trio migrated to ForgeAgent (`9b8a777`); voice_agent asyncio test harness fixed — 171/171 fully green (`9d61e71`); ElevenLabs swap + revert (`e46f947`)
 
 ---
 
@@ -21,15 +21,12 @@
 - voice_agent asyncio harness — replaced `asyncio.get_event_loop().run_until_complete(coro)` with `asyncio.run(coro)` in `TestSilentMode._run`, `TestFallbackOnError._run`, and `test_speak_never_raises` direct call (`9d61e71`)
 - Result: 171/171 — fully green (was 166/171)
 
-### VoiceAgent — ElevenLabs provider swap (`d00e531`)
-- `_tts_and_play` now calls ElevenLabs API (`eleven_multilingual_v2`, `mp3_44100_128`) — reads `ELEVENLABS_API_KEY` via `os.environ`
-- Absent key / missing `elevenlabs` package → `RuntimeError` → caught by `speak()` → `_fallback()` — pipeline never crashes
-- `_play_mp3`, `speak`, `speak_sync`, `say`, `_fallback` unchanged
-- `ELEVENLABS_API_KEY` added to `.env.example`
-- `pip install elevenlabs` required in WSL2 before first real TTS use
-- **voice_id follow-up required** (separate session): all existing voice_id values are edge-tts names, invalid as ElevenLabs IDs:
-  - `_DEFAULT_VOICE = "en-GB-RyanNeural"` (`agents/voice_agent.py:69`) — production default, needs replacement
-  - `"en-US-JennyNeural"`, `"en-AU-NatashaNeural"` — test fixtures only, no production impact
+### VoiceAgent — ElevenLabs swap + revert (`d00e531` → `e46f947`)
+- ElevenLabs was wired in `d00e531`; reverted in `e46f947` — blocked by 402 (free-tier library voices require paid plan)
+- Active default: edge-tts (`_tts_and_play` via `edge_tts.Communicate`) — free, no API key, smoke-tested: 29.2 KB MP3 written
+- ElevenLabs code **preserved** as `_tts_elevenlabs()` — inactive method, documented with activation instructions
+- `ELEVENLABS_API_KEY` remains in `.env.example` for when subscription is upgraded
+- **voice_id follow-up (future session)**: when ElevenLabs reactivated, `_DEFAULT_VOICE = "en-GB-RyanNeural"` must be replaced with a valid ElevenLabs library voice ID from paid library
 
 ### Doppler — not installed on this machine
 - Confirmed: Doppler CLI absent from WSL2 and Windows (no binary, no PATH entry, no shell config reference)
@@ -136,7 +133,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `d00e531` |
+| main branch | `e46f947` |
 | Test suite | 171/171 passing — fully green |
 | MRR | ₹0 |
 
