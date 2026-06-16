@@ -1,11 +1,32 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-15
-**Day:** 157
+**Date:** 2026-06-16
+**Day:** 158
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 157 — Mission* trio migrated to ForgeAgent (`9b8a777`); voice_agent asyncio test harness fixed — 171/171 fully green (`9d61e71`); ElevenLabs swap + revert (`e46f947`)
+**Session focus:** Day 158 — worktree-dark-manifesto deleted (hygiene); Pika/Higgsfield investigation: NOT STARTED (zero codebase presence)
+
+---
+
+## Day 158 — Completed (2026-06-16)
+
+### Repo Hygiene — worktree-dark-manifesto deleted
+- Branch tip `ce37aa8` confirmed as direct ancestor of main (`git merge-base --is-ancestor` exit 0) — commit was IN main's linear history, not just superseded
+- WaterCursor.tsx byte-identical on both branches; zero unmerged content
+- Remote `origin/worktree-dark-manifesto`: deleted ✓
+- Local branch `worktree-dark-manifesto`: deleted ✓
+- Git worktree registry: clean — only `main` + `act-ii-portal` remain ✓
+- Physical dirs (`.claude/worktrees/dark-manifesto`, `.git/worktrees/dark-manifesto`): removed manually via Explorer (Windows permission block on `git worktree remove --force`)
+- One discarded loose change in the worktree: `settings.local.json` adding `"Bash(vercel --version)"` — uncommitted, no loss
+
+### Pika / Higgsfield — Investigation Complete: NOT STARTED
+- `.mcp.json`: does not exist anywhere in repo. MCP config is `.claude/settings.json` — 3 servers: `supabase`, `context7`, `playwright`. No Pika, no Higgsfield entry.
+- `agents/pika_launch.py`: does not exist. No `pika*.py`, no `higgsfield*.py` in agents dir.
+- `orchestrator.py` / `hermes.py`: zero matches for `pika`, `higgsfield`, `LAUNCH_STAGES`, `build_a_brand`, `app_screens`, `product_sizzle`, `founder_video`.
+- Whole-repo grep: zero matches for any of those terms across the entire codebase.
+- The "May 2026 planning doc" was conversation-only — never committed to repo. Neither integration has any code, config, or reference. Clean-slate choice for both Pika and Higgsfield — no partially-wired code to navigate around.
+- **Gated on**: Padmaja confirming account status / cost for whichever video provider she chooses before implementation begins.
 
 ---
 
@@ -133,7 +154,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `e46f947` |
+| main branch | `ed93cb6` |
 | Test suite | 171/171 passing — fully green |
 | MRR | ₹0 |
 
@@ -141,7 +162,9 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ## Next Session Starts With
 
-**TBD**
+**Day 158 continuation** — Tasks 3 and 4 from the session queue:
+3. **LaunchAgent implementation** (`agents/launch.py`) — open questions resolved in session, implement with full ForgeAgent spec (real requires/capabilities/budget_usd), show diff before applying, run suite (171+/171+), commit + push
+4. **Daemon Mode ADR** — run `claude --version`, `claude --channels --help`, `grep -i telegram ~/.bashrc` before writing; cover daemon vs tmux vs systemd, Channels/Telegram interaction, what survives sleep; standard ADR structure; commit + push
 
 ---
 
