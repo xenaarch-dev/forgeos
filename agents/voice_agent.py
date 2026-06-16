@@ -1,14 +1,11 @@
 """
 VoiceAgent — text-to-speech narrator for the ForgeOS pipeline.
 
-Uses ElevenLabs to generate MP3s (requires ELEVENLABS_API_KEY env var)
-and plays them via mpg123.  Falls back to a plain print if the key is
-absent, the package is missing, or any error occurs — never crashes the
-pipeline.
+Active TTS: edge-tts (free, no API key) via _tts_and_play → MP3 → mpg123.
+Alternative: _tts_elevenlabs (requires ELEVENLABS_API_KEY + paid plan for
+library voices) — code preserved, not the active default.
 
-voice_id must be a valid ElevenLabs voice ID (not an edge-tts neural
-voice name).  The default _DEFAULT_VOICE is a placeholder — set a real
-ElevenLabs voice ID before use.
+Falls back to a plain print on any error — never crashes the pipeline.
 """
 
 from __future__ import annotations
@@ -77,13 +74,13 @@ _TMP_MP3 = "/tmp/forgeos_voice.mp3"
 
 
 class VoiceAgent:
-    """Narrates pipeline events with ElevenLabs TTS + mpg123.
+    """Narrates pipeline events with edge-tts + mpg123.
 
     Parameters
     ----------
     voice_id:
-        An ElevenLabs voice ID (e.g. "21m00Tcm4TlvDq8ikWAM").
-        Defaults to _DEFAULT_VOICE — replace with a real ElevenLabs ID.
+        edge-tts voice name (default path) or ElevenLabs voice ID when
+        _tts_elevenlabs is the active implementation.
     silent:
         When True the agent never calls TTS or mpg123 — useful for CI and
         test environments where audio is unwanted.
@@ -144,6 +141,19 @@ class VoiceAgent:
     # ------------------------------------------------------------------
 
     async def _tts_and_play(self, text: str) -> None:
+        import edge_tts  # lazy import — missing package → fallback
+
+        communicate = edge_tts.Communicate(text, self.voice_id)
+        await communicate.save(_TMP_MP3)
+        self._play_mp3(_TMP_MP3)
+
+    async def _tts_elevenlabs(self, text: str) -> None:
+        """ElevenLabs TTS — preserved for future swap when subscription allows.
+
+        To activate: replace _tts_and_play body with a call to this method,
+        and set voice_id to a valid ElevenLabs voice ID.
+        Requires: ELEVENLABS_API_KEY env var + paid plan for library voices.
+        """
         from elevenlabs import ElevenLabs  # lazy import — missing package → fallback
 
         api_key = os.environ.get("ELEVENLABS_API_KEY")
