@@ -122,9 +122,6 @@ class TelegramNotifier:
 
     def send(self, text: str) -> bool:
         if not self._enabled:
-            # Fall back to Hermes CLI gateway if installed
-            if self._gateway.is_available():
-                return self._gateway.send_notification(text)
             return False
         url = f"https://api.telegram.org/bot{self._token}/sendMessage"
         payload = json.dumps(

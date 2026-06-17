@@ -284,6 +284,7 @@ class AgentResult:
         error: str | None = None,
     ) -> "AgentResult":
         self.finished_at = _utc_now_iso()
+        # Compute duration from ISO strings to keep it self-consistent.
         try:
             start = datetime.fromisoformat(self.started_at)
             end = datetime.fromisoformat(self.finished_at)
@@ -383,11 +384,16 @@ class ProjectContext:
     # ------------------------------------------------------------------
 
     @classmethod
-    def new(cls, idea: str, workdir: str | os.PathLike[str]) -> "ProjectContext":
+    def new(
+        cls,
+        idea: str,
+        workdir: str | os.PathLike[str],
+        build_id: str | None = None,
+    ) -> "ProjectContext":
         wd = str(Path(workdir).expanduser().resolve())
         Path(wd).mkdir(parents=True, exist_ok=True)
         return cls(
-            project_id=_new_id("proj"),
+            project_id=build_id or _new_id("proj"),
             idea=idea.strip(),
             workdir=wd,
         )
@@ -407,10 +413,16 @@ class ProjectContext:
         self.updated_at = _utc_now_iso()
         path = self.context_path()
         path.parent.mkdir(parents=True, exist_ok=True)
+        # Atomic write — to avoid corruption if interrupted.
         tmp = path.with_suffix(".json.tmp")
         with tmp.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2, default=str)
         tmp.replace(path)
+        # Mirror to .forgeos/ directory if it exists (kept in sync with .forgeos/ artefacts).
+        forgeos_dir = path.parent / ".forgeos"
+        if forgeos_dir.is_dir():
+            import shutil as _shutil
+            _shutil.copy2(path, forgeos_dir / "context.json")
         return path
 
     @classmethod
@@ -426,6 +438,7 @@ class ProjectContext:
         agent_results_data = data.pop("agent_results", []) or []
         ledger_data = data.pop("token_ledger", []) or []
 
+        # Discard unknown keys so old context.json files don't crash new versions.
         known_fields = {f.name for f in ProjectContext.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         data = {k: v for k, v in data.items() if k in known_fields}
         ctx = cls(**data)
@@ -435,7 +448,7 @@ class ProjectContext:
             try:
                 ctx.tasks.append(Task(**t))
             except TypeError:
-                pass
+                pass  # skip tasks with unknown fields from newer versions
         ctx.agent_results = []
         for a in agent_results_data:
             try:
@@ -495,6 +508,7 @@ class ProjectContext:
 
     def write_artifact(self, name: str, content: str) -> Path:
         path = self.get_artifact_path(name)
+        # Guard against path traversal — ensure the resolved path stays inside workdir.
         workdir_resolved = Path(self.workdir).resolve()
         if not path.resolve().is_relative_to(workdir_resolved):
             raise ValueError(f"Artifact path '{name}' escapes workdir — write denied")
@@ -535,6 +549,15 @@ class GateResult:
 
 
 @dataclass
+class GStackResult:
+    """Result from a GStackRunner.run_skill() call."""
+    skill: str
+    passed: bool
+    output: str
+    errors: str
+
+
+@dataclass
 class ValidationAssertion:
     description: str
     category: str = "functional"
@@ -560,16 +583,68 @@ class MissionHandoff:
     timestamp: str = field(default_factory=_utc_now_iso)
 
 
+
+
+@dataclass
+class SecurityReport:
+    """Output of SecurityAgent — gates the pipeline if critical is non-empty."""
+    critical: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    passed: list[str] = field(default_factory=list)
+
+
+@dataclass
+class FailureRecord:
+    """Written to FAILURE.md on any pipeline exception."""
+    timestamp: str
+    stage: str
+    agent: str
+    error: str
+    context_idea: str
+    fix_attempted: str = ""
+    resolved: bool = False
+    processed: bool = False
+
+
+@dataclass
+class SandboxResult:
+    """Result from e2b sandbox execution."""
+    success: bool
+    output: str
+    errors: str
+    exit_code: int = 0
+
+
+@dataclass
+class BrowserResult:
+    """Result from browser-use action."""
+    success: bool
+    url: str
+    action: str
+    output: str
+    errors: str = ""
+
+
+class PipelineBlockedError(RuntimeError):
+    """Raised by gate stages when checks fail — stops the pipeline."""
+
+
 __all__ = [
     "AgentResult",
     "AgentStatus",
+    "BrowserResult",
+    "FailureRecord",
+    "GStackResult",
     "GateResult",
     "LLMClient",
     "LLMError",
     "LLMResponse",
     "MissionHandoff",
     "Phase",
+    "PipelineBlockedError",
     "ProjectContext",
+    "SandboxResult",
+    "SecurityReport",
     "StackChoice",
     "Task",
     "TaskStatus",
