@@ -1,11 +1,68 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-16
-**Day:** 158
+**Date:** 2026-06-17
+**Day:** 159
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 158 — worktree-dark-manifesto deleted (hygiene); Pika/Higgsfield: NOT STARTED (clean slate, Fal.ai covers both); LaunchAgent + FalClient stub shipped (`c79a20a`) — 194/194; ADR-001 Daemon Mode (`303fbaa`)
+**Session focus:** Day 159 — ADR-001 Daemon Mode implemented (`86cc519`) — auto-deploy guard + job queue + drainer + 49 new tests; 243/243 green
+
+---
+
+## Day 159 — Completed (2026-06-17)
+
+### ADR-001 Daemon Mode — IMPLEMENTED (`86cc519`)
+
+**Status:** ADR-001 updated to Accepted.
+
+#### 1 — FORGEOS_AUTO_DEPLOY guard (`agents/deploy.py`)
+- Guard at top of `DeployAgent._execute` — checks `os.environ.get("FORGEOS_AUTO_DEPLOY", "0")`
+- When NOT set (default): skips GitHub/Render/Vercel/Sentry/UptimeRobot entirely, writes a `DEPLOYMENT.md` "deploy skipped" notice, returns `skipped=[...]` result — pipeline continues normally
+- When set to `"1"`: proceeds with full deploy logic unchanged
+- One env var = one mechanism = one place to control unattended deploy. No separate gate class.
+- TELEGRAM status: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` still absent from `~/.bashrc` — **flagged: pending configuration before Telegram trigger works**.
+
+#### 2 — BuildQueue (`daemon/queue.py`)
+- Flat-file FIFO: `builds/queue/pending/<timestamp>_<uuid>.json` → `builds/queue/archive/` on completion
+- Job IDs use `%Y%m%dT%H%M%S_%f` (microseconds) so alphabetical sort == chronological order even within the same second
+- `enqueue(idea, source)` → `pop_next()` → `archive(job, status, error)` lifecycle
+- `builds/` is gitignored — queue is runtime state, never committed
+
+#### 3 — Drainer (`daemon/drainer.py`)
+- Single-invocation pattern: check Telegram → drain one job → exit
+- `_tg_poll(queue)`: calls `getUpdates` with offset tracking (`daemon/state/telegram_offset.txt`); no-ops silently without `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`; any text message from the configured chat is enqueued as a build idea
+- `drain_once(queue)`: pops oldest job, runs `HermesOrchestrator(idea=...).run()`, archives as success or failed+error; returns True/False
+- `main()`: polls Telegram, logs queue depth, drains one job, `sys.exit(1)` on build failure so Task Scheduler sees a non-zero exit
+
+#### 4 — Ollama TODO (`llm/ollama.py`)
+- Comment at `url = f"{self.api_base.rstrip('/')}/api/chat"` marks this as the `localhost:11434` call site for the future direct Claude API swap
+- Task logged as `builds/queue/pending/20260617T000000_ollama-api-swap.json` (runtime, not committed)
+
+#### Windows Task Scheduler — NOT registered (by design)
+Padmaja reviews and runs the following command herself:
+
+```
+schtasks /create /tn "ForgeOS Drainer" /tr "wsl.exe -d Ubuntu-22.04 -e bash -lc \"cd /home/padmaja/forge/forgeos && PYTHONPATH=. python3 -m daemon.drainer >> /home/padmaja/forge/forgeos/logs/drainer.log 2>&1\"" /sc HOURLY /mo 1 /ru SYSTEM /f
+```
+
+Or for on-demand / manual trigger only (no schedule):
+```
+schtasks /create /tn "ForgeOS Drainer" /tr "wsl.exe -d Ubuntu-22.04 -e bash -lc \"cd /home/padmaja/forge/forgeos && PYTHONPATH=. python3 -m daemon.drainer >> /home/padmaja/forge/forgeos/logs/drainer.log 2>&1\"" /sc ONSTART /ru SYSTEM /f
+```
+
+To add an idea to the queue and trigger manually:
+```bash
+# In WSL2:
+cd /home/padmaja/forge/forgeos
+PYTHONPATH=. python3 -c "from daemon.queue import BuildQueue; BuildQueue().enqueue('Build a habit tracker SaaS')"
+PYTHONPATH=. python3 -m daemon.drainer
+```
+
+#### Tests
+- `tests/test_deploy_guard.py` — 9 tests: guard-off skips all external calls, DEPLOYMENT.md always written, guard-on proceeds to deploy logic
+- `tests/test_queue.py` — 24 tests: enqueue/pop/archive lifecycle, FIFO ordering, edge cases (empty, corrupted file, error truncation)
+- `tests/test_drainer.py` — 16 tests: drain_once success/fail/empty, Telegram poll with/without creds, chat_id filter, offset advance, network failure
+- **Test suite: 243/243** (was 194 — +49 new)
 
 ---
 
@@ -190,21 +247,21 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `303fbaa` |
-| Test suite | 194/194 passing — fully green |
+| main branch | `86cc519` |
+| Test suite | 243/243 passing — fully green |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 158 — complete.** All 4 tasks shipped. See above for next-session open items.
+**Day 159 — complete.** Daemon Mode fully implemented. Next session open items:
 
-**Day 158 session complete — all 4 tasks done.** Next session open items:
-- Review and approve/modify ADR-001 (`docs/adr/ADR-001-daemon-mode.md`) before any daemon-mode implementation starts
-- 5 open questions in ADR-001 need answers (Telegram bot timing, auto-deploy guard vs gate, queue model, WSL2 lifetime, Ollama lifecycle)
-- FalClient activation: deferred until FAL_API_KEY exists (fal.ai account)
-- **Xenarch Master OS sprint (separate thread):** outreach + one Instagram action item — untouched, carry over
+1. **Register Windows Task Scheduler trigger** — run the `schtasks` command above (Day 159 section) after manual dry-run. Confirm `PYTHONPATH=. python3 -m daemon.drainer` runs clean in WSL2 first with one queued idea.
+2. **Telegram credentials** — add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to `~/.bashrc` in WSL2. Drainer's `_tg_poll` is already wired; it just needs the env vars to activate. Steps: (a) `/start @BotFather` → `/newbot`; (b) export token; (c) send message to bot, call `getUpdates` to find chat_id; (d) export chat_id.
+3. **Ollama→Claude API swap** — see `TODO` in `llm/ollama.py` and the task reminder at `builds/queue/pending/20260617T000000_ollama-api-swap.json`. Do this after Telegram is wired so you can verify cloud-triggered builds reach the LLM.
+4. **FalClient activation** — deferred until `FAL_API_KEY` exists (fal.ai account).
+5. **Xenarch Master OS sprint (separate thread):** outreach + one Instagram action item — carry over.
 
 ---
 

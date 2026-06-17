@@ -1,6 +1,6 @@
 # ADR-001 — ForgeOS Daemon Mode: Unattended Pipeline Execution
 
-**Status:** Proposed  
+**Status:** Accepted — implemented 2026-06-17 (Day 159), commit `86cc519`  
 **Date:** 2026-06-16 (Day 158)  
 **Author:** Padmaja Kotoky + Claude Sonnet 4.6  
 **Relates to:** HermesOrchestrator (`agents/hermes.py`), TelegramNotifier, LaunchAgent
