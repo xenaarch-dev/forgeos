@@ -5,11 +5,23 @@
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 158 — worktree-dark-manifesto deleted (hygiene); Pika/Higgsfield: NOT STARTED (clean slate, Fal.ai covers both); LaunchAgent + FalClient stub shipped (`c79a20a`) — 194/194
+**Session focus:** Day 158 — worktree-dark-manifesto deleted (hygiene); Pika/Higgsfield: NOT STARTED (clean slate, Fal.ai covers both); LaunchAgent + FalClient stub shipped (`c79a20a`) — 194/194; ADR-001 Daemon Mode (`303fbaa`)
 
 ---
 
 ## Day 158 — Completed (2026-06-16)
+
+### Daemon Mode ADR — SHIPPED (`303fbaa`)
+- `docs/adr/ADR-001-daemon-mode.md` — decision record, status: Proposed (pending Padmaja review)
+- **Environment facts captured** (verified by running commands):
+  - `claude --version` = 2.1.146 (Windows binary, NOT in WSL2 PATH)
+  - No `--schedule` or `--channels` flag in Claude Code CLI — `/schedule` is a cloud Routine *skill*, not a flag
+  - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` absent from `~/.bashrc` — TelegramNotifier silently no-ops on every build today
+- **Options evaluated:** Claude Code Routines (deferred — Ollama is local-only, cloud can't reach localhost:11434), bare crontab in WSL2 (non-starter — WSL2 shuts down when terminal closes), systemd timer in WSL2 (inadvisable on a laptop), Windows Task Scheduler → wsl.exe (recommended near-term), Telegram-triggered builds (correct long-term architecture)
+- **Gate analysis:** existing gate=True/False split is sound for unattended runs; **DeployAgent (gate=False) is the only exception** — needs `FORGEOS_AUTO_DEPLOY` env guard before any unattended build can safely proceed (creates real GitHub/Railway/Vercel resources)
+- **Failure gaps identified:** Telegram not configured (silent failures), no build timeout (hung Ollama blocks indefinitely), no dead-letter log, no per-run spend cap
+- **5 open questions** for Padmaja in the ADR before implementation starts
+- No code changes in this task — decision record only
 
 ### Repo Hygiene — worktree-dark-manifesto deleted
 - Branch tip `ce37aa8` confirmed as direct ancestor of main (`git merge-base --is-ancestor` exit 0) — commit was IN main's linear history, not just superseded
@@ -178,7 +190,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `c79a20a` |
+| main branch | `303fbaa` |
 | Test suite | 194/194 passing — fully green |
 | MRR | ₹0 |
 
@@ -186,10 +198,13 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ## Next Session Starts With
 
-**Day 158 continuation** — Task 4 remaining:
-4. **Daemon Mode ADR** — run `claude --version`, `claude --channels --help`, `grep -i telegram ~/.bashrc` before writing; cover daemon vs tmux vs systemd, Channels/Telegram interaction, what survives laptop sleep vs doesn't, open questions for Padmaja; standard ADR structure (context, decision drivers, options, decision, consequences); commit + push
+**Day 158 — complete.** All 4 tasks shipped. See above for next-session open items.
 
-**Also open (separate Xenarch Master OS sprint):** outreach + one Instagram action item — untouched, carry over to next session
+**Day 158 session complete — all 4 tasks done.** Next session open items:
+- Review and approve/modify ADR-001 (`docs/adr/ADR-001-daemon-mode.md`) before any daemon-mode implementation starts
+- 5 open questions in ADR-001 need answers (Telegram bot timing, auto-deploy guard vs gate, queue model, WSL2 lifetime, Ollama lifecycle)
+- FalClient activation: deferred until FAL_API_KEY exists (fal.ai account)
+- **Xenarch Master OS sprint (separate thread):** outreach + one Instagram action item — untouched, carry over
 
 ---
 
