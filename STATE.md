@@ -5,7 +5,7 @@
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 158 — worktree-dark-manifesto deleted (hygiene); Pika/Higgsfield investigation: NOT STARTED (zero codebase presence)
+**Session focus:** Day 158 — worktree-dark-manifesto deleted (hygiene); Pika/Higgsfield: NOT STARTED (clean slate, Fal.ai covers both); LaunchAgent + FalClient stub shipped (`c79a20a`) — 194/194
 
 ---
 
@@ -19,6 +19,30 @@
 - Git worktree registry: clean — only `main` + `act-ii-portal` remain ✓
 - Physical dirs (`.claude/worktrees/dark-manifesto`, `.git/worktrees/dark-manifesto`): removed manually via Explorer (Windows permission block on `git worktree remove --force`)
 - One discarded loose change in the worktree: `settings.local.json` adding `"Bash(vercel --version)"` — uncommitted, no loss
+
+### LaunchAgent + FalClient — SHIPPED (`c79a20a`)
+- `agents/launch.py`: ForgeAgent stage 20, `gate=False`, after DeployAgent
+  - Single LLM call → three LAUNCH.md sections: PH listing draft, outreach seed table, launch thread (Xena voice)
+  - Reads `context.metadata["pm_output"]["icp"]` for richer prospect seeding
+  - Writes to `<workdir>/LAUNCH.md` AND `project/LAUNCH.md` (mirrors DeployAgent pattern)
+  - Sets `launch_draft_ready=True` + `launch_needs_review=True` in metadata
+  - Soft Telegram notify via `TelegramNotifier` (best-effort, never raises)
+  - `capabilities=["LAUNCH.md"]`, `requires=[idea, project_id, spec, frontend_url, backend_url, repo_url]`, `budget_usd=0.0`
+- `tools/fal_client.py`: provider-agnostic stub (Pika + Higgsfield via Fal.ai)
+  - Methods: `build_a_brand()`, `app_screens()`, `product_sizzle()` — `founder_video` intentionally excluded
+  - `is_ready()` returns False without `FAL_API_KEY` — all `generate()` calls raise `NotImplementedError`
+  - `FAL_VIDEO_PROVIDER` env var selects provider (default: pika)
+  - CLI: `python3 tools/fal_client.py generate --type build_a_brand --prompt '...'`
+- `agents/__init__.py`: `LaunchAgent` added to `_LAZY` + `__all__`
+- `agents/hermes.py`: launch stage wired after deploy in `_build_pipeline()`
+- `tests/test_launch_agent.py`: 23 tests (attrs, render_launch_md, run with mocked LLM, FalClient stub)
+- Test suite: **194/194** (was 171 — +23 new)
+- **FalClient activation checklist** (when ready):
+  1. Sign up at fal.ai → generate API key
+  2. `export FAL_API_KEY=...` in WSL2 `~/.bashrc`
+  3. Optionally `export FAL_VIDEO_PROVIDER=higgsfield` to switch provider
+  4. Replace `raise NotImplementedError` body in `FalClient.generate()` with real fal-client queue submit + poll
+  5. Verify model slugs in `_MODEL_MAP` against fal.ai/models
 
 ### Pika / Higgsfield — Investigation Complete: NOT STARTED
 - `.mcp.json`: does not exist anywhere in repo. MCP config is `.claude/settings.json` — 3 servers: `supabase`, `context7`, `playwright`. No Pika, no Higgsfield entry.
@@ -154,17 +178,18 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `ed93cb6` |
-| Test suite | 171/171 passing — fully green |
+| main branch | `c79a20a` |
+| Test suite | 194/194 passing — fully green |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 158 continuation** — Tasks 3 and 4 from the session queue:
-3. **LaunchAgent implementation** (`agents/launch.py`) — open questions resolved in session, implement with full ForgeAgent spec (real requires/capabilities/budget_usd), show diff before applying, run suite (171+/171+), commit + push
-4. **Daemon Mode ADR** — run `claude --version`, `claude --channels --help`, `grep -i telegram ~/.bashrc` before writing; cover daemon vs tmux vs systemd, Channels/Telegram interaction, what survives sleep; standard ADR structure; commit + push
+**Day 158 continuation** — Task 4 remaining:
+4. **Daemon Mode ADR** — run `claude --version`, `claude --channels --help`, `grep -i telegram ~/.bashrc` before writing; cover daemon vs tmux vs systemd, Channels/Telegram interaction, what survives laptop sleep vs doesn't, open questions for Padmaja; standard ADR structure (context, decision drivers, options, decision, consequences); commit + push
+
+**Also open (separate Xenarch Master OS sprint):** outreach + one Instagram action item — untouched, carry over to next session
 
 ---
 
@@ -198,7 +223,8 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_voice_agent.py` | 18/18 | 0 | fixed: asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
 | `test_gstack.py` | 4/4 | 0 | new — gate-failure + pass + subclass + base-attr tests |
-| **TOTAL** | **171/171** | **0** | fully green |
+| `test_launch_agent.py` | 23/23 | 0 | new — LaunchAgent attrs, render, run (mocked LLM), FalClient stub |
+| **TOTAL** | **194/194** | **0** | fully green |
 
 ---
 
@@ -216,7 +242,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | EvalAgent | ForgeAgent | ✓ (2026-06-08) |
 | DeployAgent | ForgeAgent | ✓ (2026-06-15) |
 | GameAgent | ForgeAgent | ✓ (2026-06-15) |
-| LaunchAgent | ForgeAgent | spec only (`agents/SPEC_LaunchAgent.md`) — not yet implemented |
+| LaunchAgent | ForgeAgent | ✓ (2026-06-16) — `c79a20a`, stage 20, FalClient stub wired |
 | GStackGate + 10 gates | ForgeAgent | ✓ (2026-06-15) — base `63117e0` + per-gate requires `fe2eaab` |
 | MissionOrchestrator | ForgeAgent | ✓ (2026-06-15) |
 | MissionWorkerLoop | ForgeAgent | ✓ (2026-06-15) — `capabilities=[]`: files written by MissionWorker helper, not the loop |
