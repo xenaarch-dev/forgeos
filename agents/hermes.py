@@ -257,6 +257,7 @@ class HermesOrchestrator:
 
         from agents.pm_agent import PMAgent
         from agents.eval_agent import EvalAgent
+        from agents.launch import LaunchAgent
 
         return [
             # Stage 0: demand validation — blocks if market is wrong
@@ -294,6 +295,8 @@ class HermesOrchestrator:
             {"name": "eval_agent",     "cls": EvalAgent,         "gate": True},
             # Deploy
             {"name": "deploy",         "cls": DeployAgent,       "gate": False},
+            # Launch — drafts LAUNCH.md, never blocks pipeline
+            {"name": "launch",         "cls": LaunchAgent,       "gate": False},
         ]
 
     # ------------------------------------------------------------------

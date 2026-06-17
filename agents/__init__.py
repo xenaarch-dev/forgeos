@@ -32,6 +32,8 @@ _LAZY: dict[str, str] = {
     "CSOGate":           "agents.gstack",
     "QAGate":            "agents.gstack",
     "ShipGate":          "agents.gstack",
+    # Launch
+    "LaunchAgent":         "agents.launch",
     # Mission system
     "MissionOrchestrator": "agents.mission",
     "MissionWorker":       "agents.mission",
@@ -77,6 +79,8 @@ __all__ = [
     "CSOGate",
     "QAGate",
     "ShipGate",
+    # Launch
+    "LaunchAgent",
     # Mission system
     "MissionOrchestrator",
     "MissionWorker",
