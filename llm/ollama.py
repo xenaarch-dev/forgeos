@@ -50,6 +50,9 @@ class OllamaClient(LLMClient):
         }
 
         def call() -> LLMResponse:
+            # TODO(ollama-swap): this is the localhost:11434 call site. When swapping
+            # to a direct Claude API, replace OllamaClient here in llm/router.py's
+            # _HARD_STACK/_MEDIUM_STACK/_LOW_STACK. See queue entry: ollama-api-swap.
             url = f"{self.api_base.rstrip('/')}/api/chat"
             if stream:
                 stream_iter = self._http_json(

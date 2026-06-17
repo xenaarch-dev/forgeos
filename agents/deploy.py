@@ -37,6 +37,31 @@ class DeployAgent(ForgeAgent):
     budget_usd   = 0.0
 
     def _execute(self, context: ProjectContext) -> dict[str, Any]:
+        import os
+
+        if os.environ.get("FORGEOS_AUTO_DEPLOY", "0") != "1":
+            # Unattended guard: skip all external resources unless explicitly opted in.
+            # Set FORGEOS_AUTO_DEPLOY=1 in the environment to enable full deploy.
+            self._log("[deploy] FORGEOS_AUTO_DEPLOY not set — skipping external deploy")
+            skipped_result: dict[str, Any] = {
+                "repo_url": "",
+                "backend_url": "",
+                "frontend_url": "",
+                "monitoring": {},
+                "skipped": ["github", "render", "vercel", "sentry", "uptimerobot"],
+                "note": "Set FORGEOS_AUTO_DEPLOY=1 to enable unattended deploy",
+            }
+            deploy_md = (
+                "# Deployment\n\n"
+                f"Project: `{context.project_id}`\n\n"
+                "> **Deploy skipped** — `FORGEOS_AUTO_DEPLOY` was not set to `1`.\n"
+                ">\n"
+                "> To deploy, re-run with `FORGEOS_AUTO_DEPLOY=1` in your environment.\n"
+                "> No GitHub repo, Railway service, or Vercel project was created.\n"
+            )
+            self._write(context, "DEPLOYMENT.md", deploy_md)
+            return skipped_result
+
         project_root = Path(context.workdir) / "project"
         if not project_root.exists():
             raise RuntimeError("Project missing — cannot deploy")
