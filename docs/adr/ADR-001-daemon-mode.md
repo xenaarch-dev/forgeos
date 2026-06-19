@@ -210,34 +210,48 @@ Option 1 is a one-line change and is safe to ship immediately. Option 2 is the r
 
 ## Decision
 
-**Recommended approach, in priority order:**
+**Shipped 2026-06-17, commit `86cc519`.** The implementation diverged from the original step numbering in two ways that are worth recording: Telegram polling was folded into the drainer rather than deferred to a separate bot process, and the queue store became a flat-file JSON directory rather than a text file.
 
-### Step 0 — Prerequisites (blocking; nothing else works without these)
+### What was implemented
 
-1. Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to `~/.bashrc`. TelegramNotifier is already wired in hermes.py — it just needs credentials. This unblocks all existing notification paths.
-2. Add `FORGEOS_AUTO_DEPLOY=0` guard in `DeployAgent._execute` so unattended builds can run safely without creating external resources.
+**`FORGEOS_AUTO_DEPLOY` guard** — `DeployAgent._execute` checks `os.environ.get("FORGEOS_AUTO_DEPLOY", "0")`. Unattended builds skip GitHub/Railway/Vercel unless the env var is explicitly set to `"1"`. This was Step 0, Option 1.
 
-### Step 1 — On-demand trigger via Windows Task Scheduler (near-term)
+**Flat-file JSON queue** (`builds/queue/`)
 
-Implement a thin Windows Task Scheduler job that:
-1. Reads the next idea from `builds/queue.txt` (pop first line).
-2. Invokes `wsl.exe -d Ubuntu-22.04 -e bash -lc "cd /home/padmaja/forge/forgeos && PYTHONPATH=. python3 orchestrator.py --idea '$IDEA'"`.
-3. Telegram notifications arrive on completion/failure.
+```
+builds/queue/
+├── pending/<job_id>.json   — waiting to run (FIFO by filename = FIFO by time)
+└── archive/<job_id>.json   — completed or failed (never deleted)
+```
 
-This is not a daemon. It is a reliable trigger that works across laptop sleep. Padmaja fills `builds/queue.txt` with ideas; the job drains them on her schedule.
+`daemon/queue.py::BuildQueue` manages enqueue, pop, and archive. Job IDs are UTC-timestamped (`%Y%m%dT%H%M%S_%f_<4hex>`) so alphabetical sort equals chronological order with microsecond resolution. Each file is a self-contained JSON record — no database, no lock file.
 
-### Step 2 — Telegram bot trigger (medium-term, after Telegram configured)
+**`daemon/drainer.py`** — single-invocation drainer called by Windows Task Scheduler every 15 minutes:
 
-Implement a lightweight Telegram bot polling process (`agents/telegram_bot.py`) that:
-- Listens for messages in the configured chat.
-- On receiving an idea string, appends it to `builds/queue.txt` and/or invokes orchestrator directly.
-- Reports build progress and gate blocks back to the chat.
+```
+wsl.exe -d Ubuntu-22.04 -e bash -lc
+  "cd /home/padmaja/forge/forgeos && PYTHONPATH=. python3 -m daemon.drainer
+   >> /home/padmaja/forge/forgeos/logs/drainer.log 2>&1"
+```
 
-This is the intended Telegram-triggered build architecture referenced in `HermesOrchestrator`'s docstring. It is the right long-term model.
+Each invocation does exactly three things in order:
+1. **Polls Telegram** (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` from env). Any text message from the configured chat is enqueued as a build idea. The Telegram update offset is persisted in `daemon/state/telegram_offset.txt` so messages are never replayed. No-ops silently if credentials are absent.
+2. **Pops one job** (oldest pending, FIFO). If the queue is empty, exits cleanly.
+3. **Runs the full HermesOrchestrator pipeline** on that job. Archives with `status=success` or `status=failed`.
 
-### Step 3 — Claude Code Routines (deferred)
+There is **no separate Telegram bot process** — Telegram is polled opportunistically at the start of each drainer invocation. This is intentionally simple: one process, one responsibility, one log file.
 
-Revisit when: (a) Ollama is replaced with a cloud LLM, OR (b) a remote API server wrapping the ForgeOS pipeline is deployed and accessible to Anthropic's infrastructure. Not before.
+**Windows Task Scheduler trigger** (to be created post-test):
+
+```powershell
+schtasks /create /tn "ForgeOS_Daemon_Drain" /sc MINUTE /mo 15 /tr
+  "wsl.exe -d Ubuntu-22.04 -e bash -lc 'cd /home/padmaja/forge/forgeos && PYTHONPATH=. python3 -m daemon.drainer >> /home/padmaja/forge/forgeos/logs/drainer.log 2>&1'"
+  /f
+```
+
+### What remains deferred
+
+**Step 3 — Claude Code Routines:** still deferred. Condition unchanged: requires cloud LLM or a remote API server accessible to Anthropic infrastructure.
 
 ---
 
@@ -257,14 +271,14 @@ Revisit when: (a) Ollama is replaced with a cloud LLM, OR (b) a remote API serve
 
 ---
 
-## Open Questions for Padmaja
+## Open Questions — Resolved
 
-1. **Telegram bot setup**: Do you want to create a new bot via @BotFather now (a 2-minute task), or defer all of Step 0 to when you're ready to wire the full trigger flow?
+All five questions from the original proposal were answered by implementation decisions made on Day 159.
 
-2. **`FORGEOS_AUTO_DEPLOY` flag vs deploy gate**: The one-line env-var guard (Option 1 above) can ship immediately and safely. The approval gate (Option 2) requires the bot to be running first. Which do you want first?
-
-3. **Queue file vs ad-hoc**: Do you prefer a `builds/queue.txt` queue that you fill in advance, or do you want builds to always be Telegram-triggered with no pre-queued ideas?
-
-4. **WSL2 lifetime**: Are you willing to set `wsl2.shutdownTimeout=0` in `.wslconfig` to keep WSL2 alive continuously (saves process-startup latency on every build trigger), or do you prefer the on-demand start model (slower trigger, no background RAM cost)?
-
-5. **Ollama server lifecycle**: Ollama must be running before any build that uses it. Should the Task Scheduler job start `ollama serve` as a pre-step, or will you keep Ollama running manually?
+| Question | Resolution |
+|----------|------------|
+| **Telegram bot setup** | Telegram polling folded into drainer.py — no separate bot process or webhook server needed. Configure by adding `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` to `~/.bashrc` when ready. |
+| **`FORGEOS_AUTO_DEPLOY` flag vs deploy gate** | Env-var guard (Option 1) shipped. `DeployApprovalGate` (Option 2) deferred until Telegram credentials are live. |
+| **Queue file vs ad-hoc** | Both: `daemon/queue.py` supports both manual enqueue (write a `.json` to `builds/queue/pending/`) and Telegram-triggered enqueue. `builds/queue.txt` was not used. |
+| **WSL2 lifetime** | On-demand start model chosen. Task Scheduler wakes WSL2 on each 15-minute tick; no `shutdownTimeout=0`. Lower RAM cost, acceptable ~3 s startup latency. |
+| **Ollama server lifecycle** | Manual for now. Drainer does not start `ollama serve` — if Ollama is down, the build falls through to Claude haiku-4-5 per the normal LLM router. |
