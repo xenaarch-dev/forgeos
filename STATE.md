@@ -1,11 +1,57 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-17
-**Day:** 159
+**Date:** 2026-06-19
+**Day:** 161
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 159 — ADR-001 Daemon Mode implemented (`86cc519`) — auto-deploy guard + job queue + drainer + 49 new tests; 243/243 green
+**Session focus:** Day 161 — Group C tests confirmed (33/33, 31 min), ADR-001 updated, SPEC-OutreachForge-v1 created, Daemon Mode live; 244/244 green
+
+---
+
+## Day 161 — Completed (2026-06-19)
+
+### Group C test run — 33/33 passed (`/tmp/groupc_final.txt`)
+
+Full suite: `PYTHONPATH=. python3 -m pytest -k "integration or FromAgent" -v`  
+- 244 collected, 211 deselected, **33 selected — all passed** in 1878.38 s (0:31:18)
+- Machine confirmed quiet before run: no user python3 processes, Ollama idle, GPU 18%/480 MiB
+
+| File | Tests |
+|------|-------|
+| `test_architect_output.py` | 10 |
+| `test_eval_agent.py` | 1 |
+| `test_legal_agent.py` | 6 |
+| `test_pm_agent.py` | 3 |
+| `test_scaffold_output.py` | 8 |
+| `test_security_output.py` | 5 |
+| **Group C total** | **33** |
+
+**Suite total: 244/244 green** (was 243 — +1 from `f6669da` models fix).
+
+### ADR-001 updated — `fa35622`
+
+`docs/adr/ADR-001-daemon-mode.md` — Decision section rewritten from "Recommended approach" to "What was shipped":
+- Records flat-file JSON queue design (not queue.txt)
+- Records Telegram-in-drainer pattern (not a separate bot process)
+- Open Questions table: all 5 resolved
+- Pushed to main: `fa35622`
+
+### SPEC-OutreachForge-v1.md created — `569e8ac`
+
+`docs/specs/SPEC-OutreachForge-v1.md` (new directory `docs/specs/`)
+- Problem: zero paying customers through Day 161 — blocker is outreach, not product or payment
+- Scope: accept supplied leads, draft personalised first-touch, human-approval gate, Supabase tracking, follow-up drafts
+- Architecture: `OutreachForgeAgent(ForgeAgent)` in `agents/outreach.py`, new `outreach_leads` Supabase table
+- Open Question 2 (approval/notification channel) **UNRESOLVED** — Telegram blocked in India June 16–22 (NEET exam-fraud order, Section 69A IT Act). Lifts June 22; message-editing restriction until June 30. Do not build notification piece until decided.
+- Everything else in spec is buildable now.
+- Pushed to main: `569e8ac`
+
+### Daemon Mode — live
+
+- `ForgeOS_Daemon_Drain` Task Scheduler job confirmed running every 15 minutes
+- Manual drainer run verified: Telegram gracefully skipped (no creds), queue empty, exit 0
+- Drainer log at `logs/drainer.log`
 
 ---
 
@@ -247,21 +293,22 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `86cc519` |
-| Test suite | 243/243 passing — fully green |
+| main branch | `569e8ac` |
+| Test suite | 244/244 passing — fully green |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 159 — complete.** Daemon Mode fully implemented. Next session open items:
+**Day 161 — complete.** Group C green, ADR-001 updated, SPEC-OutreachForge-v1 created, Daemon Mode live. Next session open items:
 
-1. **Register Windows Task Scheduler trigger** — run the `schtasks` command above (Day 159 section) after manual dry-run. Confirm `PYTHONPATH=. python3 -m daemon.drainer` runs clean in WSL2 first with one queued idea.
-2. **Telegram credentials** — add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to `~/.bashrc` in WSL2. Drainer's `_tg_poll` is already wired; it just needs the env vars to activate. Steps: (a) `/start @BotFather` → `/newbot`; (b) export token; (c) send message to bot, call `getUpdates` to find chat_id; (d) export chat_id.
-3. **Ollama→Claude API swap** — see `TODO` in `llm/ollama.py` and the task reminder at `builds/queue/pending/20260617T000000_ollama-api-swap.json`. Do this after Telegram is wired so you can verify cloud-triggered builds reach the LLM.
-4. **FalClient activation** — deferred until `FAL_API_KEY` exists (fal.ai account).
-5. **Xenarch Master OS sprint (separate thread):** outreach + one Instagram action item — carry over.
+1. **OutreachForge build** — core agent (`agents/outreach.py`, `OutreachForgeAgent(ForgeAgent)`) + Supabase `outreach_leads` table is buildable now. **Hold notification channel piece** until Open Question 2 resolved (Telegram unblock June 22 or alternative chosen).
+2. **Notification channel decision (June 22+)** — Telegram lifts June 22; message-editing restriction until June 30. Decide: wait for Telegram, or WhatsApp Business Cloud API, or Claude Cowork mobile pairing. Then wire approval gate in OutreachForge.
+3. **First paying customer** — zero leads sourced through Day 161. OutreachForge exists to remove this blocker once leads are supplied.
+4. **Telegram credentials** (still pending) — add `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` to `~/.bashrc`. Drainer is wired; just needs creds.
+5. **Ollama→Claude API swap** — `TODO` in `llm/ollama.py`. After Telegram is live.
+6. **FalClient activation** — deferred until `FAL_API_KEY` exists.
 
 ---
 
