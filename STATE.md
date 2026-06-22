@@ -1,11 +1,68 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-19
-**Day:** 161
+**Date:** 2026-06-22
+**Day:** 162
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 161 — Group C tests confirmed (33/33, 31 min), ADR-001 updated, SPEC-OutreachForge-v1 created, Daemon Mode live; 244/244 green
+**Session focus:** Day 162 — README rewritten, OutreachForgeAgent v1 shipped (agents/outreach.py, migration, 28/28 tests), .mcp.json wired for magic + nano-banana-pro
+
+---
+
+## Day 162 — Completed (2026-06-22)
+
+### README rewritten — `e5b2cee`
+
+`README.md` fully rewritten. 82 insertions, 232 deletions. Night Forge tone — dark, precise, builder-voice, no startup marketing. No badges.
+
+Content: what shipped (ContractForge), the 18-stage pipeline, 7 named agents, Daemon Mode, stack (Python 3.12 / Render+Vercel), 244 tests, Night Forge design tokens, India-first deliberate choices, ForgeADK snippet, quick start.
+
+`.env.example` exists at root — referenced as prose: "Copy `.env.example` to `.env` and add your keys — minimum: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`."
+
+### OutreachForgeAgent v1 — `436c5d2`
+
+Four files shipped in one commit:
+
+**`agents/outreach.py`** — `OutreachForgeAgent(ForgeAgent)`:
+- `name="outreach_forge"`, `phase="outreach"`, `budget_usd=0.05`
+- `_execute` raises `NotImplementedError` — not a HermesOrchestrator pipeline stage
+- Public API: `draft_message(lead)` → `queue_for_approval(lead, draft)` → `mark_approved(lead_id)` → `mark_sent(lead_id)` + `get_pending_approvals()`
+- `draft_message`: validates required fields (`name`, `platform`, `fit_context`), calls `ClaudeClient.complete()` with ContractForge positioning prompt, peer-to-peer voice, max 4 sentences
+- All Supabase calls through `_supabase_client()` static method (service role key)
+- **HARD RULE** enforced in code comment and docstring: nothing sends automatically, ever
+
+**`agents/__init__.py`** — `OutreachForgeAgent` added to `_LAZY` + `__all__` under "Standalone utilities" comment
+
+**`supabase/migrations/20260622000000_outreach_leads.sql`** — new `supabase/migrations/` directory:
+- `outreach_leads` table: `id`, `name`, `handle`, `platform` (check: x/email/linkedin), `fit_context`, `status` (check: drafted/approved/sent), `draft_message`, `approved_at`, `sent_at`, `reply_received`, `follow_up_draft`, `created_at`, `updated_at`
+- `updated_at` trigger via `update_updated_at()` function
+- RLS enabled, service role only — not exposed to end users
+
+**`tests/test_outreach_agent.py`** — 28 unit tests, 6 classes:
+- `TestDraftMessage` (7): missing-field validation, missing API key, return value, handle optional
+- `TestQueueForApproval` (5): status=drafted enforced, payload fields, no sent_at/approved_at on insert, correct table, Supabase error handling
+- `TestGetPendingApprovals` (4): returns list, filters status=drafted, correct table, None→[] guard
+- `TestMarkApproved` (5): status=approved, approved_at set, id filter, sent_at absent, Supabase error handling
+- `TestMarkSent` (5): status=sent, sent_at set, id filter, approved_at absent, Supabase error handling
+- `TestSupabaseClient` (2): SUPABASE_URL missing, SUPABASE_SERVICE_ROLE_KEY missing
+- All Supabase calls mocked via `patch("agents.outreach.OutreachForgeAgent._supabase_client", return_value=mock_client)`
+- `TestSupabaseClient` mocks `sys.modules["supabase"]` — the Windows env has a broken `supabase` package install (`create_client` not importable), so the mock bypasses the ImportError to reach the env var check
+- **28 / 28 passed** (`0.23s`)
+
+### .mcp.json + .gitignore — `cd81f88`
+
+**`.mcp.json`** (new, not committed — gitignored):
+```json
+{
+  "mcpServers": {
+    "magic":           { "command": "npx", "args": ["-y", "@21st-dev/magic@latest"],         "env": { "API_KEY": "PLACEHOLDER_REPLACE_AFTER" } },
+    "nano-banana-pro": { "command": "npx", "args": ["@rafarafarafa/nano-banana-pro-mcp"],     "env": { "GEMINI_API_KEY": "PLACEHOLDER_REPLACE_AFTER" } }
+  }
+}
+```
+Fill in real keys then restart the Claude Code session — tools will appear. `.mcp.json` is added to `.gitignore` (API keys, not for git).
+
+Note: `SPEC-OutreachForge-v1.md` (`docs/specs/SPEC-OutreachForge-v1.md`) was confirmed present on remote at `569e8ac` — created in WSL2 in Day 161. OutreachForge agent was built matching that spec.
 
 ---
 
@@ -286,28 +343,27 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ---
 
----
-
 ## Current State
 
 | Item | Value |
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
-| main branch | `569e8ac` |
-| Test suite | 244/244 passing — fully green |
+| ContractForge | contractforge.co.in |
+| main branch | `cd81f88` |
+| Test suite | 272/272 passing — fully green |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 161 — complete.** Group C green, ADR-001 updated, SPEC-OutreachForge-v1 created, Daemon Mode live. Next session open items:
+**Day 162 — complete.** OutreachForge v1 shipped (28/28 tests), README rewritten, .mcp.json wired. Next session open items:
 
-1. **OutreachForge build** — core agent (`agents/outreach.py`, `OutreachForgeAgent(ForgeAgent)`) + Supabase `outreach_leads` table is buildable now. **Hold notification channel piece** until Open Question 2 resolved (Telegram unblock June 22 or alternative chosen).
-2. **Notification channel decision (June 22+)** — Telegram lifts June 22; message-editing restriction until June 30. Decide: wait for Telegram, or WhatsApp Business Cloud API, or Claude Cowork mobile pairing. Then wire approval gate in OutreachForge.
-3. **First paying customer** — zero leads sourced through Day 161. OutreachForge exists to remove this blocker once leads are supplied.
-4. **Telegram credentials** (still pending) — add `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` to `~/.bashrc`. Drainer is wired; just needs creds.
-5. **Ollama→Claude API swap** — `TODO` in `llm/ollama.py`. After Telegram is live.
+1. **Telegram credentials** — Telegram ban lifted June 22 (today). Add `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` to WSL2 `~/.bashrc`. Drainer is wired; just needs creds. Then OutreachForge approval channel decision unblocked.
+2. **OutreachForge approval channel** — Open Question 2 from SPEC-OutreachForge-v1. Message-editing restriction lifts June 30. Options: Telegram bot DM, WhatsApp Business Cloud API, Claude Cowork mobile pairing. Decide and wire `mark_approved()` notification.
+3. **Supply leads + run first draft batch** — Zero leads sourced through Day 162. `OutreachForgeAgent` is ready. Supply leads dict, call `draft_message()` → `queue_for_approval()`, review drafts in Supabase.
+4. **Stitch MCP** — failed to connect; needs Google Cloud Console auth. Unblock when needed.
+5. **Ollama→Claude API swap** — `TODO` in `llm/ollama.py`. Backlog.
 6. **FalClient activation** — deferred until `FAL_API_KEY` exists.
 
 ---
@@ -331,19 +387,25 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_agents.py` | 4/4 | 0 | full pass |
 | `test_architect_output.py` | 17/17 | 0 | full pass |
 | `test_dataset_collector.py` | 19/19 | 0 | full pass |
+| `test_deploy_guard.py` | 9/9 | 0 | new Day 159 — auto-deploy guard |
+| `test_drainer.py` | 16/16 | 0 | new Day 159 — daemon drainer |
 | `test_eval_agent.py` | 19/19 | 0 | full pass |
+| `test_gstack.py` | 4/4 | 0 | gate-failure + pass + subclass + base-attr |
+| `test_launch_agent.py` | 23/23 | 0 | LaunchAgent attrs, render, run (mocked LLM), FalClient stub |
 | `test_legal_agent.py` | 13/13 | 0 | full pass |
 | `test_orchestrator.py` | 4/4 | 0 | full pass |
+| `test_outreach_agent.py` | 28/28 | 0 | new Day 162 — draft/queue/approve/sent, all Supabase mocked |
 | `test_pm_agent.py` | 27/27 | 0 | full pass |
+| `test_queue.py` | 24/24 | 0 | new Day 159 — build queue FIFO lifecycle |
 | `test_scaffold_output.py` | 12/12 | 0 | full pass |
 | `test_security_output.py` | 15/15 | 0 | full pass |
 | `test_tools.py` | 6/6 | 0 | full pass |
 | `test_validator_output.py` | 7/7 | 0 | full pass |
-| `test_voice_agent.py` | 18/18 | 0 | fixed: asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
+| `test_voice_agent.py` | 18/18 | 0 | asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
-| `test_gstack.py` | 4/4 | 0 | new — gate-failure + pass + subclass + base-attr tests |
-| `test_launch_agent.py` | 23/23 | 0 | new — LaunchAgent attrs, render, run (mocked LLM), FalClient stub |
-| **TOTAL** | **194/194** | **0** | fully green |
+| **TOTAL** | **271/271** | **0** | fully green |
+
+*Note: 272nd test is the +1 models fix from Day 161 (`f6669da`) — file not separately listed above; total confirmed 272 by running full suite.*
 
 ---
 
@@ -366,4 +428,5 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | MissionOrchestrator | ForgeAgent | ✓ (2026-06-15) |
 | MissionWorkerLoop | ForgeAgent | ✓ (2026-06-15) — `capabilities=[]`: files written by MissionWorker helper, not the loop |
 | MissionValidator | ForgeAgent | ✓ (2026-06-15) |
+| OutreachForgeAgent | ForgeAgent | ✓ (2026-06-22) — `436c5d2`, standalone utility, `_execute` raises NotImplementedError |
 | VoiceAgent | *none* (plain class) | N/A — standalone TTS utility, no pipeline base needed |
