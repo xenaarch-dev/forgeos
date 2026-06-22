@@ -43,6 +43,8 @@ _LAZY: dict[str, str] = {
     "HermesGateway":      "agents.hermes",
     "HermesOrchestrator": "agents.hermes",
     "TelegramNotifier":   "agents.hermes",
+    # Standalone utilities
+    "OutreachForgeAgent": "agents.outreach",
 }
 
 
@@ -90,4 +92,6 @@ __all__ = [
     "HermesGateway",
     "HermesOrchestrator",
     "TelegramNotifier",
+    # Standalone utilities
+    "OutreachForgeAgent",
 ]
