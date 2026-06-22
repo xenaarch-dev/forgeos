@@ -13,6 +13,7 @@ dist/
 # Env
 .env
 .env.local
+.mcp.json
 
 # ForgeOS state
 .forgeos/
