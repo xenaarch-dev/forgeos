@@ -6,8 +6,9 @@ Run: PYTHONPATH=. python3 -m pytest tests/test_outreach_agent.py -v
 
 from __future__ import annotations
 
+import asyncio
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from agents.outreach import MigrationNotRunError, OutreachForgeAgent
 from models import LLMError
@@ -282,6 +283,44 @@ class TestSupabaseClient:
 # ---------------------------------------------------------------------------
 # TestVerifyMigration
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# TestSendApprovalNotification
+# ---------------------------------------------------------------------------
+
+class TestSendApprovalNotification:
+    def test_send_approval_notification_success(self, monkeypatch):
+        monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/fake")
+        mock_resp = MagicMock(status_code=204)
+        mock_http = AsyncMock()
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+        mock_http.post = AsyncMock(return_value=mock_resp)
+        with patch("agents.outreach.httpx.AsyncClient", return_value=mock_http):
+            result = asyncio.run(
+                OutreachForgeAgent().send_approval_notification("id-1", "Rahul Sharma", "Draft")
+            )
+        assert result is True
+
+    def test_send_approval_notification_missing_env(self, monkeypatch):
+        monkeypatch.delenv("DISCORD_WEBHOOK_URL", raising=False)
+        result = asyncio.run(
+            OutreachForgeAgent().send_approval_notification("id-1", "Rahul Sharma", "Draft")
+        )
+        assert result is False
+
+    def test_queue_for_approval_triggers_discord_notification(self):
+        mock_sb = _mock_supabase()
+        ok_with_id = MagicMock()
+        ok_with_id.error = None
+        ok_with_id.data = [{"id": "lead-abc-123"}]
+        mock_sb.table.return_value.insert.return_value.execute.return_value = ok_with_id
+        mock_notify = AsyncMock(return_value=True)
+        with patch("agents.outreach.OutreachForgeAgent._supabase_client", return_value=mock_sb):
+            with patch.object(OutreachForgeAgent, "send_approval_notification", mock_notify):
+                OutreachForgeAgent().queue_for_approval(_valid_lead(), "Draft text")
+        mock_notify.assert_called_once_with("lead-abc-123", "Rahul Sharma", "Draft text")
+
 
 class TestVerifyMigration:
     def test_verify_migration_raises_on_missing_table(self):

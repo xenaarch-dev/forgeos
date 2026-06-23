@@ -9,12 +9,19 @@ a human calls mark_approved() and then manually triggers the send.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
+
 from forge_sdk.agent import ForgeAgent
 from models import LLMError, ProjectContext
+
+
+_log = logging.getLogger(__name__)
 
 
 _SYSTEM_PROMPT = """\
@@ -130,6 +137,48 @@ class OutreachForgeAgent(ForgeAgent):
         result = client.table("outreach_leads").insert(payload).execute()
         if getattr(result, "error", None):
             raise RuntimeError(f"Supabase insert failed: {result.error}")
+        lead_id = (result.data or [{}])[0].get("id", "")
+        try:
+            asyncio.run(self.send_approval_notification(lead_id, lead["name"], draft))
+        except Exception as exc:
+            _log.warning("Discord notification skipped after queue: %s", exc)
+
+    async def send_approval_notification(
+        self,
+        lead_id: str,
+        lead_name: str,
+        draft_message: str,
+    ) -> bool:
+        """Post an approval-required embed to the Discord webhook.
+
+        Returns True on HTTP 204 (Discord success). Returns False on any error.
+        Never raises. NOTIFICATION ONLY — does not send outreach.
+        """
+        webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+        if not webhook_url:
+            _log.warning("DISCORD_WEBHOOK_URL not set — approval notification skipped")
+            return False
+        payload = {
+            "content": "🔔 **OutreachForge — Approval Required**",
+            "embeds": [{
+                "title": lead_name,
+                "description": draft_message,
+                "footer": {
+                    "text": (
+                        f"Lead ID: {lead_id} | "
+                        f"Reply: /approve {lead_id} or /reject {lead_id}"
+                    ),
+                },
+                "color": 15105570,
+            }],
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as http:
+                resp = await http.post(webhook_url, json=payload)
+                return resp.status_code == 204
+        except Exception as exc:
+            _log.error("Discord notification failed: %s", exc)
+            return False
 
     def get_pending_approvals(self) -> list:
         """Return all rows with status='drafted', ordered by created_at."""
