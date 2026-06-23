@@ -1,11 +1,59 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-22
-**Day:** 162
+**Date:** 2026-06-23
+**Day:** 163
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
-**Branch:** main
+**Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 162 — README rewritten, OutreachForgeAgent v1 shipped (agents/outreach.py, migration, 28/28 tests), .mcp.json wired for magic + nano-banana-pro
+**Session focus:** Day 163 — outreach_leads migration live in Supabase, MigrationNotRunError + verify_migration() smoke test, Discord webhook approval notifications, Telegram removed permanently (Section 69A ban)
+
+---
+
+## Day 163 — Completed (2026-06-23)
+
+### outreach_leads migration — live in production Supabase
+
+Migration `supabase/migrations/20260622000000_outreach_leads.sql` run manually via Supabase SQL editor (project: vcjicrqfnwdegggkrlpd). Confirmed: table, trigger (`outreach_leads_updated_at`), and RLS all created successfully. `OutreachForgeAgent.queue_for_approval()` can now write to production.
+
+### MigrationNotRunError + verify_migration() — `0d4bccd`
+
+- `MigrationNotRunError(Exception)` added to `agents/outreach.py`
+- `verify_migration()`: `SELECT id FROM outreach_leads LIMIT 1` — prints "Migration confirmed: outreach_leads exists" on success, raises `MigrationNotRunError` with SQL editor remediation link on any failure
+- `test_verify_migration_raises_on_missing_table`: mocks `execute()` raising postgrest-style exception, asserts `MigrationNotRunError` propagates
+- **273/273 green** (was 272 — +1 new test)
+
+### Discord approval notifications — `7b08c01`
+
+Telegram permanently removed from plan (Section 69A IT Act, still blocked in India as of Day 163). Discord webhook is the approval channel.
+
+**`agents/outreach.py`**:
+- `send_approval_notification(lead_id, lead_name, draft_message) -> bool` — async method: POSTs Discord embed to `DISCORD_WEBHOOK_URL`, returns True on HTTP 204, False on any error or missing env var, never raises
+- Embed format: content = "🔔 **OutreachForge — Approval Required**", embed title = lead name, description = draft, footer = "Lead ID: {id} | Reply: /approve {id} or /reject {id}", color = 15105570 (orange)
+- `queue_for_approval()` updated: extracts `lead_id` from insert result, calls notification via `asyncio.run()` in a best-effort try/except
+- Imports added: `asyncio`, `logging`, `httpx`; `_log = logging.getLogger(__name__)` added at module level
+
+**Discord webhook setup instructions** (run manually when ready):
+```bash
+# Add to WSL2 ~/.bashrc:
+echo 'export DISCORD_WEBHOOK_URL="paste_webhook_url_here"' >> ~/.bashrc
+source ~/.bashrc
+
+# Create the webhook:
+# 1. Open any Discord server (or create one called "ForgeOS Control")
+# 2. Any channel → Edit Channel → Integrations → Webhooks → New Webhook
+# 3. Name it "OutreachForge" → Copy Webhook URL → paste into command above
+```
+
+**Tests** (3 new):
+- `test_send_approval_notification_success`: mocks `httpx.AsyncClient`, asserts True on 204
+- `test_send_approval_notification_missing_env`: no `DISCORD_WEBHOOK_URL`, asserts False without raising
+- `test_queue_for_approval_triggers_discord_notification`: mocks Supabase + `send_approval_notification` (AsyncMock), asserts called with correct lead_id/name/draft
+
+**276/276 green** (was 273 — +3 new tests)
+
+### YC application draft — `yc/application_draft.md` (not committed)
+
+Two versions written. Version B (ContractForge leads, ForgeOS as engine) flagged as stronger. Xena to review and edit before commit.
 
 ---
 
@@ -349,19 +397,19 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
 | ContractForge | contractforge.co.in |
-| main branch | `cd81f88` |
-| Test suite | 272/272 passing — fully green |
+| main branch | `7b08c01` |
+| Test suite | 276/276 passing — fully green |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 162 — complete.** OutreachForge v1 shipped (28/28 tests), README rewritten, .mcp.json wired. Next session open items:
+**Day 163 — complete.** outreach_leads live in Supabase, Discord webhook approval notifications shipped (276/276), YC draft written (Version B, not committed). Next session open items:
 
-1. **Telegram credentials** — Telegram ban lifted June 22 (today). Add `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` to WSL2 `~/.bashrc`. Drainer is wired; just needs creds. Then OutreachForge approval channel decision unblocked.
-2. **OutreachForge approval channel** — Open Question 2 from SPEC-OutreachForge-v1. Message-editing restriction lifts June 30. Options: Telegram bot DM, WhatsApp Business Cloud API, Claude Cowork mobile pairing. Decide and wire `mark_approved()` notification.
-3. **Supply leads + run first draft batch** — Zero leads sourced through Day 162. `OutreachForgeAgent` is ready. Supply leads dict, call `draft_message()` → `queue_for_approval()`, review drafts in Supabase.
+1. **Discord webhook URL** — Create webhook in "ForgeOS Control" Discord server, add `DISCORD_WEBHOOK_URL` to WSL2 `~/.bashrc`. Run `verify_migration()` from Python REPL to confirm production table access.
+2. **Supply leads + run first draft batch** — Zero leads sourced through Day 163. Supply a leads dict, call `draft_message()` → `queue_for_approval()`, watch Discord notification fire, review draft in Supabase dashboard.
+3. **YC application draft** — `yc/application_draft.md` written, Version B flagged as stronger. Xena edits and decides before commit.
 4. **Stitch MCP** — failed to connect; needs Google Cloud Console auth. Unblock when needed.
 5. **Ollama→Claude API swap** — `TODO` in `llm/ollama.py`. Backlog.
 6. **FalClient activation** — deferred until `FAL_API_KEY` exists.
@@ -394,7 +442,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_launch_agent.py` | 23/23 | 0 | LaunchAgent attrs, render, run (mocked LLM), FalClient stub |
 | `test_legal_agent.py` | 13/13 | 0 | full pass |
 | `test_orchestrator.py` | 4/4 | 0 | full pass |
-| `test_outreach_agent.py` | 28/28 | 0 | new Day 162 — draft/queue/approve/sent, all Supabase mocked |
+| `test_outreach_agent.py` | 32/32 | 0 | Day 163: +MigrationNotRunError, +Discord webhook (3 tests) |
 | `test_pm_agent.py` | 27/27 | 0 | full pass |
 | `test_queue.py` | 24/24 | 0 | new Day 159 — build queue FIFO lifecycle |
 | `test_scaffold_output.py` | 12/12 | 0 | full pass |
@@ -403,9 +451,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_validator_output.py` | 7/7 | 0 | full pass |
 | `test_voice_agent.py` | 18/18 | 0 | asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
-| **TOTAL** | **271/271** | **0** | fully green |
-
-*Note: 272nd test is the +1 models fix from Day 161 (`f6669da`) — file not separately listed above; total confirmed 272 by running full suite.*
+| **TOTAL** | **276/276** | **0** | fully green |
 
 ---
 
