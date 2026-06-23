@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock, patch
 
-from agents.outreach import OutreachForgeAgent
+from agents.outreach import MigrationNotRunError, OutreachForgeAgent
 from models import LLMError
 
 
@@ -277,3 +277,18 @@ class TestSupabaseClient:
         monkeypatch.setitem(sys.modules, "supabase", MagicMock())
         with pytest.raises(RuntimeError, match="SUPABASE_SERVICE_ROLE_KEY"):
             OutreachForgeAgent._supabase_client()
+
+
+# ---------------------------------------------------------------------------
+# TestVerifyMigration
+# ---------------------------------------------------------------------------
+
+class TestVerifyMigration:
+    def test_verify_migration_raises_on_missing_table(self):
+        mock_client = MagicMock()
+        mock_client.table.return_value.select.return_value.limit.return_value.execute.side_effect = (
+            Exception("relation \"outreach_leads\" does not exist")
+        )
+        with patch("agents.outreach.OutreachForgeAgent._supabase_client", return_value=mock_client):
+            with pytest.raises(MigrationNotRunError, match="outreach_leads"):
+                OutreachForgeAgent().verify_migration()

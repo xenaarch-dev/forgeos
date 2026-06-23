@@ -48,6 +48,10 @@ Rules:
 """
 
 
+class MigrationNotRunError(Exception):
+    """Raised when outreach_leads table is not accessible in Supabase."""
+
+
 class OutreachForgeAgent(ForgeAgent):
     """Draft and queue first-touch outreach for ContractForge leads.
 
@@ -165,6 +169,32 @@ class OutreachForgeAgent(ForgeAgent):
         if getattr(result, "error", None):
             raise RuntimeError(f"Supabase update failed: {result.error}")
 
+    def verify_migration(self) -> None:
+        """Confirm outreach_leads table exists in Supabase.
+
+        Prints "Migration confirmed: outreach_leads exists" on success.
+        Raises MigrationNotRunError with remediation instructions on failure.
+
+        Run once after applying supabase/migrations/20260622000000_outreach_leads.sql.
+        """
+        client = self._supabase_client()
+        try:
+            result = client.table("outreach_leads").select("id").limit(1).execute()
+            if getattr(result, "error", None):
+                raise MigrationNotRunError(
+                    f"outreach_leads query returned error — table may not exist.\n"
+                    f"Apply: supabase/migrations/20260622000000_outreach_leads.sql in the Supabase SQL editor.\n"
+                    f"Error: {result.error}"
+                )
+        except MigrationNotRunError:
+            raise
+        except Exception as exc:
+            raise MigrationNotRunError(
+                "outreach_leads table is not accessible — migration likely not run.\n"
+                "Apply: supabase/migrations/20260622000000_outreach_leads.sql in the Supabase SQL editor."
+            ) from exc
+        print("Migration confirmed: outreach_leads exists")
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
@@ -184,4 +214,4 @@ class OutreachForgeAgent(ForgeAgent):
         return create_client(url, key)
 
 
-__all__ = ["OutreachForgeAgent"]
+__all__ = ["OutreachForgeAgent", "MigrationNotRunError"]
