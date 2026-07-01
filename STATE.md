@@ -506,3 +506,64 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | MissionValidator | ForgeAgent | ✓ (2026-06-15) |
 | OutreachForgeAgent | ForgeAgent | ✓ (2026-06-22) — `436c5d2`, standalone utility, `_execute` raises NotImplementedError |
 | VoiceAgent | *none* (plain class) | N/A — standalone TTS utility, no pipeline base needed |
+
+---
+
+## HANDOFF — Day 173 (2026-07-01)
+
+**Default agent behavior changed today. Read this before touching any LLM call.**
+
+### Default LLM for all agent calls is now GLM-5.2, not qwen2.5-coder:7b
+
+As of commit `6b248a9`, every ForgeOS pipeline stage — scaffold, worker, validator, pm_agent,
+eval_agent, architect, security, cso_gate — routes to **GLM-5.2 (zhipuai/glm-z1-32b via OpenRouter)**
+by default. qwen2.5-coder:7b no longer runs unless `FORGEOS_OFFLINE_MODE=true` is set.
+
+This is not a config toggle. It is the new default routing path in `llm/router.py::_select_chain()`.
+
+**Before running any build**, confirm this env var is set:
+```bash
+echo $GLM_API_KEY   # must print sk-or-v1-... (OpenRouter key)
+```
+If it's blank, the router falls back to `claude-sonnet-4-6` (Tier 2), which costs ~6× more.
+To get a key: sign up at openrouter.ai → Dashboard → API Keys. Free tier is available.
+Add to `~/.bashrc`:
+```bash
+export GLM_API_KEY="sk-or-v1-..."
+```
+**GLM_API_KEY was NOT set as of Day 173 close.** All builds until it is set will silently use Sonnet.
+
+### Semgrep gate is live — but needs to be installed
+
+SecurityAgent now runs `semgrep --config=auto --json` against every generated project.
+CSOGate hard-blocks on any ERROR-severity finding, independent of LLM judgment.
+
+`semgrep` is now declared in `pyproject.toml` (`dev` and `all` extras, `>=1.50`).
+
+Install in WSL2 (where builds actually run):
+```bash
+pip install semgrep --break-system-packages
+# or in a venv:
+pip install -e ".[all]"
+```
+
+If semgrep is not installed, `_run_semgrep()` returns `[]` silently — **the gate does not block,
+and there are no findings to merge into SECURITY.md.** This is indistinguishable from "scan ran
+clean." Always verify semgrep is on PATH in the WSL2 environment where builds run.
+
+### Fable-5 frontier tier — off by default
+
+`FORGEOS_FRONTIER_TIER` defaults to `False` in `config.py`. When set to `true`, architect and
+cso_gate stages route to `claude-fable-5` instead of GLM-5.2. The model string is the literal
+`"claude-fable-5"` (constant `_FABLE5` in `llm/router.py`). Costs ~$10/$50 MTok.
+
+Do not set `FORGEOS_FRONTIER_TIER=true` in CI or unattended builds — it bypasses the cost budget.
+
+### Open blockers for next session
+
+| Blocker | Action |
+|---------|--------|
+| `GLM_API_KEY` not set | Sign up openrouter.ai, add key to WSL2 `~/.bashrc` |
+| semgrep not verified in WSL2 | `pip install semgrep --break-system-packages` in WSL2, then `semgrep --version` |
+| Live GLM-5.2 call not verified | After setting key: `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.content[:80])"` |
+| RepairLoop not implemented | Spec at `forge_sdk/specs/SPEC_RepairLoop.md` — answer Open Q1 first |
