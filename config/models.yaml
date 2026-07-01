@@ -1,14 +1,45 @@
+# ModelRouter v2 — tiered routing (2026-07-01)
+#
+# Tier 1: GLM-5.2 via OpenRouter — 62.1 SWE-bench Pro, MIT, ~$1.20/$4.10 MTok
+#   Requires GLM_API_KEY. New default for all bulk/scaffolding agent turns.
+#   Verify model slug at openrouter.ai/models when setting up the key.
+#
+# Tier 2: claude-sonnet-4-6 — quality fallback when GLM is unavailable.
+#
+# Tier 3: claude-fable-5 — ~80.3 SWE-bench Pro, $10/$50 MTok.
+#   Used for architect + security gates only. Gated behind FORGEOS_FRONTIER_TIER=true.
+#   Off by default. Enable per-run, not globally, until revenue covers the cost.
+#
+# Offline: ollama/qwen2.5-coder:7b — explicit opt-in via FORGEOS_OFFLINE_MODE=true.
+#   No API key required. No longer the default. Capability ceiling too low for
+#   production-quality ForgeOS output.
+
 stages:
-  architect:     "claude-opus-4-8"
-  scaffold:      "claude-sonnet-4-6"
-  security:      "claude-opus-4-8"
-  worker:        "claude-sonnet-4-6"
-  validator:     "claude-sonnet-4-6"
-  legal:         "claude-opus-4-8"
-  pm_agent:      "claude-sonnet-4-6"
-  eval_agent:    "claude-sonnet-4-6"
-  gbrain_index:  "ollama/qwen2.5-coder:7b"
-  default:       "claude-sonnet-4-6"
+  # Tier 1 — GLM-5.2 (bulk/scaffolding)
+  scaffold:     "openrouter/zhipuai/glm-z1-32b"
+  worker:       "openrouter/zhipuai/glm-z1-32b"
+  validator:    "openrouter/zhipuai/glm-z1-32b"
+  pm_agent:     "openrouter/zhipuai/glm-z1-32b"
+  eval_agent:   "openrouter/zhipuai/glm-z1-32b"
+  gbrain_index: "ollama/qwen2.5-coder:7b"   # offline index task, no API key needed
+
+  # Tier 2 — Sonnet (legal/compliance: precision over cost)
+  legal:        "claude-sonnet-4-6"
+
+  # Tier 1 default for architect/security (overridden by frontier section below
+  # when FORGEOS_FRONTIER_TIER=true)
+  architect:    "openrouter/zhipuai/glm-z1-32b"
+  security:     "openrouter/zhipuai/glm-z1-32b"
+  cso_gate:     "openrouter/zhipuai/glm-z1-32b"
+
+  default:      "openrouter/zhipuai/glm-z1-32b"
+
+# Tier 3 overrides — active when FORGEOS_FRONTIER_TIER=true.
+# Only stages where quality errors are most expensive are listed here.
+frontier:
+  architect:  "claude-fable-5"
+  security:   "claude-fable-5"
+  cso_gate:   "claude-fable-5"
 
 fallback:
   - "claude-sonnet-4-6"

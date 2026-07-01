@@ -1,26 +1,43 @@
 """
-LLM router.
+LLM router — ModelRouter v2 (2026-07-01).
 
-Routing strategy (ForgeOS V2):
-  hard / architecture / planning  -> Ollama -> Claude Sonnet -> Claude Haiku
-  medium / review / security      -> Ollama -> Claude Haiku
-  low / code / scaffold           -> Ollama -> Claude Haiku
+Tiered routing strategy:
+  Tier 1 (bulk/scaffolding, most agent turns):
+    GLM-5.2 via OpenRouter — 62.1 SWE-bench Pro, MIT, ~$1.20/$4.10 MTok.
+    Requires GLM_API_KEY. Replaces qwen2.5-coder:7b as the free-tier default.
 
-Claude Sonnet is used for the highest-stakes tasks (planning, architecture,
-gate evaluation) where quality matters most. Claude Haiku handles validation
-and security (fast, precise, cheap). Ollama (qwen2.5-coder) is always tried
-first as it is free and local.
+  Tier 2 (quality default, unchanged):
+    claude-sonnet-4-6 — fallback when GLM is unavailable.
+
+  Tier 3 (frontier, gated):
+    claude-fable-5 — ~80.3 SWE-bench Pro, $10/$50 MTok.
+    Activates only when FORGEOS_FRONTIER_TIER=true AND task_type is in
+    _FRONTIER_TASK_TYPES (architecture, security). Off by default so cost
+    stays predictable. Use per-run, not globally, until there is revenue.
+
+  Offline (explicit opt-in):
+    Ollama qwen2.5-coder:7b — FORGEOS_OFFLINE_MODE=true only. No API key
+    required. No longer the default; capability ceiling is too low for
+    production-quality ForgeOS output.
+
+Cost rationale (not quality-only — this matters for future-you):
+  Pre-revenue budget is the binding constraint. GLM-5.2 closes 80% of the
+  quality gap from qwen2.5-coder at roughly 6× less cost than frontier models.
+  Fable-5 is reserved for the two gates where quality matters most and errors
+  are most expensive: architecture planning and CSO security review.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from config import LLM
 from .base import LLMClient, LLMError, LLMResponse
 from .claude import ClaudeClient
+from .glm import GLMClient
 from .ollama import OllamaClient
 
 if TYPE_CHECKING:
@@ -28,13 +45,24 @@ if TYPE_CHECKING:
 
 
 # Model IDs
-_SONNET = "claude-sonnet-4-20250514"
+_SONNET = "claude-sonnet-4-6"
 _HAIKU  = "claude-haiku-4-5"
+_FABLE5 = "claude-fable-5"
 
-# Provider chains per complexity/type
-_HARD_STACK   = ("ollama", "claude-sonnet", "claude-haiku")
-_MEDIUM_STACK = ("ollama", "claude-haiku")
-_LOW_STACK    = ("ollama", "claude-haiku")
+# Task types that route to Tier 3 (Fable-5) when FORGEOS_FRONTIER_TIER=true.
+_FRONTIER_TASK_TYPES: frozenset[str] = frozenset({"architecture", "security"})
+
+# Provider chains — each is tried left-to-right; first available wins.
+# Frontier: Fable-5 → GLM-5.2 → Sonnet (when FORGEOS_FRONTIER_TIER + frontier task)
+# Hard: GLM-5.2 → Sonnet (architecture, planning)
+# Medium: GLM-5.2 → Sonnet (review, security gates without frontier flag)
+# Low: GLM-5.2 → Sonnet (scaffold, code)
+# Offline: Ollama only (FORGEOS_OFFLINE_MODE=true)
+_FRONTIER_STACK = ("fable5", "glm52", "claude-sonnet")
+_HARD_STACK     = ("glm52", "claude-sonnet")
+_MEDIUM_STACK   = ("glm52", "claude-sonnet")
+_LOW_STACK      = ("glm52", "claude-sonnet")
+_OFFLINE_STACK  = ("ollama",)
 
 
 def route(task_complexity: str, task_type: str) -> LLMClient:
@@ -43,10 +71,17 @@ def route(task_complexity: str, task_type: str) -> LLMClient:
     for name in chain:
         if _is_available(name):
             return _build(name)
-    raise LLMError("No LLM provider available — start Ollama or set ANTHROPIC_API_KEY")
+    raise LLMError(
+        "No LLM provider available — set GLM_API_KEY (openrouter.ai) "
+        "or ANTHROPIC_API_KEY, or use FORGEOS_OFFLINE_MODE=true for Ollama"
+    )
 
 
 def _select_chain(task_complexity: str, task_type: str) -> tuple[str, ...]:
+    if LLM.offline_mode:
+        return _OFFLINE_STACK
+    if LLM.frontier_tier and task_type in _FRONTIER_TASK_TYPES:
+        return _FRONTIER_STACK
     if task_complexity == "hard" or task_type in ("architecture", "planning"):
         return _HARD_STACK
     if task_complexity == "medium" or task_type in ("review", "security"):
@@ -55,18 +90,33 @@ def _select_chain(task_complexity: str, task_type: str) -> tuple[str, ...]:
 
 
 def _build(name: str) -> LLMClient:
+    if name == "fable5":
+        return ClaudeClient(model=_FABLE5)
     if name == "claude-sonnet":
         return ClaudeClient(model=_SONNET)
     if name in ("claude", "claude-haiku"):
         return ClaudeClient(model=_HAIKU)
+    if name == "glm52":
+        return GLMClient()
     if name == "ollama":
         return OllamaClient()
     raise ValueError(f"Unknown LLM provider: {name}")
 
 
 def _is_available(client_name: str) -> bool:
-    if client_name in ("claude", "claude-haiku", "claude-sonnet"):
+    if client_name in ("claude", "claude-haiku", "claude-sonnet", "fable5"):
         return bool(LLM.anthropic_api_key)
+    if client_name == "glm52":
+        available = bool(LLM.glm_api_key)
+        if not available:
+            sys.stderr.write(
+                "\n[router] WARNING: GLM-5.2 is the preferred provider but GLM_API_KEY "
+                "is not set. Falling back to next provider in chain. "
+                "Add to ~/.bashrc: export GLM_API_KEY='sk-or-v1-...' "
+                "(get a key at openrouter.ai)\n"
+            )
+            sys.stderr.flush()
+        return available
     if client_name == "ollama":
         return True
     return False
@@ -164,6 +214,10 @@ class ModelRouter:
         self.config = yaml.safe_load(config_path.read_text())
 
     def get_model(self, stage: str) -> str:
+        if LLM.frontier_tier:
+            frontier = self.config.get("frontier", {})
+            if stage in frontier:
+                return frontier[stage]
         return self.config["stages"].get(stage, self.config["stages"]["default"])
 
     def complete(

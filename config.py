@@ -82,6 +82,25 @@ class LLMConfig:
             "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
         )
     )
+    # GLM-5.2 via OpenRouter (Tier 1 default as of 2026-07-01).
+    # Verify model slug at openrouter.ai/models when adding the key.
+    glm_api_key: str = field(default_factory=lambda: _get("GLM_API_KEY"))
+    glm_model: str = field(
+        default_factory=lambda: _get("GLM_MODEL", "zhipuai/glm-z1-32b")
+    )
+    glm_base_url: str = field(
+        default_factory=lambda: _get("GLM_BASE_URL", "https://openrouter.ai/api/v1")
+    )
+    # Frontier tier: claude-fable-5 for architecture/security gates (2x cost).
+    # Set FORGEOS_FRONTIER_TIER=true to enable. Off by default.
+    frontier_tier: bool = field(
+        default_factory=lambda: _get_bool("FORGEOS_FRONTIER_TIER", False)
+    )
+    # Offline mode: route all LLM calls to local Ollama (no API key required).
+    # Set FORGEOS_OFFLINE_MODE=true. qwen2.5-coder:7b is offline-only now.
+    offline_mode: bool = field(
+        default_factory=lambda: _get_bool("FORGEOS_OFFLINE_MODE", False)
+    )
     deepseek_model: str = field(
         default_factory=lambda: _get("DEEPSEEK_MODEL", "deepseek/deepseek-chat")
     )

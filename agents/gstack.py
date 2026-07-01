@@ -79,13 +79,14 @@ class GStackGate(ForgeAgent):
         context: ProjectContext,
         prompt: str,
         max_tokens: int = 1200,
+        task_type: str = "review",
     ) -> GateResult:
         resp = llm_complete(
             context=context,
             user=prompt,
             system_extra=_GATE_SYSTEM,
             task_complexity="hard",
-            task_type="review",
+            task_type=task_type,
             purpose=f"gate.{self.gate_name}",
             max_tokens=max_tokens,
             temperature=0.1,
@@ -389,6 +390,7 @@ Score >= 6 = PASS (ship with risks documented).
 Score < 6 = FAIL (must not ship).
 End with SCORE: N/10 and PASS or FAIL.""",
             max_tokens=1500,
+            task_type="security",  # routes to Fable-5 when FORGEOS_FRONTIER_TIER=true
         )
 
 
