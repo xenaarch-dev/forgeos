@@ -364,6 +364,23 @@ class CSOGate(GStackGate):
     requires = ["idea", "workdir"]
 
     def _evaluate(self, context: ProjectContext) -> GateResult:
+        # Semgrep hard-block: any ERROR-severity finding fails immediately,
+        # independent of LLM judgment. This gate is blocking (gate=True).
+        semgrep = context.metadata.get("security", {}).get("semgrep", {})
+        if semgrep.get("blocking"):
+            count = semgrep.get("critical_count", 0)
+            details = "; ".join(
+                f.get("check_id", "") for f in semgrep.get("critical_findings", [])[:3]
+            )
+            summary = (
+                f"Semgrep static analysis found {count} ERROR-severity finding(s): "
+                f"{details}. "
+                "Gate blocked by execution-verified static analysis — fix findings "
+                "before re-running. See SECURITY.md for the full report."
+            )
+            self._log(f"[cso_gate] BLOCKED by semgrep: {count} ERROR finding(s)")
+            return GateResult(gate=self.gate_name, passed=False, score=0.0, feedback=summary)
+
         security_md = _read_artifact(context, "SECURITY.md")
         inventory = _get_code_inventory(context)
         return self._gate_call(

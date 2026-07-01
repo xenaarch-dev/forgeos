@@ -14,7 +14,11 @@ so the orchestrator can surface them.
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -44,10 +48,17 @@ class SecurityAgent(ForgeAgent):
         if not project_root.exists():
             raise RuntimeError("Project missing — cannot audit")
 
+        # Run semgrep first — execution-verified static analysis before regex scan.
+        semgrep_findings = self._run_semgrep(project_root)
+        semgrep_critical = [
+            f for f in semgrep_findings
+            if f.get("extra", {}).get("severity", "").upper() == "ERROR"
+        ]
+
         findings = self._scan(project_root)
         self._write_policies(project_root)
         self._write_scanner_configs(project_root)
-        sec_md = self._render_security_md(context, findings, project_root)
+        sec_md = self._render_security_md(context, findings, project_root, semgrep_findings)
         self._write(context, "SECURITY.md", sec_md)
         # Copy into the project itself so it ships with the generated code.
         (project_root / "SECURITY.md").write_text(sec_md, encoding="utf-8")
@@ -57,7 +68,8 @@ class SecurityAgent(ForgeAgent):
             if t.agent == "security":
                 t.status = TaskStatus.DONE.value
 
-        # Record findings on context so they show up in SUMMARY
+        # Record findings on context so they show up in SUMMARY.
+        # semgrep section is read by CSOGate — if blocking=True, CSOGate fails outright.
         context.metadata.setdefault("security", {})
         context.metadata["security"] = {
             "issues": [
@@ -65,6 +77,20 @@ class SecurityAgent(ForgeAgent):
                 for f in findings
             ],
             "owasp_controls": _OWASP_CONTROLS,
+            "semgrep": {
+                "findings_count": len(semgrep_findings),
+                "critical_count": len(semgrep_critical),
+                "blocking": len(semgrep_critical) > 0,
+                "critical_findings": [
+                    {
+                        "check_id": f.get("check_id", ""),
+                        "path": f.get("path", ""),
+                        "message": f.get("extra", {}).get("message", "")[:200],
+                        "severity": f.get("extra", {}).get("severity", ""),
+                    }
+                    for f in semgrep_critical
+                ],
+            },
         }
 
         critical = [f for f in findings if f.severity == "critical"]
@@ -82,10 +108,84 @@ class SecurityAgent(ForgeAgent):
             "critical_findings": [f.message for f in critical],
             "warnings_list": [f.message for f in warnings],
             "passed_checks": passed_checks,
+            "semgrep_findings": len(semgrep_findings),
+            "semgrep_critical": len(semgrep_critical),
+            "semgrep_blocking": len(semgrep_critical) > 0,
             "security_md_written": True,
             "rls_policies_written": True,
             "ci_security_workflow_written": True,
         }
+
+    # ------------------------------------------------------------------
+    # Semgrep — execution-verified static analysis
+    # ------------------------------------------------------------------
+
+    def _run_semgrep(self, project_root: Path) -> list[dict]:
+        """Run semgrep --config=auto --json against the project directory.
+
+        Returns a list of semgrep finding dicts. Returns [] if semgrep is not
+        installed or if the scan errors (never raises — failure is logged, not thrown).
+        The caller checks finding['extra']['severity'] == 'ERROR' to identify blockers.
+
+        Install semgrep: pip install semgrep --break-system-packages
+        """
+        import os
+
+        binary = shutil.which("semgrep") or self._find_semgrep_binary()
+        if not binary:
+            self._log(
+                "[security] semgrep not found on PATH — skipping execution-verified "
+                "static analysis. Install: pip install semgrep --break-system-packages"
+            )
+            return []
+        try:
+            # Ensure semgrep's own directory is on PATH so it can invoke pysemgrep.
+            env = os.environ.copy()
+            binary_dir = str(Path(binary).parent)
+            env["PATH"] = binary_dir + os.pathsep + env.get("PATH", "")
+
+            result = subprocess.run(
+                [binary, "--config=auto", "--json", "--quiet", str(project_root)],
+                capture_output=True,
+                text=True,
+                timeout=180,
+                env=env,
+            )
+            # semgrep exits non-zero when findings exist — that's expected.
+            raw = result.stdout.strip()
+            if not raw:
+                return []
+            data = json.loads(raw)
+            return data.get("results", [])
+        except subprocess.TimeoutExpired:
+            self._log("[security] semgrep timed out after 180s — skipping")
+            return []
+        except json.JSONDecodeError as e:
+            self._log(f"[security] semgrep JSON parse error: {e}")
+            return []
+        except Exception as e:
+            self._log(f"[security] semgrep failed: {e}")
+            return []
+
+    @staticmethod
+    def _find_semgrep_binary() -> str | None:
+        """Find semgrep in the Python user-scripts directory (Windows fallback)."""
+        import os
+        scripts_dir = os.path.join(
+            os.path.dirname(sys.executable), "Scripts"
+        )
+        candidate = os.path.join(scripts_dir, "semgrep.exe")
+        if os.path.isfile(candidate):
+            return candidate
+        # User-level pip install on Windows
+        user_scripts = os.path.join(
+            os.path.expandvars("%APPDATA%"), "Python",
+            f"Python{sys.version_info.major}{sys.version_info.minor}",
+            "Scripts", "semgrep.exe",
+        )
+        if os.path.isfile(user_scripts):
+            return user_scripts
+        return None
 
     # ------------------------------------------------------------------
     # Scanning
@@ -162,7 +262,11 @@ class SecurityAgent(ForgeAgent):
     # ------------------------------------------------------------------
 
     def _render_security_md(
-        self, context: ProjectContext, findings: list["Finding"], project_root: Path
+        self,
+        context: ProjectContext,
+        findings: list["Finding"],
+        project_root: Path,
+        semgrep_findings: list[dict] | None = None,
     ) -> str:
         def _rel(p: Path) -> str:
             """Relative path from project root, falling back to filename."""
@@ -176,9 +280,37 @@ class SecurityAgent(ForgeAgent):
             for f in findings
         ) or "| _none_ | _none_ | No issues detected |"
         owasp = "\n".join(f"- **{k}** — {v}" for k, v in _OWASP_CONTROLS.items())
+
+        # Semgrep section — included regardless of whether findings exist.
+        sg = semgrep_findings or []
+        sg_critical = [f for f in sg if f.get("extra", {}).get("severity", "").upper() == "ERROR"]
+        sg_warnings = [f for f in sg if f.get("extra", {}).get("severity", "").upper() == "WARNING"]
+        if not sg:
+            semgrep_section = "Semgrep not available or produced no findings.\n"
+        elif sg_critical:
+            rows = "\n".join(
+                f"| ERROR | `{f.get('path', '')}` | [{f.get('check_id', '')}] "
+                f"{f.get('extra', {}).get('message', '')[:120]} |"
+                for f in sg_critical
+            )
+            semgrep_section = (
+                f"⛔ **{len(sg_critical)} ERROR-severity finding(s) detected. "
+                f"CSOGate will block until these are resolved.**\n\n"
+                "| Severity | File | Finding |\n"
+                "| -------- | ---- | ------- |\n"
+                f"{rows}\n"
+            )
+        else:
+            semgrep_section = (
+                f"✅ No ERROR-severity findings. "
+                f"{len(sg_warnings)} WARNING-severity finding(s) — review recommended.\n"
+            )
+
         return (
             "# Security Report\n\n"
             f"Project: `{context.project_id}`\n\n"
+            "## Semgrep Static Analysis (execution-verified)\n\n"
+            f"{semgrep_section}\n"
             "## Threat model\n\n"
             "Multi-tenant SaaS with public marketing pages. Trust boundary is "
             "the Supabase JWT — every authenticated API endpoint validates it "
@@ -197,7 +329,7 @@ class SecurityAgent(ForgeAgent):
             "- `trivy.yaml` — filesystem + container vulnerability scan.\n"
             "- `.snyk` — dependency policy file.\n"
             "- `.github/workflows/security.yml` — runs both on every push.\n\n"
-            "## Findings\n\n"
+            "## Heuristic findings\n\n"
             "| Severity  | File      | Message |\n"
             "| --------- | --------- | ------- |\n"
             f"{f_table}\n\n"

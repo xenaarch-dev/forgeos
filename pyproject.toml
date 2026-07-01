@@ -46,3 +46,6 @@ include = ["forgeos*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "integration: real tool invocations (semgrep, network, etc.)",
+]
