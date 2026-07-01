@@ -1,11 +1,37 @@
 # ForgeOS — Session State
 
-**Date:** 2026-06-23
-**Day:** 163
+**Date:** 2026-07-01
+**Day:** 173
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
-**Remote:** https://github.com/xenaarch-dev/forgeos.git (pushed — all session commits live)
-**Session focus:** Day 163 — outreach_leads migration live in Supabase, MigrationNotRunError + verify_migration() smoke test, Discord webhook approval notifications, Telegram removed permanently (Section 69A ban)
+**Remote:** https://github.com/xenaarch-dev/forgeos.git (5 commits ahead of origin/main — push pending)
+**Session focus:** Day 173 — ModelRouter v2 (GLM-5.2 Tier 1, Fable-5 Tier 3 gated), Semgrep execution-verified security gate, SPEC_RepairLoop.md, FORGE_BRAIN.md company brain
+
+---
+
+## Day 173 — Completed (2026-07-01)
+
+### ModelRouter v2 — `6b248a9`
+
+GLM-5.2 (zhipuai/glm-z1-32b via OpenRouter) becomes the Tier 1 default for all build stages. qwen2.5-coder:7b is retired as primary — lives on only via `FORGEOS_OFFLINE_MODE=true`. claude-fable-5 added as gated Tier 3 for architecture + security task types when `FORGEOS_FRONTIER_TIER=true`.
+
+**New files**: `llm/glm.py` — GLMClient (OpenAI-compatible, targets OpenRouter), `config/models.yaml` rewritten with `[stages]` + `[frontier]` blocks.
+
+**Modified**: `llm/router.py` — `_select_chain()` three-tier + offline logic; `config.py` — `LLMConfig` fields `glm_api_key`, `glm_model`, `glm_base_url`, `frontier_tier`, `offline_mode`; `agents/gstack.py` — `_gate_call()` `task_type` param, CSOGate passes `task_type="security"`; `AGENTS.md` — ModelRouter v2 rules block (31 sections total).
+
+**Tests**: 22 new in `tests/test_model_router.py` — **298/298 green** at commit.
+
+### Semgrep gate + SPEC_RepairLoop — `a43230c`
+
+**SecurityAgent** (`agents/security.py`) gains `_run_semgrep()`: calls `semgrep --config=auto --json --quiet`, prepends binary dir to PATH (fixes pysemgrep resolution on Windows), returns `[]` on any failure. `_find_semgrep_binary()` checks Scripts/ and `%APPDATA%/Python/Python311/Scripts/` as fallback. Results stored in `context.metadata["security"]["semgrep"]` with `blocking=True` when ERROR-severity findings exist.
+
+**CSOGate** (`agents/gstack.py`) checks `semgrep.blocking` BEFORE calling LLM — hard-fails gate with finding count + check_id details if true.
+
+**SECURITY.md** render now has a dedicated "Semgrep Static Analysis (execution-verified)" section at top with ERROR finding table or clean confirmation.
+
+**`forge_sdk/specs/SPEC_RepairLoop.md`** — full spec: pipeline position (between stage 9-10), 4 test runner detection table, 3-attempt loop pseudocode, exhaustion behavior (REPAIR_SUMMARY.md + halt), failure feedback format (tail 3000 chars), LLM tier per attempt (GLM→GLM→Sonnet), cost analysis (~$0.05 worst case), 5 open questions.
+
+**Tests**: 13 new in `tests/test_semgrep_gate.py` — **311/311 green** at commit. `pyproject.toml` — `integration` marker registered.
 
 ---
 
@@ -397,22 +423,24 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
 | ContractForge | contractforge.co.in |
-| main branch | `7b08c01` |
-| Test suite | 276/276 passing — fully green |
+| main branch | `a43230c` (5 commits ahead of origin — push pending) |
+| Test suite | 311/311 passing — fully green |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 163 — complete.** outreach_leads live in Supabase, Discord webhook approval notifications shipped (276/276), YC draft written (Version B, not committed). Next session open items:
+**Day 173 — complete.** ModelRouter v2, Semgrep gate, SPEC_RepairLoop, FORGE_BRAIN all done (311/311). Push to origin still pending — 5 commits ahead. Next session open items:
 
-1. **Discord webhook URL** — Create webhook in "ForgeOS Control" Discord server, add `DISCORD_WEBHOOK_URL` to WSL2 `~/.bashrc`. Run `verify_migration()` from Python REPL to confirm production table access.
-2. **Supply leads + run first draft batch** — Zero leads sourced through Day 163. Supply a leads dict, call `draft_message()` → `queue_for_approval()`, watch Discord notification fire, review draft in Supabase dashboard.
-3. **YC application draft** — `yc/application_draft.md` written, Version B flagged as stronger. Xena edits and decides before commit.
-4. **Stitch MCP** — failed to connect; needs Google Cloud Console auth. Unblock when needed.
-5. **Ollama→Claude API swap** — `TODO` in `llm/ollama.py`. Backlog.
-6. **FalClient activation** — deferred until `FAL_API_KEY` exists.
+1. **`git push origin main`** — run this first; 5 commits accumulated (including today's 2).
+2. **RepairLoop implementation** — `agents/repair.py` + `tests/test_repair_loop.py` + hermes.py stage wiring. Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Question 1 first: does ScaffoldAgent always produce test files? Run a test build and inspect `project/` output before writing code.
+3. **GLM_API_KEY activation** — sign up at openrouter.ai, `export GLM_API_KEY='sk-or-v1-...'` in WSL2 `~/.bashrc`, `source ~/.bashrc`. Verify: `python3 -c "from config import LLM; print(LLM.glm_api_key[:8])"`.
+4. **YC video script** — deadline July 27, 2026 (26 days). Draft not started.
+5. **YC application draft** — `yc/application_draft.md` Version B exists, not committed. Review + commit before July 15.
+6. **Revenue**: pick one outreach channel and send; all 4 LinkedIn messages and 3 CA emails are drafted, none sent.
+7. **Discord webhook URL** — still needed for OutreachForge approval notifications.
+8. **FalClient activation** — deferred until `FAL_API_KEY` exists.
 
 ---
 
@@ -442,16 +470,18 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_launch_agent.py` | 23/23 | 0 | LaunchAgent attrs, render, run (mocked LLM), FalClient stub |
 | `test_legal_agent.py` | 13/13 | 0 | full pass |
 | `test_orchestrator.py` | 4/4 | 0 | full pass |
+| `test_model_router.py` | 22/22 | 0 | new Day 173 — ModelRouter v2 tier resolution, GLMClient, Fable-5 |
 | `test_outreach_agent.py` | 32/32 | 0 | Day 163: +MigrationNotRunError, +Discord webhook (3 tests) |
 | `test_pm_agent.py` | 27/27 | 0 | full pass |
 | `test_queue.py` | 24/24 | 0 | new Day 159 — build queue FIFO lifecycle |
 | `test_scaffold_output.py` | 12/12 | 0 | full pass |
 | `test_security_output.py` | 15/15 | 0 | full pass |
+| `test_semgrep_gate.py` | 13/13 | 0 | new Day 173 — semgrep integration + CSOGate blocking |
 | `test_tools.py` | 6/6 | 0 | full pass |
 | `test_validator_output.py` | 7/7 | 0 | full pass |
 | `test_voice_agent.py` | 18/18 | 0 | asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
-| **TOTAL** | **276/276** | **0** | fully green |
+| **TOTAL** | **311/311** | **0** | fully green |
 
 ---
 
