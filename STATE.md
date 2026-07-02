@@ -61,6 +61,45 @@ models.LLMError: GLM_API_KEY is not set. Add to ~/.bashrc: export GLM_API_KEY='s
 
 **Commits pushed (this session):** `62b556d` + STATE.md cleanup → both to origin/main.
 
+### GLM-5.2 Slug Fix — Third Day 174 Session (2026-07-02)
+
+**Trigger:** Screenshot confirmed GLM auth succeeded (HTTP 200 headers) but OpenRouter returned HTTP 400 body: `"zhipuai/glm-z1-32b is not a valid model ID"`. The only problem was the hardcoded model slug.
+
+**Root cause — wrong slug in three files:**
+
+OpenRouter changed the provider namespace from `zhipuai/` to `z-ai/` sometime before July 2026. The old slug appeared in three places:
+1. `llm/glm.py` — `default_model = "zhipuai/glm-z1-32b"` (class attribute)
+2. `config.py` — `LLMConfig.glm_model` fallback: `_get("GLM_MODEL", "zhipuai/glm-z1-32b")`. **This was the active override** — `GLMClient.__init__` uses `model or LLM.glm_model or self.default_model`, so the non-empty config.py fallback shadowed the class-level `default_model` when `GLM_MODEL` env var was unset. Fixing only `glm.py` would have had no effect.
+3. `config/models.yaml` — all 9 stage entries used `openrouter/zhipuai/glm-z1-32b`
+
+**Correct slug:** `z-ai/glm-5.2` — confirmed via `curl https://openrouter.ai/api/v1/models | python3 -m json.tool | grep z-ai` (not guessed; full model list verified).
+
+**Commits (all on origin/main):**
+- `e07e754` — fix(llm): correct GLM-5.2 model slug — `llm/glm.py` `default_model`; also added `@property content` to `models.py` `LLMResponse`
+- `08d0542` — fix(llm): correct GLM-5.2 model slug — `config.py` `LLMConfig.glm_model` fallback default
+- `49fc8e8` — fix(llm): update `config/models.yaml` GLM slug — all 9 stage entries (`openrouter/zhipuai/glm-z1-32b` → `openrouter/z-ai/glm-5.2`)
+
+**Live proof (WSL2, after pulling `49fc8e8`):**
+```
+pong
+```
+
+**Tests:** 309 passed, 3 skipped in 9.29s (Windows) + 309 passed, 3 skipped in 192.58s (WSL2) — both confirmed after slug fix.
+
+**Task 1 (ModelRouter v2 / GLM-5.2) status: CLOSED — live response confirmed.**
+
+---
+
+### KNOWN ISSUE — WSL2 `models/` Package Shadows Git-Tracked `models.py`
+
+WSL2 clone (`~/forge/forgeos`) contains an **untracked** `models/` directory (a Python package from an earlier refactor) alongside the git-tracked `models.py` flat module. Python always prefers a package directory over a flat module, so `import models` in WSL2 resolves to `models/__init__.py`, not the git-tracked `models.py`.
+
+**Impact:** The `@property content` fix added to `models.py` (commit `e07e754`) does NOT reach WSL2 at runtime. The patch was applied directly to WSL2's `models/__init__.py` as a local fix — this will be lost on a fresh WSL2 clone.
+
+**Correct fix (deferred — do not touch in next session):** Either delete `models/` from WSL2 (so Python uses `models.py`) or merge the two files and commit `models/` to git as the canonical location. Pick one structure; do not do both.
+
+**Two-clone drift (decision deferred):** The Windows OneDrive clone (`C:\Users\PADMAJA\OneDrive\...`) is the Claude Code working directory. The WSL2 clone (`~/forge/forgeos`) is the runtime build environment. They are separate git clones of the same origin. This has caused state drift twice (Day 161 vs Day 173-174; Day 174 `.content` patch). Before the next build, establish a protocol: either always `git pull` in WSL2 before running builds, or designate one clone as canonical and stop using the other for reads.
+
 ---
 
 ## Day 173 — Completed (2026-07-01)
@@ -477,24 +516,26 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
 | ContractForge | contractforge.co.in |
-| main branch | Day 174 commit (origin is up to date after Day 173 push) |
-| Test suite | 312 collected — 309 passing, 3 skipped (integration), 0 failing |
+| main branch | `49fc8e8` — Day 174 slug fix (pushed 2026-07-02) |
+| GLM-5.2 | Live — `z-ai/glm-5.2` via OpenRouter, returned "pong" 2026-07-02 |
+| Test suite | 309 passing, 3 skipped (integration/semgrep), 0 failing |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 174 — complete.** Task 1 (ModelRouter v2 verification) CLOSED. GLM fallback now logs `_log.warning()` when API call fails. 312 tests (309 passing, 3 skipped). Next session open items:
-1. **GLM_API_KEY activation** — sign up at openrouter.ai, `export GLM_API_KEY='sk-or-v1-...'` in WSL2 `~/.bashrc`, `source ~/.bashrc`. Verify (use `.text` not `.content` — see gap below): `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.text[:80])"`. Key was not set as of Day 174 close — all builds fall back to Sonnet with `_log.warning()` (not silent).
-2. **WSL2 sync** — WSL2 copy at Day 161 (`1c9caab`). Run `git pull origin main` in WSL2 to sync.
-3. **Fix `.content` on `LLMResponse`** — `models.py` `LLMResponse` exposes `.text`, not `.content`. Add `@property def content(self): return self.text` so the verification command and any future caller expecting `.content` works. One-liner; add with the GLM activation session.
-4. **RepairLoop implementation** — `agents/repair.py` + `tests/test_repair_loop.py` + hermes.py stage wiring. Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Question 1 first: does ScaffoldAgent always produce test files? Run a test build and inspect `project/` output before writing code.
-5. **YC video script** — deadline July 27, 2026 (25 days). Draft not started.
-6. **YC application draft** — `yc/application_draft.md` Version B exists, not committed. Review + commit before July 15.
-7. **Revenue**: pick one outreach channel and send; all 4 LinkedIn messages and 3 CA emails are drafted, none sent.
-8. **Discord webhook URL** — still needed for OutreachForge approval notifications.
-9. **FalClient activation** — deferred until `FAL_API_KEY` exists.
+**Day 174 — complete.** Task 1 (ModelRouter v2 / GLM-5.2) fully CLOSED — slug fixed across 3 files, live test returned "pong", all commits on origin/main. 309 passing, 3 skipped. Open items for next session:
+
+1. **models/ package conflict (WSL2)** — KNOWN ISSUE above. Decide: delete `models/` from WSL2 clone, or merge into git and commit it. Do not leave it unresolved indefinitely — the `.content` local patch in WSL2's `models/__init__.py` will be lost on any fresh clone. Recommended: delete `models/` in WSL2 (`rm -rf ~/forge/forgeos/models/`) and confirm `import models` then resolves to `models.py`. Run tests in WSL2 after to verify.
+2. **Two-clone protocol** — Decide canonical clone. Simplest option: always `git pull origin main` in WSL2 at the start of any build session. Add this to CLAUDE.md "Key commands" section.
+3. **RepairLoop implementation** — `agents/repair.py` + `tests/test_repair_loop.py` + hermes.py stage wiring. Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Question 1 first: does ScaffoldAgent always produce test files? Run a test build and inspect `project/` output before writing code.
+4. **YC video script** — deadline July 27, 2026. Draft not started.
+5. **YC application draft** — `yc/application_draft.md` Version B exists, not committed. Review + commit before July 15.
+6. **Revenue**: pick one outreach channel and send; all 4 LinkedIn messages and 3 CA emails are drafted, none sent.
+7. **Discord webhook URL** — still needed for OutreachForge approval notifications.
+8. **FalClient activation** — deferred until `FAL_API_KEY` exists.
+9. **semgrep in WSL2** — still unverified on PATH in WSL2 build environment. `pip install semgrep --break-system-packages` then `semgrep --version`. Until installed, CSOGate's static analysis pass runs silently empty.
 
 ---
 
@@ -563,61 +604,71 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ---
 
-## HANDOFF — Day 173 (2026-07-01)
+## HANDOFF — Day 174 (2026-07-02)
 
-**Default agent behavior changed today. Read this before touching any LLM call.**
+**GLM-5.2 is live. The slug was wrong. Read the slug fix notes before touching the router.**
 
-### Default LLM for all agent calls is now GLM-5.2, not qwen2.5-coder:7b
+### GLM-5.2 is confirmed working — model slug is `z-ai/glm-5.2`
 
-As of commit `6b248a9`, every ForgeOS pipeline stage — scaffold, worker, validator, pm_agent,
-eval_agent, architect, security, cso_gate — routes to **GLM-5.2 (zhipuai/glm-z1-32b via OpenRouter)**
-by default. qwen2.5-coder:7b no longer runs unless `FORGEOS_OFFLINE_MODE=true` is set.
+As of commits `e07e754` / `08d0542` / `49fc8e8` (all on origin/main), the correct OpenRouter slug
+is `z-ai/glm-5.2` (not `zhipuai/glm-z1-32b` — that namespace no longer exists on OpenRouter as of
+July 2026). The slug is patched in three places: `llm/glm.py`, `config.py`, `config/models.yaml`.
 
-This is not a config toggle. It is the new default routing path in `llm/router.py::_select_chain()`.
+**Live verification (WSL2, 2026-07-02):** `GLMClient().complete([{"role":"user","content":"ping"}])` returned `"pong"`.
 
-**Before running any build**, confirm this env var is set:
+**Before running any build**, confirm:
 ```bash
-echo $GLM_API_KEY   # must print sk-or-v1-... (OpenRouter key)
+echo $GLM_API_KEY   # must print sk-or-v1-... (OpenRouter key — already in WSL2 ~/.bashrc)
 ```
-If it's blank, the router falls back to `claude-sonnet-4-6` (Tier 2), which costs ~6× more.
-To get a key: sign up at openrouter.ai → Dashboard → API Keys. Free tier is available.
-Add to `~/.bashrc`:
+If blank, builds fall back to `claude-sonnet-4-6` with a `logging.WARNING` in `llm.router` — not silent, but ~6× more expensive. Key is in WSL2 `~/.bashrc`; confirm it is sourced in any new shell before builds.
+
+### Do NOT change these model strings
+
+The correct values as of 2026-07-02:
+- `llm/glm.py` `default_model` → `"z-ai/glm-5.2"`
+- `config.py` `LLMConfig.glm_model` fallback → `"z-ai/glm-5.2"`
+- All 9 stage entries in `config/models.yaml` → `"openrouter/z-ai/glm-5.2"`
+
+If OpenRouter ever invalidates this slug again, re-run:
 ```bash
-export GLM_API_KEY="sk-or-v1-..."
+curl -s https://openrouter.ai/api/v1/models | python3 -m json.tool | grep -i "z-ai\|glm"
 ```
-**GLM_API_KEY was NOT set as of Day 173 close.** All builds until it is set will silently use Sonnet.
+and update all three locations.
 
-### Semgrep gate is live — but needs to be installed
+### WSL2 `models/` package shadow — DO NOT patch workaround again
 
-SecurityAgent now runs `semgrep --config=auto --json` against every generated project.
-CSOGate hard-blocks on any ERROR-severity finding, independent of LLM judgment.
+WSL2 has an untracked `models/` directory that shadows the git-tracked `models.py`. The `.content`
+property added to `models.py` (commit `e07e754`) was patched into WSL2's `models/__init__.py`
+manually — this is a local-only fix, not in git. A fresh clone will re-break it.
 
-`semgrep` is now declared in `pyproject.toml` (`dev` and `all` extras, `>=1.50`).
-
-Install in WSL2 (where builds actually run):
+**First thing next session before running tests in WSL2:**
 ```bash
-pip install semgrep --break-system-packages
-# or in a venv:
-pip install -e ".[all]"
+# In WSL2:
+ls ~/forge/forgeos/models/   # if this prints files, the package exists
+rm -rf ~/forge/forgeos/models/
+python3 -c "import models; print(models.__file__)"   # should print models.py, not models/__init__.py
+PYTHONPATH=. python3 -m pytest tests/ -x -q   # confirm all 309 still pass
 ```
 
-If semgrep is not installed, `_run_semgrep()` returns `[]` silently — **the gate does not block,
-and there are no findings to merge into SECURITY.md.** This is indistinguishable from "scan ran
-clean." Always verify semgrep is on PATH in the WSL2 environment where builds run.
+### Semgrep gate — not yet verified on WSL2 PATH
 
-### Fable-5 frontier tier — off by default
+SecurityAgent + CSOGate are both live. `_run_semgrep()` returns `[]` silently if the binary is
+missing — the gate passes without scanning. Verify before the next build:
+```bash
+semgrep --version   # in WSL2; if missing: pip install semgrep --break-system-packages
+```
 
-`FORGEOS_FRONTIER_TIER` defaults to `False` in `config.py`. When set to `true`, architect and
-cso_gate stages route to `claude-fable-5` instead of GLM-5.2. The model string is the literal
-`"claude-fable-5"` (constant `_FABLE5` in `llm/router.py`). Costs ~$10/$50 MTok.
+### Fable-5 frontier tier — still off by default
 
-Do not set `FORGEOS_FRONTIER_TIER=true` in CI or unattended builds — it bypasses the cost budget.
+`FORGEOS_FRONTIER_TIER` defaults to `False`. Set to `true` only per-run for architect/security
+gates when quality is more important than cost. Costs ~$10/$50 MTok vs $1.20/$4.10 for GLM.
 
 ### Open blockers for next session
 
-| Blocker | Action |
-|---------|--------|
-| `GLM_API_KEY` not set | Sign up openrouter.ai, add key to WSL2 `~/.bashrc` |
-| semgrep not verified in WSL2 | `pip install semgrep --break-system-packages` in WSL2, then `semgrep --version` |
-| Live GLM-5.2 call not verified | After setting key: `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.content[:80])"` |
-| RepairLoop not implemented | Spec at `forge_sdk/specs/SPEC_RepairLoop.md` — answer Open Q1 first |
+| Blocker | Status | Action |
+|---------|--------|--------|
+| `models/` package shadow in WSL2 | Not fixed | `rm -rf ~/forge/forgeos/models/` then run tests |
+| semgrep on WSL2 PATH | Not verified | `pip install semgrep --break-system-packages` |
+| RepairLoop not implemented | Not started | Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Q1 first |
+| YC video script | Not started | Deadline July 27, 2026 |
+| YC application draft | Not committed | `yc/application_draft.md` Version B — review + commit before July 15 |
