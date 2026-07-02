@@ -3,8 +3,8 @@ GLM-5.2 client via OpenRouter (OpenAI-compatible API).
 
 Requires GLM_API_KEY (an OpenRouter API key — get one at openrouter.ai).
 Model is controlled by GLM_MODEL env var; verify the exact slug against
-https://openrouter.ai/models after adding the key — Zhipu models are listed
-under "zhipuai/..." on OpenRouter.
+https://openrouter.ai/models — GLM models are listed under "z-ai/..." on
+OpenRouter (as of July 2026; old "zhipuai/..." slugs are no longer valid).
 
 Capability (June 2026): 62.1 SWE-bench Pro, 81.0 Terminal-Bench 2.1,
 1M context, MIT license, 753B total / 40B active params.
@@ -26,8 +26,8 @@ from .base import LLMClient, LLMError, LLMResponse
 
 class GLMClient(LLMClient):
     name = "glm"
-    # Default model slug on OpenRouter — verify at openrouter.ai/models.
-    default_model = "zhipuai/glm-z1-32b"
+    # Default model slug on OpenRouter — verified 2026-07-02 via /api/v1/models.
+    default_model = "z-ai/glm-5.2"
 
     def __init__(self, model: str | None = None) -> None:
         super().__init__(model or LLM.glm_model or self.default_model)

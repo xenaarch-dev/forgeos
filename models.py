@@ -44,6 +44,10 @@ class LLMResponse:
     cost_usd: float = 0.0
     raw: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def content(self) -> str:
+        return self.text
+
 
 class LLMError(RuntimeError):
     pass
