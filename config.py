@@ -86,7 +86,7 @@ class LLMConfig:
     # Verify model slug at openrouter.ai/models when adding the key.
     glm_api_key: str = field(default_factory=lambda: _get("GLM_API_KEY"))
     glm_model: str = field(
-        default_factory=lambda: _get("GLM_MODEL", "zhipuai/glm-z1-32b")
+        default_factory=lambda: _get("GLM_MODEL", "z-ai/glm-5.2")
     )
     glm_base_url: str = field(
         default_factory=lambda: _get("GLM_BASE_URL", "https://openrouter.ai/api/v1")
