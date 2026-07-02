@@ -16,11 +16,11 @@
 
 stages:
   # Tier 1 — GLM-5.2 (bulk/scaffolding)
-  scaffold:     "openrouter/zhipuai/glm-z1-32b"
-  worker:       "openrouter/zhipuai/glm-z1-32b"
-  validator:    "openrouter/zhipuai/glm-z1-32b"
-  pm_agent:     "openrouter/zhipuai/glm-z1-32b"
-  eval_agent:   "openrouter/zhipuai/glm-z1-32b"
+  scaffold:     "openrouter/z-ai/glm-5.2"
+  worker:       "openrouter/z-ai/glm-5.2"
+  validator:    "openrouter/z-ai/glm-5.2"
+  pm_agent:     "openrouter/z-ai/glm-5.2"
+  eval_agent:   "openrouter/z-ai/glm-5.2"
   gbrain_index: "ollama/qwen2.5-coder:7b"   # offline index task, no API key needed
 
   # Tier 2 — Sonnet (legal/compliance: precision over cost)
@@ -28,11 +28,11 @@ stages:
 
   # Tier 1 default for architect/security (overridden by frontier section below
   # when FORGEOS_FRONTIER_TIER=true)
-  architect:    "openrouter/zhipuai/glm-z1-32b"
-  security:     "openrouter/zhipuai/glm-z1-32b"
-  cso_gate:     "openrouter/zhipuai/glm-z1-32b"
+  architect:    "openrouter/z-ai/glm-5.2"
+  security:     "openrouter/z-ai/glm-5.2"
+  cso_gate:     "openrouter/z-ai/glm-5.2"
 
-  default:      "openrouter/zhipuai/glm-z1-32b"
+  default:      "openrouter/z-ai/glm-5.2"
 
 # Tier 3 overrides — active when FORGEOS_FRONTIER_TIER=true.
 # Only stages where quality errors are most expensive are listed here.
