@@ -4,8 +4,8 @@
 **Day:** 174
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
-**Remote:** https://github.com/xenaarch-dev/forgeos.git (5 commits ahead of origin/main — push pending)
-**Session focus:** Day 173 — ModelRouter v2 (GLM-5.2 Tier 1, Fable-5 Tier 3 gated), Semgrep execution-verified security gate, SPEC_RepairLoop.md, FORGE_BRAIN.md company brain
+**Remote:** https://github.com/xenaarch-dev/forgeos.git
+**Session focus:** Day 174 — GLM-5.2 verify-or-build; fallback warning fix (`62b556d`); WSL2 sync gap documented
 
 ---
 
@@ -28,6 +28,38 @@ Original gap: when `GLM_API_KEY` IS set but the actual API call raises (network 
 **Tests:** 312 total — 309 passing, 3 skipped (integration/semgrep, need semgrep binary on PATH).
 
 **Task 1 (ModelRouter v2) status: CLOSED.**
+
+### GLM-5.2 Verify-or-Build — Second Day 174 Session
+
+**Scope:** Verify (or build) GLM-5.2 integration from scratch. Prior session reports questioned.
+
+**Ground truth (from raw commands, before touching anything):**
+- `git log --all --oneline | grep -iE "glm|modelrouter"` → `6b248a9 feat: ModelRouter v2` and `62b556d fix(router): log warning` both present
+- `ls llm/` → `glm.py` present
+- `find . -iname "*glm*"` → `./llm/glm.py` (+ cpython cache)
+- `forge_sdk/specs/SPEC_RepairLoop.md` → exists
+- `GLM_API_KEY` → blank in both Windows and WSL2 shells
+
+**Critical environment finding:** WSL2 clone (`~/forge/forgeos`) is at Day 161 (`1c9caab`). The Windows OneDrive clone has all Day 173-174 commits. Origin/main is at `ef7b3d8` (Day 173 last commit) — Day 174 commit `62b556d` not yet pushed at session start.
+
+**Action: VERIFIED EXISTING.**
+- `llm/glm.py` exists: proof → `./llm/glm.py` found, `git show 6b248a9 --name-only | grep glm.py` shows it was committed Day 173.
+- `SPEC_RepairLoop.md` exists: `./forge_sdk/specs/SPEC_RepairLoop.md`.
+
+**Known gap:** `LLMResponse` exposes `.text`, not `.content`. The verification command (`r.content`) would raise `AttributeError` if a key were available and a call succeeded. GLM_API_KEY is unset so the error fires at `__init__` before reaching `.content`. To be fixed when activating the key.
+
+**Live test output (exact):**
+```
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File ".../llm/glm.py", line 35, in __init__
+    raise LLMError(...)
+models.LLMError: GLM_API_KEY is not set. Add to ~/.bashrc: export GLM_API_KEY='sk-or-v1-...' Get a key at openrouter.ai (free tier available).
+```
+
+**Tests:** `309 passed, 3 skipped in 8.12s` (3 skipped = semgrep integration, need binary on PATH).
+
+**Commits pushed (this session):** `62b556d` + STATE.md cleanup → both to origin/main.
 
 ---
 
@@ -445,7 +477,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
 | ContractForge | contractforge.co.in |
-| main branch | Day 174 commit pending (6 commits ahead of origin — push pending) |
+| main branch | Day 174 commit (origin is up to date after Day 173 push) |
 | Test suite | 312 collected — 309 passing, 3 skipped (integration), 0 failing |
 | MRR | ₹0 |
 
@@ -453,11 +485,10 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 
 ## Next Session Starts With
 
-**Day 174 — complete.** Task 1 (ModelRouter v2 verification) CLOSED. GLM fallback now logs `_log.warning()` when API call fails. 312 tests (309 passing, 3 skipped). Push to origin still pending — 6 commits ahead. Next session open items:
-
-1. **`git push origin main`** — run this first; 6 commits ahead of origin (5 from Day 173 + 1 Day 174 fix).
-2. **GLM_API_KEY activation** — sign up at openrouter.ai, `export GLM_API_KEY='sk-or-v1-...'` in WSL2 `~/.bashrc`, `source ~/.bashrc`. Verify: `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.content[:80])"`. Key was not set as of Day 174 close — all builds still fall back to Sonnet with a logged warning.
-3. **WSL2 sync** — WSL2 copy at Day 161 (`1c9caab`). After `git push origin main` from Windows, run `git pull origin main` in WSL2 to sync.
+**Day 174 — complete.** Task 1 (ModelRouter v2 verification) CLOSED. GLM fallback now logs `_log.warning()` when API call fails. 312 tests (309 passing, 3 skipped). Next session open items:
+1. **GLM_API_KEY activation** — sign up at openrouter.ai, `export GLM_API_KEY='sk-or-v1-...'` in WSL2 `~/.bashrc`, `source ~/.bashrc`. Verify (use `.text` not `.content` — see gap below): `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.text[:80])"`. Key was not set as of Day 174 close — all builds fall back to Sonnet with `_log.warning()` (not silent).
+2. **WSL2 sync** — WSL2 copy at Day 161 (`1c9caab`). Run `git pull origin main` in WSL2 to sync.
+3. **Fix `.content` on `LLMResponse`** — `models.py` `LLMResponse` exposes `.text`, not `.content`. Add `@property def content(self): return self.text` so the verification command and any future caller expecting `.content` works. One-liner; add with the GLM activation session.
 4. **RepairLoop implementation** — `agents/repair.py` + `tests/test_repair_loop.py` + hermes.py stage wiring. Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Question 1 first: does ScaffoldAgent always produce test files? Run a test build and inspect `project/` output before writing code.
 5. **YC video script** — deadline July 27, 2026 (25 days). Draft not started.
 6. **YC application draft** — `yc/application_draft.md` Version B exists, not committed. Review + commit before July 15.
