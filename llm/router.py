@@ -30,9 +30,12 @@ Cost rationale (not quality-only — this matters for future-you):
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+_log = logging.getLogger(__name__)
 
 from config import LLM
 from .base import LLMClient, LLMError, LLMResponse
@@ -166,9 +169,17 @@ def complete(
                 context.save()
             return resp
         except LLMError as e:
+            if client_name == "glm52":
+                _log.warning(
+                    "[router] GLM call failed — falling back to Sonnet. Error: %s", e
+                )
             last_err = e
             continue
         except Exception as e:
+            if client_name == "glm52":
+                _log.warning(
+                    "[router] GLM call failed — falling back to Sonnet. Error: %s", e
+                )
             last_err = e
             continue
 

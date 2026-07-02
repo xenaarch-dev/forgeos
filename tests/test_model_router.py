@@ -14,8 +14,9 @@ Tests confirm:
 from __future__ import annotations
 
 import importlib
+import logging
 import sys
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -133,6 +134,46 @@ class TestIsAvailable:
 
 
 import os
+
+
+# ---------------------------------------------------------------------------
+# complete() — GLM call failure warning (Task 1 gap)
+# ---------------------------------------------------------------------------
+
+
+class TestCompleteGLMCallFailure:
+    """When GLM_API_KEY is set but the API call raises, a WARNING must be logged.
+    Silently falling back to Sonnet without logging was the original Task 1 gap."""
+
+    def test_glm_call_failure_logs_warning_and_falls_back_to_sonnet(self, caplog):
+        fake_resp = MagicMock()
+        fake_resp.model = "claude-sonnet-4-6"
+        fake_resp.prompt_tokens = 10
+        fake_resp.completion_tokens = 5
+        fake_resp.cost_usd = 0.0
+
+        env = {
+            "GLM_API_KEY": "sk-or-v1-test",
+            "ANTHROPIC_API_KEY": "sk-ant-test",
+            "FORGEOS_OFFLINE_MODE": "false",
+            "FORGEOS_FRONTIER_TIER": "false",
+        }
+        with patch.dict("os.environ", env, clear=False):
+            import config; importlib.reload(config)
+            import llm.glm; importlib.reload(llm.glm)
+            importlib.reload(_router_module)
+
+            with patch("llm.glm.GLMClient.complete", side_effect=_router_module.LLMError("network timeout")), \
+                 patch("llm.claude.ClaudeClient.complete", return_value=fake_resp), \
+                 caplog.at_level(logging.WARNING, logger="llm.router"):
+                from llm.router import complete as _c
+                result = _c(user="ping", stream=False)
+
+        assert result is fake_resp, "Expected Sonnet fallback response"
+        warns = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert warns, "No WARNING logged when GLM call failed — silent fallback is the bug"
+        assert any("GLM" in r.message for r in warns), "Warning should mention GLM"
+        assert any("fall" in r.message.lower() for r in warns), "Warning should mention fallback"
 
 
 # ---------------------------------------------------------------------------

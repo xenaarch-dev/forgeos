@@ -1,11 +1,33 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-01
-**Day:** 173
+**Date:** 2026-07-02
+**Day:** 174
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git (5 commits ahead of origin/main — push pending)
 **Session focus:** Day 173 — ModelRouter v2 (GLM-5.2 Tier 1, Fable-5 Tier 3 gated), Semgrep execution-verified security gate, SPEC_RepairLoop.md, FORGE_BRAIN.md company brain
+
+---
+
+## Day 174 — Completed (2026-07-02)
+
+### ModelRouter v2 — Task 1 CLOSED ✓
+
+**Verification scope:** Two checks only — no new features.
+
+**CHECK 1 — GLM-5.2 live:** ❌ `GLM_API_KEY` is not set in either WSL2 (`~/.bashrc`) or Windows shell. `GLMClient.__init__` raises `LLMError: GLM_API_KEY is not set.` immediately. Key must be obtained at openrouter.ai and added: `export GLM_API_KEY='sk-or-v1-...'`.
+
+**CHECK 2 — Fallback warning logged:** Gap found and fixed.
+
+Original gap: when `GLM_API_KEY` IS set but the actual API call raises (network timeout, quota, wrong model slug), `complete()` was catching the exception silently and falling back to Sonnet with no log output. The "key missing" path already warned via `sys.stderr.write()` in `_is_available()`.
+
+**Fix (`llm/router.py`):** Added `import logging` + `_log = logging.getLogger(__name__)`. In `complete()`, both `except LLMError` and `except Exception` blocks now call `_log.warning("[router] GLM call failed — falling back to Sonnet. Error: %s", e)` when `client_name == "glm52"`.
+
+**New test (`tests/test_model_router.py`):** `TestCompleteGLMCallFailure::test_glm_call_failure_logs_warning_and_falls_back_to_sonnet` — sets `GLM_API_KEY` + `ANTHROPIC_API_KEY`, mocks `GLMClient.complete` to raise `LLMError`, mocks `ClaudeClient.complete` to return a fake response, asserts a `WARNING` log fires mentioning "GLM" and "fall", and asserts Sonnet response is returned.
+
+**Tests:** 312 total — 309 passing, 3 skipped (integration/semgrep, need semgrep binary on PATH).
+
+**Task 1 (ModelRouter v2) status: CLOSED.**
 
 ---
 
@@ -423,24 +445,25 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 |------|-------|
 | Live URL | forgeos-eight.vercel.app |
 | ContractForge | contractforge.co.in |
-| main branch | `a43230c` (5 commits ahead of origin — push pending) |
-| Test suite | 311/311 passing — fully green |
+| main branch | Day 174 commit pending (6 commits ahead of origin — push pending) |
+| Test suite | 312 collected — 309 passing, 3 skipped (integration), 0 failing |
 | MRR | ₹0 |
 
 ---
 
 ## Next Session Starts With
 
-**Day 173 — complete.** ModelRouter v2, Semgrep gate, SPEC_RepairLoop, FORGE_BRAIN all done (311/311). Push to origin still pending — 5 commits ahead. Next session open items:
+**Day 174 — complete.** Task 1 (ModelRouter v2 verification) CLOSED. GLM fallback now logs `_log.warning()` when API call fails. 312 tests (309 passing, 3 skipped). Push to origin still pending — 6 commits ahead. Next session open items:
 
-1. **`git push origin main`** — run this first; 5 commits accumulated (including today's 2).
-2. **RepairLoop implementation** — `agents/repair.py` + `tests/test_repair_loop.py` + hermes.py stage wiring. Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Question 1 first: does ScaffoldAgent always produce test files? Run a test build and inspect `project/` output before writing code.
-3. **GLM_API_KEY activation** — sign up at openrouter.ai, `export GLM_API_KEY='sk-or-v1-...'` in WSL2 `~/.bashrc`, `source ~/.bashrc`. Verify: `python3 -c "from config import LLM; print(LLM.glm_api_key[:8])"`.
-4. **YC video script** — deadline July 27, 2026 (26 days). Draft not started.
-5. **YC application draft** — `yc/application_draft.md` Version B exists, not committed. Review + commit before July 15.
-6. **Revenue**: pick one outreach channel and send; all 4 LinkedIn messages and 3 CA emails are drafted, none sent.
-7. **Discord webhook URL** — still needed for OutreachForge approval notifications.
-8. **FalClient activation** — deferred until `FAL_API_KEY` exists.
+1. **`git push origin main`** — run this first; 6 commits ahead of origin (5 from Day 173 + 1 Day 174 fix).
+2. **GLM_API_KEY activation** — sign up at openrouter.ai, `export GLM_API_KEY='sk-or-v1-...'` in WSL2 `~/.bashrc`, `source ~/.bashrc`. Verify: `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.content[:80])"`. Key was not set as of Day 174 close — all builds still fall back to Sonnet with a logged warning.
+3. **WSL2 sync** — WSL2 copy at Day 161 (`1c9caab`). After `git push origin main` from Windows, run `git pull origin main` in WSL2 to sync.
+4. **RepairLoop implementation** — `agents/repair.py` + `tests/test_repair_loop.py` + hermes.py stage wiring. Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Question 1 first: does ScaffoldAgent always produce test files? Run a test build and inspect `project/` output before writing code.
+5. **YC video script** — deadline July 27, 2026 (25 days). Draft not started.
+6. **YC application draft** — `yc/application_draft.md` Version B exists, not committed. Review + commit before July 15.
+7. **Revenue**: pick one outreach channel and send; all 4 LinkedIn messages and 3 CA emails are drafted, none sent.
+8. **Discord webhook URL** — still needed for OutreachForge approval notifications.
+9. **FalClient activation** — deferred until `FAL_API_KEY` exists.
 
 ---
 
@@ -470,7 +493,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_launch_agent.py` | 23/23 | 0 | LaunchAgent attrs, render, run (mocked LLM), FalClient stub |
 | `test_legal_agent.py` | 13/13 | 0 | full pass |
 | `test_orchestrator.py` | 4/4 | 0 | full pass |
-| `test_model_router.py` | 22/22 | 0 | new Day 173 — ModelRouter v2 tier resolution, GLMClient, Fable-5 |
+| `test_model_router.py` | 23/23 | 0 | Day 174 +1: GLM call failure warning test (`TestCompleteGLMCallFailure`) |
 | `test_outreach_agent.py` | 32/32 | 0 | Day 163: +MigrationNotRunError, +Discord webhook (3 tests) |
 | `test_pm_agent.py` | 27/27 | 0 | full pass |
 | `test_queue.py` | 24/24 | 0 | new Day 159 — build queue FIFO lifecycle |
@@ -481,7 +504,7 @@ and `_gate_call` (wraps `llm_complete`). All 11 classes already in `agents/__ini
 | `test_validator_output.py` | 7/7 | 0 | full pass |
 | `test_voice_agent.py` | 18/18 | 0 | asyncio.run() replaces get_event_loop() — Python 3.14 compat (`9d61e71`) |
 | `test_worker_output.py` | 6/6 | 0 | full pass |
-| **TOTAL** | **311/311** | **0** | fully green |
+| **TOTAL** | **312 collected — 309 passing, 3 skipped** | **0** | 3 skipped = integration/semgrep (need semgrep on PATH) |
 
 ---
 
