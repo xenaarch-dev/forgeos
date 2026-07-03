@@ -1,37 +1,22 @@
 import type { Metadata, Viewport } from 'next'
-import { Cormorant_Garamond, Space_Mono } from 'next/font/google'
 import './globals.css'
 
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-display',
-})
-
-const spaceMono = Space_Mono({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  style: ['normal', 'italic'],
-  variable: '--font-mono',
-})
-
 export const metadata: Metadata = {
-  title: 'ForgeOS — One sentence in. Full SaaS out.',
+  title: 'ForgeOS — The autonomous business OS for solo founders',
   description:
-    'ForgeOS builds, deploys, and operates complete software businesses — autonomously. Proof: contractforge.co.in — live, real, built by ForgeOS.',
+    'One indie developer and seven agents — researching, building, testing, shipping, and selling while the founder sleeps. Proof: contractforge.co.in — live.',
   openGraph: {
-    title: 'ForgeOS — One sentence in. Full SaaS out.',
+    title: 'ForgeOS — The autonomous business OS for solo founders',
     description:
-      'ForgeOS builds, deploys, and operates complete software businesses — autonomously. Proof: contractforge.co.in — live, real, built by ForgeOS.',
+      'One indie developer and seven agents — researching, building, testing, shipping, and selling while the founder sleeps. Proof: contractforge.co.in — live.',
     siteName: 'ForgeOS',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ForgeOS — One sentence in. Full SaaS out.',
+    title: 'ForgeOS — The autonomous business OS for solo founders',
     description:
-      'ForgeOS builds, deploys, and operates complete software businesses — autonomously. Proof: contractforge.co.in — live, real, built by ForgeOS.',
+      'One indie developer and seven agents — researching, building, testing, shipping, and selling while the founder sleeps. Proof: contractforge.co.in — live.',
     creator: '@xenaarch',
   },
 }
@@ -48,7 +33,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${spaceMono.variable}`}>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>{children}</body>
     </html>
   )
