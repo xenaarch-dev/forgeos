@@ -33,9 +33,20 @@ const GLOBAL_CSS = `
     #forge-nav{padding:0 20px !important}
     .forge-nav-links{gap:16px !important}
     #forge-nav-cta{padding:9px 14px !important}
+    .forge-agent-row{grid-template-columns:1fr !important;gap:8px !important;padding:20px 18px !important}
+    .forge-agent-row > div:last-child{justify-content:flex-start !important}
+    #forge-dash-box{flex-direction:column !important;height:auto !important}
+    .forge-dash-sidebar{width:100% !important}
+    .forge-dash-stats{flex-wrap:wrap !important}
+    .forge-dash-stats > div{flex:1 1 50% !important;min-width:140px !important}
+    #forge-cmd-box{flex-direction:column !important;height:auto !important}
+    .forge-cmd-sidebar{width:100% !important}
+    .forge-2col-grid{grid-template-columns:1fr !important}
   }
   @media(max-width:680px){
     .forge-nav-links{display:none !important}
+    .forge-nav-badge{display:none !important}
+    #forge-halo{opacity:0.45 !important}
   }
 `
 
@@ -58,7 +69,7 @@ const BODY_HTML = `
 <nav id="forge-nav" style="position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 56px;background:rgba(8,9,11,0.65);backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);border-bottom:0.5px solid rgba(164,216,255,0.1)">
   <div style="display:flex;align-items:center;gap:14px">
     <span style="font:900 22px/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em">ForgeOS</span>
-    <div style="display:flex;align-items:center;gap:7px;border:0.5px solid rgba(164,216,255,0.22);background:rgba(164,216,255,0.05);padding:4px 10px;border-radius:2px">
+    <div class="forge-nav-badge" style="display:flex;align-items:center;gap:7px;border:0.5px solid rgba(164,216,255,0.22);background:rgba(164,216,255,0.05);padding:4px 10px;border-radius:2px">
       <svg width="15" height="8" viewBox="0 0 22 12" fill="none" style="flex-shrink:0" aria-hidden="true"><path d="M11 11 C 8 8 6 5 2 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.75"/><path d="M11 11 C 14 8 16 5 20 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.75"/><ellipse cx="4" cy="2.4" rx="2.1" ry="0.9" transform="rotate(-40 4 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="6.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(-35 6.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="8.8" cy="7.2" rx="2.1" ry="0.9" transform="rotate(-30 8.8 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="18" cy="2.4" rx="2.1" ry="0.9" transform="rotate(40 18 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="15.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(35 15.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="13.2" cy="7.2" rx="2.1" ry="0.9" transform="rotate(30 13.2 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/></svg>
       <span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.8);letter-spacing:0.16em;white-space:nowrap">CONTRACTFORGE: LIVE</span>
     </div>
@@ -169,43 +180,43 @@ const BODY_HTML = `
       <div style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.16em;text-align:right;line-height:2.1">SHIPPING PRODUCTS<br>SMARTER EVERY CYCLE</div>
     </div>
     <div data-reveal style="border-top:0.5px solid rgba(164,216,255,0.14)">
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(164,216,255,0.4)">/I</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.03em">OutreachForge</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.45)">Finds prospects, scores leads, drafts personalised outreach for human approval. Approved messages route via Discord.</div>
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="width:6px;height:6px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.16em">QUEUED</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);background:rgba(164,216,255,0.045);border-left:2px solid #A4D8FF;transition:background .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);background:rgba(164,216,255,0.045);border-left:2px solid #A4D8FF;transition:background .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:#A4D8FF">/II</div>
         <div><div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.03em">ContractForge</div><div style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.6);letter-spacing:0.14em;margin-top:7px">PRODUCT 001 · CONTRACTFORGE.CO.IN</div></div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.55)">GST contracts, NDAs, service agreements — Indian law baked in. From prompt to signed-ready document in 5 minutes.</div>
         <div style="display:flex;align-items:center;gap:7px;justify-content:flex-end"><svg width="15" height="8" viewBox="0 0 22 12" fill="none" style="flex-shrink:0" aria-hidden="true"><path d="M11 11 C 8 8 6 5 2 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.8"/><path d="M11 11 C 14 8 16 5 20 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.8"/><ellipse cx="4" cy="2.4" rx="2.1" ry="0.9" transform="rotate(-40 4 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="6.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(-35 6.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="8.8" cy="7.2" rx="2.1" ry="0.9" transform="rotate(-30 8.8 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="18" cy="2.4" rx="2.1" ry="0.9" transform="rotate(40 18 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="15.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(35 15.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="13.2" cy="7.2" rx="2.1" ry="0.9" transform="rotate(30 13.2 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/></svg><span style="font:400 9px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.16em">SHIPPED · LIVE</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(164,216,255,0.4)">/III</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.03em">SpecForge</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.45)">One prompt in, full product spec out. Architecture, API design, roadmap — an 18-stage pipeline.</div>
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="width:6px;height:6px;border-radius:50%;background:rgba(164,216,255,0.42);flex-shrink:0"></div><span style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.5);letter-spacing:0.16em">AVAILABLE</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(164,216,255,0.4)">/IV</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.03em">ForgeOS Core</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.45)">The orchestration layer. Discord bridge active, routes every command to the right agent. Nightly loop in development.</div>
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="width:6px;height:6px;border-radius:50%;background:rgba(164,216,255,0.7);flex-shrink:0;animation:pulse 2.2s 0.3s infinite"></div><span style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.75);letter-spacing:0.16em">ONLINE</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);opacity:0.55;transition:opacity .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);opacity:0.55;transition:opacity .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(236,235,230,0.25)">/V</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:rgba(236,235,230,0.6);letter-spacing:-0.03em">ReputationForge</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.3)">Brand monitoring and content distribution. Activates at the 100-user milestone.</div>
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.16em">QUEUED</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);opacity:0.42;transition:opacity .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);opacity:0.42;transition:opacity .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(236,235,230,0.22)">/VI</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:rgba(236,235,230,0.5);letter-spacing:-0.03em">NightlyAgent</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.26)">Reads the corpus. Writes FORGE_BRAIN.md. Makes the whole OS smarter every night.</div>
         <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.26);letter-spacing:0.16em">PLANNED</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);opacity:0.38;transition:opacity .25s">
+      <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);opacity:0.38;transition:opacity .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(236,235,230,0.2)">/VII</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:rgba(236,235,230,0.45);letter-spacing:-0.03em">ClientForge</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.24)">Converts warm connections into paying clients. Full pipeline automation.</div>
@@ -217,7 +228,7 @@ const BODY_HTML = `
 
 <section id="how" style="padding:130px 56px;background:#0E1114;border-top:0.5px solid rgba(164,216,255,0.07)">
   <div style="max-width:1280px;margin:0 auto">
-    <div data-reveal style="display:grid;grid-template-columns:0.9fr 2fr;gap:72px;align-items:start">
+    <div data-reveal class="forge-2col-grid" style="display:grid;grid-template-columns:0.9fr 2fr;gap:72px;align-items:start">
       <div style="position:sticky;top:110px">
         <div style="font:400 9.5px 'DM Mono',monospace;color:rgba(164,216,255,0.5);letter-spacing:0.26em;margin-bottom:16px" data-scramble>HOW IT WORKS</div>
         <div style="font:900 clamp(38px,4vw,64px)/1.02 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em;margin-bottom:24px">One prompt.<br><span style="font-style:italic;font-weight:700;color:#A4D8FF">Full business.</span></div>
@@ -275,8 +286,8 @@ const BODY_HTML = `
       <div style="font:400 9.5px 'DM Mono',monospace;color:rgba(164,216,255,0.5);letter-spacing:0.26em;margin-bottom:16px" data-scramble>AGENT DASHBOARD</div>
       <div style="font:900 clamp(34px,4vw,60px)/1.05 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em">Agent mesh. <span style="font-style:italic;font-weight:700;color:rgba(236,235,230,0.35)">One view.</span></div>
     </div>
-    <div data-reveal data-tilt style="background:#0A0C0E;border:0.5px solid rgba(164,216,255,0.14);box-shadow:0 40px 120px rgba(0,0,0,0.9),0 0 80px rgba(164,216,255,0.04);display:flex;height:580px;border-radius:6px;overflow:hidden">
-      <div style="width:212px;background:#07080A;border-right:0.5px solid rgba(164,216,255,0.09);display:flex;flex-direction:column;flex-shrink:0">
+    <div id="forge-dash-box" data-reveal data-tilt style="background:#0A0C0E;border:0.5px solid rgba(164,216,255,0.14);box-shadow:0 40px 120px rgba(0,0,0,0.9),0 0 80px rgba(164,216,255,0.04);display:flex;height:580px;border-radius:6px;overflow:hidden">
+      <div class="forge-dash-sidebar" style="width:212px;background:#07080A;border-right:0.5px solid rgba(164,216,255,0.09);display:flex;flex-direction:column;flex-shrink:0">
         <div style="padding:20px 18px 16px;border-bottom:0.5px solid rgba(164,216,255,0.09)">
           <div style="font:900 20px/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em">ForgeOS</div>
           <div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.4);letter-spacing:0.14em;margin-top:5px">CORE v1.0 · DAY <span id="dash-day-n">—</span></div>
@@ -309,7 +320,7 @@ const BODY_HTML = `
             <span style="font:400 8.5px 'DM Mono',monospace;color:rgba(236,235,230,0.22);letter-spacing:0.08em">1 SHIPPED · 2 QUEUED · 2 LATER</span>
           </div>
         </div>
-        <div style="display:flex;border-bottom:0.5px solid rgba(164,216,255,0.09);flex-shrink:0">
+        <div class="forge-dash-stats" style="display:flex;border-bottom:0.5px solid rgba(164,216,255,0.09);flex-shrink:0">
           <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">MRR</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">₹0</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">target ₹10L</div></div>
           <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">PIPELINE</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">0</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">sent · drafts pending</div></div>
           <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">TESTS</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">309</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(164,216,255,0.5);margin-top:3px">all passing ✓</div></div>
@@ -317,7 +328,7 @@ const BODY_HTML = `
         </div>
         <div style="flex:1;overflow-y:auto;padding:20px 24px">
           <div style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.16em;margin-bottom:14px">AGENT STATUS</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="forge-2col-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div style="background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">OutreachForge</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.1em">QUEUED</span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Drafted personalised messages for ICP matches. Awaiting your approval before any message is sent.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">Leads drafted — awaiting human approval</div></div></div>
             <div style="background:rgba(164,216,255,0.045);border:0.5px solid rgba(164,216,255,0.26);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">ContractForge</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:#A4D8FF;flex-shrink:0"></div><span style="font:400 8px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.1em">LIVE</span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Serving contractforge.co.in. Generating contracts for users.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">contractforge.co.in · online</div></div></div>
             <div style="background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">ForgeOS Core</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.65);flex-shrink:0;animation:pulse 2.2s 0.5s infinite"></div><span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.7);letter-spacing:0.1em">ONLINE</span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Orchestration layer. Discord bridge active. Nightly loop in development.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">Pipeline initialized · idle · awaiting command</div></div></div>
@@ -337,7 +348,7 @@ const BODY_HTML = `
 </section>
 
 <section style="padding:130px 56px;background:#08090B">
-  <div style="max-width:1300px;margin:0 auto;display:grid;grid-template-columns:1fr 1.15fr;gap:72px;align-items:center">
+  <div class="forge-2col-grid" style="max-width:1300px;margin:0 auto;display:grid;grid-template-columns:1fr 1.15fr;gap:72px;align-items:center">
     <div data-reveal>
       <div style="font:400 9.5px 'DM Mono',monospace;color:rgba(164,216,255,0.5);letter-spacing:0.26em;margin-bottom:16px" data-scramble>BUILD LOGS · LIVE</div>
       <div style="font:900 clamp(34px,3.8vw,58px)/1.02 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em;margin-bottom:26px">Every decision.<br><span style="font-style:italic;font-weight:700;color:rgba(236,235,230,0.35)">Full transparency.</span></div>
@@ -386,7 +397,7 @@ const BODY_HTML = `
         <span style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.18em">FORGEOS COMMAND INTERFACE — ILLUSTRATIVE DEMO</span>
         <div style="display:flex;align-items:center;gap:6px"><div style="width:5px;height:5px;border-radius:50%;background:#A4D8FF;flex-shrink:0;animation:pulse 2s infinite"></div><span style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.5);letter-spacing:0.1em">CORE ACTIVE</span></div>
       </div>
-      <div style="display:flex;height:470px">
+      <div id="forge-cmd-box" style="display:flex;height:470px">
         <div style="flex:1;border-right:0.5px solid rgba(164,216,255,0.09);display:flex;flex-direction:column;min-width:0">
           <div style="flex:1;overflow-y:auto;padding:26px 24px;display:flex;flex-direction:column;gap:18px">
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div style="font:400 8.5px 'DM Mono',monospace;color:rgba(236,235,230,0.22);letter-spacing:0.08em">xenarch · 09:12</div><div style="background:#181C20;border:0.5px solid rgba(164,216,255,0.14);padding:13px 16px;border-radius:3px 3px 0 3px;max-width:78%"><div style="font:400 11.5px/1.75 'DM Sans',sans-serif;color:#ECEBE6">Generate a proposal for @rahul_devtools. He's building SaaS for CAs. NDA + service agreement.</div></div></div>
@@ -397,7 +408,7 @@ const BODY_HTML = `
           </div>
           <div style="border-top:0.5px solid rgba(164,216,255,0.12);padding:12px 16px;background:#07080A;flex-shrink:0"><div style="display:flex;align-items:center;gap:10px;background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:11px 14px;border-radius:2px"><span style="font:700 12px 'DM Mono',monospace;color:#A4D8FF">▸</span><span style="font:400 10.5px 'DM Mono',monospace;color:rgba(236,235,230,0.26)">Send a command to ForgeOS...</span><span style="font:400 13px 'DM Mono',monospace;color:#A4D8FF;animation:blink 1s infinite;margin-left:auto">|</span></div></div>
         </div>
-        <div style="width:280px;display:flex;flex-direction:column;flex-shrink:0">
+        <div class="forge-cmd-sidebar" style="width:280px;display:flex;flex-direction:column;flex-shrink:0">
           <div style="padding:16px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09)"><div style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.16em;margin-bottom:12px">LIVE ARTIFACT</div><div style="background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:15px;border-radius:3px"><div style="font:700 12px/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.02em;margin-bottom:11px">SERVICE AGREEMENT</div><div style="font:400 8.5px/2 'DM Mono',monospace;color:rgba(236,235,230,0.35)"><div>Date: July 2, 2026</div><div>Party A: xenarch</div><div>Party B: @rahul_devtools</div><div>Jurisdiction: Mumbai HC</div><div>GST: 18% applicable</div><div style="color:rgba(164,216,255,0.5);margin-top:7px;animation:blink 1.2s infinite">Drafting clause 3...</div></div></div></div>
           <div style="padding:16px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09)"><div style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.16em;margin-bottom:12px">AGENT STATUS</div><div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:6px"><div style="width:5px;height:5px;border-radius:50%;background:#A4D8FF;flex-shrink:0;animation:pulse 2.2s infinite"></div><span style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.55)">ContractForge</span></div><span style="font:400 8.5px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.08em">ACTIVE</span></div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:6px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.4)">OutreachForge</span></div><span style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.35);letter-spacing:0.08em">QUEUED</span></div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:6px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.65);flex-shrink:0;animation:pulse 2.2s 1s infinite"></div><span style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.55)">ForgeOS Core</span></div><span style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.65);letter-spacing:0.08em">ONLINE</span></div></div></div>
           <div style="padding:16px 18px;flex:1"><div style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.16em;margin-bottom:12px">QUICK ACTIONS</div><div style="display:flex;flex-direction:column;gap:8px"><div data-magnetic style="background:#A4D8FF;color:#08090B;padding:11px 12px;font:700 9.5px 'DM Mono',monospace;letter-spacing:0.1em;cursor:pointer;border-radius:2px;text-align:center;transition:box-shadow .3s">APPROVE ARTIFACT →</div><div data-magnetic style="border:0.5px solid rgba(236,235,230,0.12);padding:11px 12px;font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.32);letter-spacing:0.1em;cursor:pointer;border-radius:2px;text-align:center;transition:border-color .3s,color .3s,background .3s">REQUEST REVISION</div><div data-magnetic style="border:0.5px solid rgba(236,235,230,0.12);padding:11px 12px;font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.32);letter-spacing:0.1em;cursor:pointer;border-radius:2px;text-align:center;transition:border-color .3s,color .3s,background .3s">VIEW FULL LOGS</div></div></div>
@@ -416,7 +427,7 @@ const BODY_HTML = `
     <div style="font:900 clamp(48px,6.4vw,100px)/1 'Playfair Display',serif;letter-spacing:-0.05em;margin-bottom:48px"><span style="font-style:italic;font-weight:700;color:#A4D8FF">Start forging.</span></div>
     <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
       <a data-magnetic href="https://contractforge.co.in" target="_blank" style="background:#A4D8FF;color:#08090B;font:700 11.5px 'DM Mono',monospace;padding:17px 40px;letter-spacing:0.14em;text-decoration:none;border-radius:2px;box-shadow:0 0 40px rgba(164,216,255,0.28);transition:box-shadow .35s ease">TRY CONTRACTFORGE →</a>
-      <a data-magnetic href="#agents" style="border:0.5px solid rgba(236,235,230,0.22);color:#ECEBE6;font:400 11.5px 'DM Mono',monospace;padding:16px 34px;letter-spacing:0.14em;text-decoration:none;border-radius:2px;transition:border-color .3s,color .3s,background .3s,box-shadow .35s">FOLLOW THE BUILD</a>
+      <a data-magnetic href="https://github.com/xenaarch-dev/forgeos" target="_blank" style="border:0.5px solid rgba(236,235,230,0.22);color:#ECEBE6;font:400 11.5px 'DM Mono',monospace;padding:16px 34px;letter-spacing:0.14em;text-decoration:none;border-radius:2px;transition:border-color .3s,color .3s,background .3s,box-shadow .35s">FOLLOW THE BUILD</a>
     </div>
   </div>
 </section>
@@ -426,9 +437,8 @@ const BODY_HTML = `
     <div style="font:300 12px/2 'DM Sans',sans-serif;color:rgba(236,235,230,0.3);max-width:300px">The autonomous business OS.<br>One founder. Seven agents. Mumbai.</div>
     <div style="display:flex;gap:40px;flex-wrap:wrap">
       <a href="https://contractforge.co.in" target="_blank" style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.18em;text-decoration:none">CONTRACTFORGE</a>
-      <a href="#" style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.18em;text-decoration:none">GITHUB</a>
-      <a href="#" style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.18em;text-decoration:none">X / TWITTER</a>
-      <a href="#" style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.18em;text-decoration:none">DOCS</a>
+      <a href="https://github.com/xenaarch-dev/forgeos" target="_blank" style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.18em;text-decoration:none">GITHUB</a>
+      <a href="https://x.com/xenarch" target="_blank" style="font:400 9px 'DM Mono',monospace;color:rgba(236,235,230,0.3);letter-spacing:0.18em;text-decoration:none">X / TWITTER</a>
     </div>
     <span style="font:400 8.5px 'DM Mono',monospace;color:rgba(236,235,230,0.16);letter-spacing:0.14em">© 2026 XENARCH · MUMBAI</span>
   </div>

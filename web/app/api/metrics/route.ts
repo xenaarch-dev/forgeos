@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const BASELINE_MS = new Date('2026-01-10').getTime()
 const YC_DEADLINE_MS = new Date('2026-07-27').getTime()
 
