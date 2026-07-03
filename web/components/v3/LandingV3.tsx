@@ -29,6 +29,14 @@ const GLOBAL_CSS = `
   @media(max-width:1080px){#forge-hud-l,#forge-hud-r{display:none}}
   nav a{white-space:nowrap}
   @media(pointer:coarse){#forge-cursor-dot,#forge-cursor-ring,#forge-torch{display:none}}
+  @media(max-width:900px){
+    #forge-nav{padding:0 20px !important}
+    .forge-nav-links{gap:16px !important}
+    #forge-nav-cta{padding:9px 14px !important}
+  }
+  @media(max-width:680px){
+    .forge-nav-links{display:none !important}
+  }
 `
 
 const BODY_HTML = `
@@ -47,7 +55,7 @@ const BODY_HTML = `
 <div id="forge-cursor-ring" style="position:fixed;width:34px;height:34px;border-radius:50%;border:1px solid rgba(164,216,255,0.55);z-index:960;pointer-events:none;transform:translate(-50%,-50%);left:50%;top:40%;transition:width .25s ease,height .25s ease,border-color .25s ease"></div>
 <div id="forge-cursor-dot" style="position:fixed;width:5px;height:5px;border-radius:50%;background:#A4D8FF;z-index:961;pointer-events:none;transform:translate(-50%,-50%);left:50%;top:40%"></div>
 
-<nav style="position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 56px;background:rgba(8,9,11,0.65);backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);border-bottom:0.5px solid rgba(164,216,255,0.1)">
+<nav id="forge-nav" style="position:fixed;top:0;left:0;right:0;z-index:200;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 56px;background:rgba(8,9,11,0.65);backdrop-filter:blur(28px) saturate(1.4);-webkit-backdrop-filter:blur(28px) saturate(1.4);border-bottom:0.5px solid rgba(164,216,255,0.1)">
   <div style="display:flex;align-items:center;gap:14px">
     <span style="font:900 22px/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em">ForgeOS</span>
     <div style="display:flex;align-items:center;gap:7px;border:0.5px solid rgba(164,216,255,0.22);background:rgba(164,216,255,0.05);padding:4px 10px;border-radius:2px">
@@ -55,13 +63,13 @@ const BODY_HTML = `
       <span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.8);letter-spacing:0.16em;white-space:nowrap">CONTRACTFORGE: LIVE</span>
     </div>
   </div>
-  <div style="display:flex;gap:34px;align-items:center">
+  <div class="forge-nav-links" style="display:flex;gap:34px;align-items:center">
     <a href="#agents" style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.42);letter-spacing:0.18em;text-decoration:none">AGENTS</a>
     <a href="#how" style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.42);letter-spacing:0.18em;text-decoration:none">HOW IT WORKS</a>
     <a href="#proof" style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.42);letter-spacing:0.18em;text-decoration:none">PROOF</a>
     <a href="#dashboard" style="font:400 9.5px 'DM Mono',monospace;color:rgba(236,235,230,0.42);letter-spacing:0.18em;text-decoration:none">DASHBOARD</a>
   </div>
-  <a data-magnetic href="https://contractforge.co.in" target="_blank" style="font:500 9.5px 'DM Mono',monospace;color:#08090B;background:#A4D8FF;padding:11px 22px;letter-spacing:0.12em;text-decoration:none;border-radius:2px;box-shadow:0 0 24px rgba(164,216,255,0.18);transition:box-shadow .35s ease">TRY CONTRACTFORGE →</a>
+  <a data-magnetic id="forge-nav-cta" href="https://contractforge.co.in" target="_blank" style="font:500 9.5px 'DM Mono',monospace;color:#08090B;background:#A4D8FF;padding:11px 22px;letter-spacing:0.12em;text-decoration:none;border-radius:2px;box-shadow:0 0 24px rgba(164,216,255,0.18);transition:box-shadow .35s ease;flex-shrink:0">TRY CONTRACTFORGE →</a>
 </nav>
 
 <section style="position:relative;width:100%;height:100vh;min-height:720px;overflow:hidden;display:flex;align-items:flex-end">
