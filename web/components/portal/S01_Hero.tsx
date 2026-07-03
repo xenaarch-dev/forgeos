@@ -11,22 +11,33 @@ import Ember from '@/components/fx/Ember'
 import PortalScene from '@/components/portal/PortalScene'
 import HudPanel from '@/components/portal/HudPanel'
 import useScrollOpacity from '@/components/fx/useScrollOpacity'
+import { useMetrics } from '@/hooks/useMetrics'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 const LINE1 = 'One sentence in.'
 const LINE2 = 'Full SaaS out.'
 
-const HUD_LEFT = `FORGE CORE // ONLINE
-PIPELINE: 18 STAGES
-AGENTS: 7 ACTIVE
-BUILD TIME: 04:07:32`
-
+// Computed once on load — no network needed for these two
 const DAY_NUMBER = Math.floor((Date.now() - new Date('2026-01-10').getTime()) / 86_400_000) + 1
+const YC_DAYS = Math.max(0, Math.ceil((new Date('2026-07-27').getTime() - Date.now()) / 86_400_000))
 
-const HUD_RIGHT = `DAY ${DAY_NUMBER} — MUMBAI, INDIA
-CONTRACTFORGE: LIVE
-PRICE: ₹2,499/MO
-STATUS: OPERATIONAL`
+function buildHudLeft(outreachStatus: string): string {
+  // "7 DEPLOYED" is honest: agents exist and are built, but none are
+  // currently running a live build — ContractForge is operated, not building.
+  // OutreachForge has drafted leads queued for human approval.
+  const outreachLine =
+    outreachStatus === 'queued_awaiting_approval'
+      ? 'OUTREACH: QUEUED'
+      : outreachStatus === 'live'
+        ? 'OUTREACH: LIVE'
+        : 'OUTREACH: IDLE'
+  return `FORGE CORE // ONLINE\nPIPELINE: 18 STAGES\nAGENTS: 7 DEPLOYED\n${outreachLine}`
+}
+
+function buildHudRight(dayNum: number, ycDays: number, mrr: number): string {
+  const mrrStr = mrr === 0 ? '₹0' : `₹${mrr.toLocaleString('en-IN')}`
+  return `DAY ${dayNum} — MUMBAI, INDIA\nYC: ${ycDays} DAYS\nCONTRACTFORGE: LIVE\nMRR: ${mrrStr}`
+}
 
 export default function S01_Hero() {
   const reduced = useReducedMotion() ?? false
@@ -39,6 +50,17 @@ export default function S01_Hero() {
   const [c1, setC1] = useState(0)
   const [c2, setC2] = useState(0)
   const [typingDone, setTypingDone] = useState(false)
+
+  // Live metrics — initial values are honest static fallbacks, API updates them
+  const metrics = useMetrics()
+  const [hudLeft, setHudLeft] = useState(() => buildHudLeft('queued_awaiting_approval'))
+  const [hudRight, setHudRight] = useState(() => buildHudRight(DAY_NUMBER, YC_DAYS, 0))
+
+  useEffect(() => {
+    if (!metrics) return
+    setHudLeft(buildHudLeft(metrics.agent_status.outreach))
+    setHudRight(buildHudRight(metrics.day_number, metrics.yc_days_remaining, metrics.mrr_inr))
+  }, [metrics])
 
   // load sequence: Forge. blurs in (0s) → typewriter (1.6s) → ember (2.8s)
   useEffect(() => {
@@ -129,7 +151,7 @@ export default function S01_Hero() {
             animate={typingDone ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.6, delay: 0.6, ease: EASE }}
           >
-            <HudPanel style={{ left: '3vw', top: '25vh' }}>{HUD_LEFT}</HudPanel>
+            <HudPanel style={{ left: '3vw', top: '25vh' }}>{hudLeft}</HudPanel>
           </motion.div>
         </motion.div>
         <motion.div
@@ -142,7 +164,7 @@ export default function S01_Hero() {
             transition={{ duration: 0.6, delay: 0.8, ease: EASE }}
           >
             <HudPanel style={{ right: '3vw', top: '35vh' }}>
-              {HUD_RIGHT}
+              {hudRight}
             </HudPanel>
           </motion.div>
         </motion.div>

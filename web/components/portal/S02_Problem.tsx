@@ -105,7 +105,7 @@ function HumanCounter({
             lineHeight: 1.1,
           }}
         >
-          FORGEOS: 04:07:32
+          FORGEOS: HOURS, NOT MONTHS
         </span>
       ) : (
         <span
