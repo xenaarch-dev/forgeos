@@ -1,11 +1,100 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-03
-**Day:** 175
+**Date:** 2026-07-04
+**Day:** 176
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 175 — real-data metrics pipeline, v3 landing page shipped live, models/__init__.py `.content` fix, pre-launch smoke test (real links + mobile grid breakpoints + metrics caching) — CLOSED past midnight into Day 176 (2026-07-04)
+**Session focus:** Day 176 — real metrics pipeline wired into LandingV3, dead S01-S13 portal code deleted, live deploy verified serving the new bundle, README.md full rewrite (ModelRouter, live homepage, pipeline, Daemon Mode all corrected against actual code), LinkedIn account restricted (outreach channel blocked) — CLOSED past midnight into Day 177 (2026-07-05)
+
+---
+
+## Day 176 — Completed (2026-07-04, closed past midnight into Day 177)
+
+### Real metrics wired into LandingV3 + dead portal code removed — `576abbc`
+
+A QA sweep found `LandingV3.tsx` was hardcoding MRR/leads/agent_status inline even though a
+working `useMetrics()` hook and Supabase-backed `/api/metrics` route already existed from Day
+175 — the values happened to match reality (₹0 MRR, queued outreach) but weren't actually reading
+from the API. Fixed: `LandingV3` now calls `useMetrics()` and patches 11 DOM nodes (nav badge,
+HUD-L/HUD-R panels, Factory Floor rows, dashboard MRR/pipeline stats, dashboard agent cards) from
+the live response instead of literal strings. Marquee ticker text left un-wired deliberately (see
+Open Items).
+
+Also deleted `web/components/portal/` (S01-S13 + PortalScene, HudPanel, LoopCanvas, Nav,
+ProgressRail, AgentChapter) — confirmed fully orphaned since the Day 175 LandingV3 port (zero
+imports from outside the directory, verified by grep before deleting). `next build` passed clean
+afterward.
+
+### Live verification
+
+Confirmed via direct checks, not assumption:
+- Local repo up to date with `origin/main`, no drift.
+- Live `forgeos-eight.vercel.app` confirmed serving commit `576abbc`: GitHub's deployment record
+  (`gh api .../deployments`) shows sha `576abbc` as the latest Production deployment, and the live
+  HTML contains the new wiring-only DOM ids (`badge-cf-status`, `hud-mrr`, `dash-pipeline`) while
+  containing zero of the old portal's markers (`PortalScene`, `S01_Hero`, `AgentChapter`) —
+  genuinely gone from the live bundle, not just deleted locally.
+- Links, mobile breakpoints (375/414/768px via DOM `getBoundingClientRect()`, not the unreliable
+  `resize_window`), and metrics cache bypass (`force-dynamic`) all re-confirmed still correct —
+  no regressions from Day 175's fixes.
+- `day_number` live-ticking confirmed again: `/api/metrics` returned `176` this session, matching
+  the Jan 10 2026 baseline computed fresh, not carried over from a stale value.
+- Full test suite: **309 passing, 3 skipped, 312 total** — unchanged, re-run (not assumed) both
+  before and after today's changes.
+
+### README.md full rewrite
+
+Previous README was last touched Day 162 (14 days stale) and described the retired V1 pipeline
+("18 stages, 10 gates, 7 agents") and a "Night Forge" design-token set that no longer exists
+anywhere in the codebase (verified via repo-wide grep — the tokens belonged to the now-deleted
+S01-S13 portal). Rewritten against actual current code, not memory:
+- ModelRouter section now matches `config/models.yaml` / `llm/router.py` exactly: GLM-5.2
+  (`openrouter/z-ai/glm-5.2`) Tier-1 default, Sonnet fallback (with the real warning-log message
+  quoted), Fable-5 gated behind `FORGEOS_FRONTIER_TIER=true`.
+- New "Live homepage" section documenting LandingV3 + `/api/metrics`, single-page routing, and
+  the portal deletion.
+- "The system" table replaced with the actual 20-stage / 11-gate `HermesOrchestrator` V2 pipeline
+  (verified stage-by-stage against `agents/hermes.py`), with the V1 `--legacy` flag noted
+  separately.
+- Test count corrected to 309/3/312 (was stale at "244/244").
+- **Correction to the brief this session started from:** the assumption going in was "Redis+RQ
+  superseded by a GitHub Actions scheduler." Verified this is not what the code shows —
+  `job_queue.py`/`worker_daemon.py` (Redis+RQ) are unimported dead code, but what actually
+  replaced them is the flat-file `daemon/queue.py` + `daemon/drainer.py` running under **Windows
+  Task Scheduler**, not GitHub Actions. Similarly, Telegram is not fully superseded by Discord:
+  `daemon/drainer.py` still actively polls Telegram for build-idea intake (this is live,
+  functioning code) — Day 163's Telegram→Discord swap was specific to the OutreachForge
+  lead-approval channel, a separate subsystem. README now describes both mechanisms as they
+  actually are, not as briefed.
+- Confirmed repo is public (`gh repo view`); secrets-history-clean claim included as stated,
+  not independently re-scanned this session (GitHub secret-scanning is disabled on this repo, so
+  there's no automated check to run without a full manual history scan).
+
+### Open items (carried forward — don't lose track)
+
+1. **Hero background image still missing** — `web/public/uploads/Screenshot 2026-06-25
+   161244.png` 404s live. Blocked on Padmaja supplying the file.
+2. **WSL2 vs Windows OneDrive clone never formally consolidated** — caused 3 separate incidents
+   this week (Day 161 vs 173-174 drift, the `.content` fix landing in the wrong `models` module,
+   and this session's own briefed assumption about Redis+RQ/GitHub Actions turning out not to
+   match this clone's code). Needs a decision: always `git pull` in WSL2 before builds, or
+   designate one clone as canonical.
+3. **Marquee ticker text** — decorative duplicate of the now-wired MRR/status values, not itself
+   wired to `/api/metrics`. Deliberately deferred — low priority, cosmetic only.
+4. **Roman-forge cursor + data-reactive hero art** — direction chosen (Roman/cosmic hybrid,
+   already reflected in LandingV3's current design). Next step is a dedicated Claude Design
+   exploration session for the cursor-reactive hero art specifically — not yet run.
+
+### Business context (non-code, relevant to future outreach-agent work)
+
+Padmaja's LinkedIn account was fully restricted/banned today. Appeal filed via LinkedIn's General
+Restriction Appeal Form. OutreachForge's LinkedIn-based outreach is blocked indefinitely pending
+the appeal outcome. Email-based CA firm outreach (LinkedIn-independent) identified as the interim
+channel — 3 candidate Mumbai firms found (Anam CA, N D Savla & Associates, K M GATECHA & CO LLP);
+contact details not yet pulled.
+
+**Commits today:** `576abbc`, plus this STATE.md/README.md close-out commit.
 
 ---
 
