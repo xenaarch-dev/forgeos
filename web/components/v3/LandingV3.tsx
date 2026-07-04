@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useMetrics } from '@/hooks/useMetrics'
 
 // Ported verbatim from web/landing-v3.html (the approved final design), with
 // three factual corrections made during the real-data audit:
@@ -71,7 +72,7 @@ const BODY_HTML = `
     <span style="font:900 22px/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.05em">ForgeOS</span>
     <div class="forge-nav-badge" style="display:flex;align-items:center;gap:7px;border:0.5px solid rgba(164,216,255,0.22);background:rgba(164,216,255,0.05);padding:4px 10px;border-radius:2px">
       <svg width="15" height="8" viewBox="0 0 22 12" fill="none" style="flex-shrink:0" aria-hidden="true"><path d="M11 11 C 8 8 6 5 2 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.75"/><path d="M11 11 C 14 8 16 5 20 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.75"/><ellipse cx="4" cy="2.4" rx="2.1" ry="0.9" transform="rotate(-40 4 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="6.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(-35 6.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="8.8" cy="7.2" rx="2.1" ry="0.9" transform="rotate(-30 8.8 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="18" cy="2.4" rx="2.1" ry="0.9" transform="rotate(40 18 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="15.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(35 15.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/><ellipse cx="13.2" cy="7.2" rx="2.1" ry="0.9" transform="rotate(30 13.2 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.65"/></svg>
-      <span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.8);letter-spacing:0.16em;white-space:nowrap">CONTRACTFORGE: LIVE</span>
+      <span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.8);letter-spacing:0.16em;white-space:nowrap">CONTRACTFORGE: <span id="badge-cf-status">LIVE</span></span>
     </div>
   </div>
   <div class="forge-nav-links" style="display:flex;gap:34px;align-items:center">
@@ -100,7 +101,7 @@ const BODY_HTML = `
       <div style="flex:1;background:rgba(164,216,255,0.18);height:24px"></div>
       <div style="flex:1;background:#A4D8FF;height:50px;box-shadow:0 0 14px rgba(164,216,255,0.4)"></div>
     </div>
-    <div style="font:400 8.5px 'DM Mono',monospace;color:rgba(236,235,230,0.45);line-height:2">MRR: ₹0 · DAY <span id="hud-day-n">—</span><br>OUTREACH: QUEUED<br><span style="color:rgba(164,216,255,0.5)">▸ LEADS AWAITING APPROVAL</span></div>
+    <div style="font:400 8.5px 'DM Mono',monospace;color:rgba(236,235,230,0.45);line-height:2">MRR: ₹<span id="hud-mrr">0</span> · DAY <span id="hud-day-n">—</span><br>OUTREACH: <span id="hud-outreach-status">QUEUED</span><br><span style="color:rgba(164,216,255,0.5)">▸ LEADS AWAITING APPROVAL</span></div>
   </div>
 
   <div id="forge-hud-r" style="position:absolute;right:4%;top:15%;z-index:4;width:196px;padding:16px;background:rgba(8,9,11,0.6);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:0.5px solid rgba(164,216,255,0.22);border-top:1px solid rgba(164,216,255,0.45);box-shadow:0 10px 44px rgba(0,0,0,0.55);will-change:transform;animation:breathe 5s ease-in-out 1.5s infinite">
@@ -108,11 +109,11 @@ const BODY_HTML = `
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:9px">
         <div style="width:7px;height:7px;border-radius:50%;background:rgba(164,216,255,0.22);flex-shrink:0"></div>
-        <div><div style="font:400 11px 'DM Sans',sans-serif;color:rgba(236,235,230,0.55)">OutreachForge</div><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(236,235,230,0.25);letter-spacing:0.1em">QUEUED</div></div>
+        <div><div style="font:400 11px 'DM Sans',sans-serif;color:rgba(236,235,230,0.55)">OutreachForge</div><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(236,235,230,0.25);letter-spacing:0.1em"><span id="hud-r-outreach-status">QUEUED</span></div></div>
       </div>
       <div style="display:flex;align-items:center;gap:9px">
         <div style="width:7px;height:7px;border-radius:50%;background:#A4D8FF;flex-shrink:0"></div>
-        <div><div style="font:400 11px 'DM Sans',sans-serif;color:#ECEBE6">ContractForge</div><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.6);letter-spacing:0.1em">LIVE</div></div>
+        <div><div style="font:400 11px 'DM Sans',sans-serif;color:#ECEBE6">ContractForge</div><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.6);letter-spacing:0.1em"><span id="hud-r-cf-status">LIVE</span></div></div>
       </div>
       <div style="display:flex;align-items:center;gap:9px">
         <div style="width:7px;height:7px;border-radius:50%;background:rgba(164,216,255,0.65);flex-shrink:0;animation:pulse 2.2s 0.9s infinite"></div>
@@ -184,13 +185,13 @@ const BODY_HTML = `
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(164,216,255,0.4)">/I</div>
         <div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.03em">OutreachForge</div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.45)">Finds prospects, scores leads, drafts personalised outreach for human approval. Approved messages route via Discord.</div>
-        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="width:6px;height:6px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.16em">QUEUED</span></div>
+        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="width:6px;height:6px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.16em"><span id="ff-outreach-status">QUEUED</span></span></div>
       </div>
       <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);background:rgba(164,216,255,0.045);border-left:2px solid #A4D8FF;transition:background .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:#A4D8FF">/II</div>
         <div><div style="font:700 clamp(24px,2.4vw,36px)/1 'Playfair Display',serif;color:#ECEBE6;letter-spacing:-0.03em">ContractForge</div><div style="font:400 8.5px 'DM Mono',monospace;color:rgba(164,216,255,0.6);letter-spacing:0.14em;margin-top:7px">PRODUCT 001 · CONTRACTFORGE.CO.IN</div></div>
         <div style="font:300 13px/1.75 'DM Sans',sans-serif;color:rgba(236,235,230,0.55)">GST contracts, NDAs, service agreements — Indian law baked in. From prompt to signed-ready document in 5 minutes.</div>
-        <div style="display:flex;align-items:center;gap:7px;justify-content:flex-end"><svg width="15" height="8" viewBox="0 0 22 12" fill="none" style="flex-shrink:0" aria-hidden="true"><path d="M11 11 C 8 8 6 5 2 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.8"/><path d="M11 11 C 14 8 16 5 20 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.8"/><ellipse cx="4" cy="2.4" rx="2.1" ry="0.9" transform="rotate(-40 4 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="6.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(-35 6.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="8.8" cy="7.2" rx="2.1" ry="0.9" transform="rotate(-30 8.8 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="18" cy="2.4" rx="2.1" ry="0.9" transform="rotate(40 18 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="15.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(35 15.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="13.2" cy="7.2" rx="2.1" ry="0.9" transform="rotate(30 13.2 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/></svg><span style="font:400 9px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.16em">SHIPPED · LIVE</span></div>
+        <div style="display:flex;align-items:center;gap:7px;justify-content:flex-end"><svg width="15" height="8" viewBox="0 0 22 12" fill="none" style="flex-shrink:0" aria-hidden="true"><path d="M11 11 C 8 8 6 5 2 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.8"/><path d="M11 11 C 14 8 16 5 20 1" stroke="#A4D8FF" stroke-width="0.9" opacity="0.8"/><ellipse cx="4" cy="2.4" rx="2.1" ry="0.9" transform="rotate(-40 4 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="6.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(-35 6.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="8.8" cy="7.2" rx="2.1" ry="0.9" transform="rotate(-30 8.8 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="18" cy="2.4" rx="2.1" ry="0.9" transform="rotate(40 18 2.4)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="15.5" cy="4.6" rx="2.1" ry="0.9" transform="rotate(35 15.5 4.6)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/><ellipse cx="13.2" cy="7.2" rx="2.1" ry="0.9" transform="rotate(30 13.2 7.2)" stroke="#A4D8FF" stroke-width="0.8" opacity="0.7"/></svg><span style="font:400 9px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.16em">SHIPPED · <span id="ff-cf-status">LIVE</span></span></div>
       </div>
       <div class="forge-agent-row" style="display:grid;grid-template-columns:80px 1.1fr 1.5fr 170px;gap:28px;align-items:center;padding:30px 18px;border-bottom:0.5px solid rgba(164,216,255,0.09);transition:background .25s">
         <div style="font:400 12px 'Playfair Display',serif;font-style:italic;color:rgba(164,216,255,0.4)">/III</div>
@@ -321,16 +322,16 @@ const BODY_HTML = `
           </div>
         </div>
         <div class="forge-dash-stats" style="display:flex;border-bottom:0.5px solid rgba(164,216,255,0.09);flex-shrink:0">
-          <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">MRR</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">₹0</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">target ₹10L</div></div>
-          <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">PIPELINE</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">0</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">sent · drafts pending</div></div>
+          <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">MRR</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">₹<span id="dash-mrr">0</span></div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">target ₹10L</div></div>
+          <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">PIPELINE</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6"><span id="dash-pipeline">0</span></div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">sent · drafts pending</div></div>
           <div style="flex:1;padding:16px 20px;border-right:0.5px solid rgba(164,216,255,0.07)"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">TESTS</div><div style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">309</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(164,216,255,0.5);margin-top:3px">all passing ✓</div></div>
           <div style="flex:1;padding:16px 20px"><div style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.14em;margin-bottom:6px">UPTIME</div><div id="dash-uptime" style="font:900 26px/1 'Playfair Display',serif;color:#ECEBE6">—</div><div style="font:300 9.5px 'DM Sans',sans-serif;color:rgba(236,235,230,0.24);margin-top:3px">days since launch</div></div>
         </div>
         <div style="flex:1;overflow-y:auto;padding:20px 24px">
           <div style="font:400 9px 'DM Mono',monospace;color:rgba(164,216,255,0.42);letter-spacing:0.16em;margin-bottom:14px">AGENT STATUS</div>
           <div class="forge-2col-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div style="background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">OutreachForge</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.1em">QUEUED</span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Drafted personalised messages for ICP matches. Awaiting your approval before any message is sent.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">Leads drafted — awaiting human approval</div></div></div>
-            <div style="background:rgba(164,216,255,0.045);border:0.5px solid rgba(164,216,255,0.26);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">ContractForge</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:#A4D8FF;flex-shrink:0"></div><span style="font:400 8px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.1em">LIVE</span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Serving contractforge.co.in. Generating contracts for users.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">contractforge.co.in · online</div></div></div>
+            <div style="background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">OutreachForge</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.28);flex-shrink:0"></div><span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.1em"><span id="dash-card-outreach-status">QUEUED</span></span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Drafted personalised messages for ICP matches. Awaiting your approval before any message is sent.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">Leads drafted — awaiting human approval</div></div></div>
+            <div style="background:rgba(164,216,255,0.045);border:0.5px solid rgba(164,216,255,0.26);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">ContractForge</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:#A4D8FF;flex-shrink:0"></div><span style="font:400 8px 'DM Mono',monospace;color:#A4D8FF;letter-spacing:0.1em"><span id="dash-card-cf-status">LIVE</span></span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Serving contractforge.co.in. Generating contracts for users.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">contractforge.co.in · online</div></div></div>
             <div style="background:#101316;border:0.5px solid rgba(164,216,255,0.14);padding:16px;border-radius:3px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:#ECEBE6">ForgeOS Core</div><div style="display:flex;align-items:center;gap:5px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(164,216,255,0.65);flex-shrink:0;animation:pulse 2.2s 0.5s infinite"></div><span style="font:400 8px 'DM Mono',monospace;color:rgba(164,216,255,0.7);letter-spacing:0.1em">ONLINE</span></div></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.4);margin-bottom:10px">Orchestration layer. Discord bridge active. Nightly loop in development.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.12);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.38);letter-spacing:0.08em">STATUS</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.48);margin-top:3px">Pipeline initialized · idle · awaiting command</div></div></div>
             <div style="background:#101316;border:0.5px solid rgba(236,235,230,0.06);padding:16px;border-radius:3px;opacity:0.55"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px"><div style="font:700 15px/1 'Playfair Display',serif;color:rgba(236,235,230,0.52)">ReputationForge</div><span style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.22);letter-spacing:0.1em">QUEUED</span></div><div style="font:300 10px/1.65 'DM Sans',sans-serif;color:rgba(236,235,230,0.28);margin-bottom:10px">Activates at 100 users milestone.</div><div style="background:#08090B;border:0.5px solid rgba(164,216,255,0.07);padding:7px 10px;border-radius:2px"><div style="font:400 7.5px 'DM Mono',monospace;color:rgba(164,216,255,0.22);letter-spacing:0.08em">TRIGGER</div><div style="font:400 8px 'DM Mono',monospace;color:rgba(236,235,230,0.26);margin-top:3px">Waiting for 100 user milestone</div></div></div>
           </div>
@@ -447,6 +448,46 @@ const BODY_HTML = `
 `
 
 export default function LandingV3() {
+  const metrics = useMetrics()
+
+  useEffect(() => {
+    if (!metrics) return
+
+    function $id(id: string) {
+      return document.getElementById(id)
+    }
+    function setText(id: string, v: string | number) {
+      var el = $id(id)
+      if (el) el.textContent = String(v)
+    }
+
+    var mrrText = metrics.mrr_inr.toLocaleString('en-IN')
+    var outreachLabel =
+      metrics.agent_status.outreach === 'live'
+        ? 'LIVE'
+        : metrics.agent_status.outreach === 'queued_awaiting_approval'
+          ? 'QUEUED'
+          : 'IDLE'
+    var cfLabel = metrics.agent_status.contractforge === 'live' ? 'LIVE' : 'OFFLINE'
+    var pipelineCount = metrics.leads
+      ? metrics.leads.drafted + metrics.leads.approved + metrics.leads.sent
+      : 0
+
+    setText('hud-mrr', mrrText)
+    setText('dash-mrr', mrrText)
+    setText('dash-pipeline', pipelineCount)
+
+    setText('hud-outreach-status', outreachLabel)
+    setText('hud-r-outreach-status', outreachLabel)
+    setText('ff-outreach-status', outreachLabel)
+    setText('dash-card-outreach-status', outreachLabel)
+
+    setText('badge-cf-status', cfLabel)
+    setText('hud-r-cf-status', cfLabel)
+    setText('ff-cf-status', cfLabel)
+    setText('dash-card-cf-status', cfLabel)
+  }, [metrics])
+
   useEffect(() => {
     // Ported verbatim from landing-v3.html's inline <script>, minus the
     // 'ZERO DOWNTIME' marquee item (no monitoring data backs that claim).
