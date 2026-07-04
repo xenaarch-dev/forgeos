@@ -1,11 +1,50 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-02
-**Day:** 174
+**Date:** 2026-07-03
+**Day:** 175
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 174 — GLM-5.2 verify-or-build; fallback warning fix (`62b556d`); WSL2 sync gap documented
+**Session focus:** Day 175 — real-data metrics pipeline, v3 landing page shipped live, models/__init__.py `.content` fix, pre-launch smoke test (real links + mobile grid breakpoints + metrics caching) — CLOSED past midnight into Day 176 (2026-07-04)
+
+---
+
+## Day 175 — Completed (2026-07-03, closed past midnight into Day 176)
+
+### Real-data metrics pipeline — `e9cc0d8`
+
+Replaced every fabricated/hardcoded number on the live portal (old S01-S13 tree) with real or honestly-absent data:
+- `web/app/api/metrics/route.ts` — new route. `day_number`/`yc_days_remaining` computed live from Jan 10 2026 / Jul 27 2026 baselines, never hardcoded. `mrr_inr: 0` (verified real, zero paying customers). `leads` queried from Supabase `outreach_leads` via REST (service-role key), `null` if unset — never fabricated. `agent_status.outreach: "queued_awaiting_approval"` (honest, not "running"). `recent_activity: []` since no `agent_logs` table exists yet.
+- `web/hooks/useMetrics.ts` — client hook, fetches `/api/metrics`.
+- Removed the fabricated `BUILD TIME: 04:07:32` line from both the hero HUD and the S02_Problem "human vs machine" comparison — no real measurement backed that number, so it was deleted rather than replaced with another invented figure.
+
+### v3 landing page shipped live — `055f856`
+
+Replaced the entire S01-S13 Next.js portal with the previously-untracked `web/landing-v3.html` (the approved final design), ported as `web/components/v3/LandingV3.tsx` — a client component using `dangerouslySetInnerHTML` for the ~880-line hand-styled markup (verbatim porting of inline styles to JSX objects was judged too error-prone by hand) plus a real `useEffect` for the interactive JS (Signal Bloom canvas, Glyph Tide, cursor/magnetic-button effects, scramble-text). Fixed three factual issues found during the port: dropped a "276/276 tests" badge with no real source (STATE.md's real number is 309/312), dropped two "zero downtime" claims (no UptimeRobot data confirms this), fixed the hero background image to an absolute `/uploads/` path (**still needs the actual file added at `web/public/uploads/Screenshot 2026-06-25 161244.png` — not done**). `layout.tsx` updated to v3 fonts (Playfair Display, DM Sans, DM Mono, Space Grotesk) and metadata. Old S01-S13 component tree left in place but unused — cleanup deferred, not yet decided.
+
+### `models/__init__.py` — `.content` property restored — `708f634`
+
+Confirmed `import models` resolves to the **package** `models/__init__.py`, not the flat `models.py` (packages win over same-named modules in the same directory — verified via `models.__file__`). This morning's GLM slug fix (`e07e754`) added `.content` to `models.py` only, which isn't the file Python actually imports — so the live-imported class never had the fix. Re-added `@property def content(self): return self.text` to `models/__init__.py`'s `LLMResponse`, committed properly this time (previous session's fix was lost to an accidental `git stash drop`). Verified at the code level (`LLMResponse(text='pong').content == 'pong'`, no `AttributeError`) — could not run a live GLM ping from this Windows/Git Bash session since `GLM_API_KEY` only lives in WSL2's `~/.bashrc`. **Still open: live WSL2 verification of the GLM ping deferred, not done this session.**
+
+### Nav responsive fix + canvas false-alarm correction — `f0fd13f`
+
+Nav's inline `padding:0 56px`/`gap:34px` didn't shrink below ~830px viewport (flex children default to `min-width:auto`), clipping the CTA button — fixed with a `≤900px`/`≤680px` breakpoint using `!important` (required since the base styles are inline). Separately investigated a "dead canvas" concern (dangerouslySetInnerHTML script tags don't execute) and found it didn't apply — the port already used a real `useEffect`, never an injected `<script>`. The apparent dead canvas on first live check was a false negative: the browser automation tab used for testing reports `document.hidden: true` permanently (confirmed even after clicking to establish focus), which correctly gates the canvas's `requestAnimationFrame` loop exactly as it should for a real backgrounded tab. Canvas confirmed rendering correctly in local dev, local production build, and live Vercel once tested from a state where it actually painted.
+
+### Pre-launch smoke test — CLOSED — `0b9af07`
+
+Full click-through QA found: `FOLLOW THE BUILD` was a dead same-page anchor, 3 of 4 footer links were literal `href="#"` placeholders, the metrics API was being edge-cached by Vercel despite `must-revalidate` (`x-vercel-cache: HIT`, age growing 8s→26s across two `no-store` fetches), and — beyond what the QA pass explicitly named — the same fixed-px-column overflow bug (root cause of the earlier nav fix) also broke the Seven Agents grid (all 7 rows) and the Agent Dashboard mockup on narrow viewports, with `overflow-x:hidden` making the pushed-off content (status badges, stats, description text) permanently unreachable — confirmed via direct `getBoundingClientRect()` measurement, not screenshot impression.
+
+Fixed, in commit `0b9af07`:
+- **Real links**: `FOLLOW THE BUILD` + footer `GITHUB` → `github.com/xenaarch-dev/forgeos` (repo confirmed public via `gh repo view`; full git history scanned for key/secret/webhook/token patterns — only fake test fixtures found, e.g. `sk-or-v1-test` — clean). Footer `X/TWITTER` → `x.com/xenarch`. Footer `DOCS` → removed entirely, no fake placeholder.
+- **Mobile grid overflow**: added `≤900px` single-column/stacked breakpoints (reusing the nav fix's `!important` pattern) to the Seven Agents grid, Agent Dashboard mockup (212px sidebar + 4-stat row + 2-col status grid), Command Interface demo (280px sidebar), Build Logs terminal, How It Works section, and the nav badge pill (only overflowed at 375px once secondary nav links were hidden). Verified zero overflow offenders at 375px, 414px, 768px via direct DOM measurement; confirmed desktop (1280px) layout unchanged.
+- **Hero eclipse/headline overlap** (minor, deferred-scope item): light touch — `#forge-halo{opacity:0.45}` at `≤680px` so text stays legible over the art.
+- **Metrics caching**: added `export const dynamic = 'force-dynamic'` to `route.ts`. Verified live: two consecutive `no-store` fetches both returned `x-vercel-cache: MISS`, `age: 0` (previously `HIT` with growing age). Bonus proof: `day_number` was observed ticking `175 → 176` live across the session as real midnight passed.
+
+**Residual note (human follow-up):** the mobile grid fix was verified via direct DOM measurement (`getBoundingClientRect()`, zero overflow offenders at 375/414/768px) and via confirming the exact CSS rules are present in the live stylesheet — **not** via a literal live narrow-viewport screenshot. The browser automation tool's `resize_window` does not actually change the rendered viewport in this environment (confirmed twice — requested 375×812, actual `clientWidth` stayed at ~1526px). Padmaja should spot-check the live site on a real phone when convenient; the fix is very likely correct (same method validated the nav fix already shipped and confirmed working) but hasn't had eyes-on-a-real-device confirmation.
+
+**Commits today:** `e9cc0d8`, `055f856`, `708f634`, `f0fd13f`, `0b9af07` — all on `origin/main`.
+
+**Did not move today (carried forward unchanged):** LinkedIn outreach (4 leads still drafted/queued, none sent), CA firm outreach (names still needed from Padmaja before drafting), YC application draft Version B (still not committed).
 
 ---
 
@@ -672,3 +711,27 @@ gates when quality is more important than cost. Costs ~$10/$50 MTok vs $1.20/$4.
 | RepairLoop not implemented | Not started | Read `forge_sdk/specs/SPEC_RepairLoop.md` Open Q1 first |
 | YC video script | Not started | Deadline July 27, 2026 |
 | YC application draft | Not committed | `yc/application_draft.md` Version B — review + commit before July 15 |
+
+---
+
+## HANDOFF — Day 175/176 (2026-07-03, closed past midnight into 2026-07-04)
+
+**Pre-launch smoke test CLOSED. Live site (forgeos-eight.vercel.app) is now the v3 landing design, on commit `0b9af07`, with real links, mobile-responsive grids, and non-cached metrics.**
+
+### One residual note — human spot-check needed
+
+The mobile grid fix (Seven Agents grid, Agent Dashboard mockup, Command Interface demo, Build Logs, How It Works, nav) was verified via direct DOM measurement (`getBoundingClientRect()`, confirmed zero overflow offenders at 375px/414px/768px) and by confirming the exact CSS breakpoint rules are present in the live stylesheet — **not** via a literal live narrow-viewport screenshot. The browser automation tool available in this environment cannot actually resize its rendered viewport (`resize_window` reports success but `document.documentElement.clientWidth` stays at ~1526px regardless of the width requested — confirmed twice). The fix is very likely correct — same verification method already validated the nav fix, which is confirmed working — but Padmaja should open the live site on a real phone when convenient to eyeball it directly.
+
+### Still needed, not done this session
+
+- **Hero background image** — `web/public/uploads/Screenshot 2026-06-25 161244.png` needs to be added by Padmaja. The hero currently 404s on this image; the eclipse canvas animation covers most of the visual space regardless, so it degrades gracefully, but the photo layer is missing.
+- **`models/__init__.py` `.content` fix — live WSL2 GLM ping not re-verified.** Confirmed at the code level in this session (`LLMResponse(text='pong').content == 'pong'`, no `AttributeError`), but `GLM_API_KEY` isn't available in this Windows/Git Bash session to run a real `GLMClient().complete(...)` call. Next session in WSL2: re-run `PYTHONPATH=. python3 -c "from llm.glm import GLMClient; c=GLMClient(); r=c.complete([{'role':'user','content':'ping'}]); print(r.content[:80])"` and confirm a real response, not an `AttributeError`.
+- **Old S01-S13 component tree** — left in place in `web/components/portal/`, no longer rendered from `app/page.tsx`. Cleanup (delete vs. keep as reference) not yet decided — flagging so it doesn't get mistaken for dead-but-load-bearing code.
+
+### Did not move today (unchanged, carry forward)
+
+- **LinkedIn outreach** — 4 leads drafted/queued in `outreach_leads`, none sent (human-in-loop by rule).
+- **CA firm outreach emails** — still blocked on Padmaja providing actual firm names/contacts to draft against.
+- **YC application draft Version B** — still not committed (`yc/application_draft.md`). Deadline context: July 27, 2026 is now 23 days away.
+
+### Everything else from Day 174's HANDOFF (models/ WSL2 shadow, semgrep on PATH, RepairLoop, YC video script) is unchanged — see the Day 174 HANDOFF above, still open.
