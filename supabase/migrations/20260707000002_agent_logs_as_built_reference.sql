@@ -1,0 +1,58 @@
+-- ============================================================================
+-- REFERENCE ONLY — DO NOT RUN THIS FILE.
+--
+-- This is not a migration to apply. agent_logs already exists in the live
+-- Supabase project, created directly against the database (dashboard SQL
+-- editor or Management API) outside of any script in this repo — no commit
+-- history, no prior migration file, and no application code anywhere in
+-- this repository (verified by grep across the full repo, every worktree,
+-- and every generated build/ output) reads or writes it.
+--
+-- This file exists purely so the repo has a written record of what's live,
+-- since nothing else documents it. The CREATE TABLE below is annotated with
+-- the columns as reported from the live schema; exact types/constraints
+-- beyond what was directly confirmed are marked inline as best-effort
+-- inference, not verified column-by-column against information_schema.
+--
+-- The RLS section reflects the lockdown actually applied on 2026-07-15:
+-- the table's original policy ("Service role full access to agent_logs")
+-- was misconfigured — named as service-role-only but actually defined as
+-- cmd=ALL, roles={public}, using(true), i.e. open read/write/delete to
+-- anyone via the Supabase REST API. It was replaced with a policy correctly
+-- scoped to the service_role role. Verified via pg_policies afterward:
+-- exactly one row, agent_logs_service_role_only, roles={service_role},
+-- cmd=ALL.
+--
+-- dashboard_events (see 20260707000000_app_foundations.sql) is the table
+-- this app's Task 1/Task 7 code actually reads and writes. Do not point
+-- any new code at agent_logs without first confirming what, if anything,
+-- ever comes to depend on it — as of this writing, nothing does.
+-- ============================================================================
+
+-- Schema as reported live, 2026-07-15. Columns are confirmed by name;
+-- types are best-effort inference (marked below) except summary, which
+-- was independently confirmed as jsonb.
+--
+-- create table agent_logs (
+--     id             uuid primary key default gen_random_uuid(),  -- inferred, not confirmed
+--     agent_name     text not null,                                -- type inferred
+--     run_at         timestamptz,                                  -- type inferred
+--     status         text,                                         -- type inferred; no known check constraint
+--     summary        jsonb,                                        -- confirmed jsonb
+--     error_message  text,                                         -- type inferred
+--     duration_ms    integer,                                      -- type inferred
+--     created_at     timestamptz not null default now()            -- type inferred
+-- );
+
+-- RLS lockdown applied live on 2026-07-15 (already run — reference only):
+--
+-- alter table agent_logs enable row level security;
+--
+-- drop policy if exists "Service role full access to agent_logs" on agent_logs;
+--
+-- create policy "agent_logs_service_role_only"
+--     on agent_logs
+--     for all
+--     to service_role
+--     using (true)
+--     with check (true);
