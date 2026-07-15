@@ -23,7 +23,11 @@ export function useDashboardEvents(limit = 14): DashboardEvent[] {
       .select('id, agent, event_type, message, created_at')
       .order('created_at', { ascending: false })
       .limit(limit)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('useDashboardEvents: initial fetch failed', error)
+          return
+        }
         if (data) setLogs([...data].reverse())
       })
 
