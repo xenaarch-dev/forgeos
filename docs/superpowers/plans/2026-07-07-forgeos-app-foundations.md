@@ -147,6 +147,17 @@ where table_schema = 'public'
 ```
 Expected: all 4 rows returned.
 
+**Follow-up fix (found during Task 5 review):** this migration only grants `workspaces` a SELECT policy for `authenticated` — no INSERT. Task 5's `completeOnboarding` creates the shared workspace on first onboarding via the normal user-session client, so that insert was being silently denied by RLS for every user. Fixed in a separate migration, `20260707000003_workspaces_insert_policy.sql`:
+
+```sql
+create policy "workspaces_insert_authenticated"
+    on workspaces for insert
+    to authenticated
+    with check (true);
+```
+
+Apply this one too via the Supabase SQL editor, same as the rest.
+
 - [ ] **Step 3: Commit**
 
 ```bash
