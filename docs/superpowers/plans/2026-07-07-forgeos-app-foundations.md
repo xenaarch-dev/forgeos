@@ -4,7 +4,7 @@
 
 **Goal:** Stand up the prerequisites every other PRD v8 screen depends on — Supabase schema, auth, onboarding, and the app shell — and ship the first real screen (`/app`, the War Room Dashboard) wired to live data, so `/app/products`, `/app/agents`, etc. have something to be nested inside.
 
-**Architecture:** Next.js 14 App Router inside `web/` (the live, deployed app — confirmed target, not the abandoned `forgeos-ui/`). Auth via Supabase Auth (email magic link, `@supabase/ssr` for cookie-based SSR sessions). A `middleware.ts` gate protects `/app/*` and `/onboarding`, driven by a pure, unit-tested redirect-decision function. New Supabase tables (`workspaces`, `profiles`, `agent_logs`, `product_metrics`) follow the existing `outreach_leads` migration's conventions exactly (snake_case, `check` constraints for enums, `updated_at` triggers, RLS). The dashboard ports the *structure* of `ForgeOS_War_Room_dc.html` (glass panel recipe, sigil rig, bot-avatar rig, roster/stream/metrics layout) but retints every color to the live, locked Cosmic Garden tokens in `web/app/globals.css` — never the ice-blue values from the source file.
+**Architecture:** Next.js 14 App Router inside `web/` (the live, deployed app — confirmed target, not the abandoned `forgeos-ui/`). Auth via Supabase Auth (email magic link, `@supabase/ssr` for cookie-based SSR sessions). A `middleware.ts` gate protects `/app/*` and `/onboarding`, driven by a pure, unit-tested redirect-decision function. New Supabase tables (`workspaces`, `profiles`, `dashboard_events`, `product_metrics`) follow the existing `outreach_leads` migration's conventions exactly (snake_case, `check` constraints for enums, `updated_at` triggers, RLS). The dashboard ports the *structure* of `ForgeOS_War_Room_dc.html` (glass panel recipe, sigil rig, bot-avatar rig, roster/stream/metrics layout) but retints every color to the live, locked Cosmic Garden tokens in `web/app/globals.css` — never the ice-blue values from the source file.
 
 **Tech Stack:** Next.js 14.2.35 (App Router), React 18, TypeScript, Tailwind, `@supabase/supabase-js` + `@supabase/ssr` (new), Vitest (new — this repo has zero JS test tooling today; added here for pure-logic units only). Package manager is **pnpm** (confirmed via `web/pnpm-lock.yaml` — no `package-lock.json` in `web/`, despite `forgeos-ui/` and CLAUDE.md defaulting to npm elsewhere).
 
@@ -18,7 +18,7 @@ The full PRD v8 covers ~10 independent screens (Dashboard, Products, Pipeline, A
 
 ---
 
-## Task 1: Database schema — workspaces, profiles, agent_logs, product_metrics
+## Task 1: Database schema — workspaces, profiles, dashboard_events, product_metrics
 
 **Files:**
 - Create: `supabase/migrations/20260707000000_app_foundations.sql`
@@ -26,13 +26,21 @@ The full PRD v8 covers ~10 independent screens (Dashboard, Products, Pipeline, A
 - [ ] **Step 1: Write the migration**
 
 ```sql
--- App foundations: workspaces, profiles, agent_logs, product_metrics.
+-- App foundations: workspaces, profiles, dashboard_events, product_metrics.
 -- Follows outreach_leads.sql conventions: snake_case, check-constrained
 -- enums, updated_at trigger, RLS enabled with explicit policies.
 --
+-- Naming note: a table literally named agent_logs already exists in this
+-- Supabase project with a different, incompatible schema (agent_name,
+-- run_at, status, summary, error_message, duration_ms) and no application
+-- code anywhere in this repo reads or writes it (verified by grep across
+-- the full repo, all worktrees, and every generated build/ output). It is
+-- left untouched here — this migration deliberately uses dashboard_events
+-- instead of agent_logs to avoid colliding with that pre-existing table.
+--
 -- Multi-tenancy note (PRD v8 §6 non-goal): workspaces exists so the UI's
 -- workspace switcher has a real table to point at, but RLS below grants
--- every authenticated user read access to every workspace/agent_logs/
+-- every authenticated user read access to every workspace/dashboard_events/
 -- product_metrics row — there is exactly one real workspace today, and
 -- isolating a second one is explicitly out of scope until it exists.
 
@@ -82,10 +90,10 @@ create trigger profiles_updated_at
     before update on profiles
     for each row execute function update_updated_at();
 
--- agent_logs: every agent action. Written by the Python pipeline via the
+-- dashboard_events: every agent action. Written by the Python pipeline via the
 -- service-role key; read by authenticated founders (War Room stream,
 -- Agents detail drawer, Artifacts feed all read this same table).
-create table if not exists agent_logs (
+create table if not exists dashboard_events (
     id          uuid primary key default gen_random_uuid(),
     agent       text not null,
     event_type  text not null check (event_type in ('info', 'action', 'gate', 'error')),
@@ -94,17 +102,17 @@ create table if not exists agent_logs (
     created_at  timestamptz not null default now()
 );
 
-alter table agent_logs enable row level security;
+alter table dashboard_events enable row level security;
 
-create policy "agent_logs_select_authenticated"
-    on agent_logs for select
+create policy "dashboard_events_select_authenticated"
+    on dashboard_events for select
     to authenticated
     using (true);
 
-create index if not exists agent_logs_created_at_idx on agent_logs (created_at desc);
+create index if not exists dashboard_events_created_at_idx on dashboard_events (created_at desc);
 
 -- Required for Supabase Realtime subscriptions (War Room Activity Stream).
-alter publication supabase_realtime add table agent_logs;
+alter publication supabase_realtime add table dashboard_events;
 
 -- product_metrics: MRR/signups/conversions snapshots per product.
 create table if not exists product_metrics (
@@ -135,7 +143,7 @@ Verify by running in the SQL editor afterward:
 ```sql
 select table_name from information_schema.tables
 where table_schema = 'public'
-  and table_name in ('workspaces', 'profiles', 'agent_logs', 'product_metrics');
+  and table_name in ('workspaces', 'profiles', 'dashboard_events', 'product_metrics');
 ```
 Expected: all 4 rows returned.
 
@@ -143,7 +151,7 @@ Expected: all 4 rows returned.
 
 ```bash
 git add supabase/migrations/20260707000000_app_foundations.sql
-git commit -m "feat(db): add workspaces, profiles, agent_logs, product_metrics tables"
+git commit -m "feat(db): add workspaces, profiles, dashboard_events, product_metrics tables"
 ```
 
 ---
@@ -1145,7 +1153,7 @@ git commit -m "feat(web): app shell — glass panel, sigil, bot avatar, persiste
 ## Task 7: War Room Dashboard (`/app`)
 
 **Files:**
-- Create: `web/hooks/useAgentLogs.ts`
+- Create: `web/hooks/useDashboardEvents.ts`
 - Create: `web/hooks/useProductMetrics.ts`
 - Create: `web/components/dashboard/AgentRoster.tsx`
 - Create: `web/components/dashboard/ActivityStream.tsx`
@@ -1153,16 +1161,16 @@ git commit -m "feat(web): app shell — glass panel, sigil, bot avatar, persiste
 - Create: `web/components/dashboard/MetricsBar.tsx`
 - Create: `web/app/app/page.tsx`
 
-- [ ] **Step 1: Realtime hook for agent_logs**
+- [ ] **Step 1: Realtime hook for dashboard_events**
 
 ```ts
-// web/hooks/useAgentLogs.ts
+// web/hooks/useDashboardEvents.ts
 'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-export type AgentLog = {
+export type DashboardEvent = {
   id: string
   agent: string
   event_type: 'info' | 'action' | 'gate' | 'error'
@@ -1170,14 +1178,14 @@ export type AgentLog = {
   created_at: string
 }
 
-export function useAgentLogs(limit = 14): AgentLog[] {
-  const [logs, setLogs] = useState<AgentLog[]>([])
+export function useDashboardEvents(limit = 14): DashboardEvent[] {
+  const [logs, setLogs] = useState<DashboardEvent[]>([])
 
   useEffect(() => {
     const supabase = createClient()
 
     supabase
-      .from('agent_logs')
+      .from('dashboard_events')
       .select('id, agent, event_type, message, created_at')
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -1186,12 +1194,12 @@ export function useAgentLogs(limit = 14): AgentLog[] {
       })
 
     const channel = supabase
-      .channel('agent_logs_stream')
+      .channel('dashboard_events_stream')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'agent_logs' },
+        { event: 'INSERT', schema: 'public', table: 'dashboard_events' },
         (payload) => {
-          setLogs((prev) => [...prev, payload.new as AgentLog].slice(-limit))
+          setLogs((prev) => [...prev, payload.new as DashboardEvent].slice(-limit))
         }
       )
       .subscribe()
@@ -1293,10 +1301,10 @@ export function AgentRoster() {
 // web/components/dashboard/ActivityStream.tsx
 'use client'
 
-import { useAgentLogs } from '@/hooks/useAgentLogs'
+import { useDashboardEvents } from '@/hooks/useDashboardEvents'
 
 export function ActivityStream() {
-  const logs = useAgentLogs()
+  const logs = useDashboardEvents()
 
   return (
     <div style={{ border: '0.5px solid rgba(0,229,204,0.14)', borderRadius: 6, background: '#07080A', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -1422,15 +1430,15 @@ export default function DashboardPage() {
 
 Run: `pnpm --dir web dev`, log in, land on `/app`. Confirm:
 - Agent roster shows all 7 agents with Cosmic Garden accent colors (no ice-blue).
-- Activity stream shows the honest empty state (no `agent_logs` rows exist yet from Task 1).
-- In the Supabase Dashboard, manually insert one row into `agent_logs` (`insert into agent_logs (agent, event_type, message) values ('core', 'info', 'Manual test row')`) and confirm it appears in the stream **without a page refresh** — this is the actual Realtime proof, not just an initial fetch.
+- Activity stream shows the honest empty state (no `dashboard_events` rows exist yet from Task 1).
+- In the Supabase Dashboard, manually insert one row into `dashboard_events` (`insert into dashboard_events (agent, event_type, message) values ('core', 'info', 'Manual test row')`) and confirm it appears in the stream **without a page refresh** — this is the actual Realtime proof, not just an initial fetch.
 - Metrics bar shows `₹0` / `0` / `0` / `0` honestly (no `product_metrics` rows exist yet) — matches PRD §6's "no fabricated data" non-goal.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add web/hooks/useAgentLogs.ts web/hooks/useProductMetrics.ts web/components/dashboard/ web/app/app/page.tsx
-git commit -m "feat(web): War Room Dashboard wired to real Supabase Realtime agent_logs and product_metrics"
+git add web/hooks/useDashboardEvents.ts web/hooks/useProductMetrics.ts web/components/dashboard/ web/app/app/page.tsx
+git commit -m "feat(web): War Room Dashboard wired to real Supabase Realtime dashboard_events and product_metrics"
 ```
 
 ---
@@ -1441,8 +1449,8 @@ Each of these becomes its own plan, written right before it's built, informed by
 
 - **Products** (`/app/products`, `/app/products/[id]`) — needs a `products` table (doesn't exist yet either) before the list/detail views mean anything.
 - **Pipeline visualization** (`/app/products/[id]/pipeline`) — the 18(V1)/20(V2)-stage HermesOrchestrator track; needs a way to read live stage state out of `builds/<id>/context.json` or a new `pipeline_runs` table, since that state currently lives only in per-build JSON files on disk, not Supabase.
-- **Agents** (`/app/agents`) — grid + detail drawer over the same `AGENT_ROSTER` + `agent_logs` this plan already built; mostly a filtered view, should be cheap once Task 7 exists.
-- **Artifacts** (`/app/artifacts`) — filterable feed over `agent_logs` (or a dedicated `artifacts` table if logs prove too unstructured); needs the "Nightly Reasoning Agent reads this" note per PRD §4.
+- **Agents** (`/app/agents`) — grid + detail drawer over the same `AGENT_ROSTER` + `dashboard_events` this plan already built; mostly a filtered view, should be cheap once Task 7 exists.
+- **Artifacts** (`/app/artifacts`) — filterable feed over `dashboard_events` (or a dedicated `artifacts` table if logs prove too unstructured); needs the "Nightly Reasoning Agent reads this" note per PRD §4.
 - **Command** (`/app/command`) — the real routing layer into `agents/hermes.py`; this is the biggest remaining subsystem and needs its own architecture discussion (how does a Next.js server action reach a Python orchestrator process?) before a plan can be written.
 - **Billing** (`/app/billing`) — Lemon Squeezy webhook receiver + a `billing_events` table; no Lemon Squeezy integration exists anywhere in this repo yet.
 - **Settings** (`/app/settings`) — account info + API key *references* (never raw secrets, per PRD §2); mostly reads `profiles` this plan already created.
