@@ -1,0 +1,6 @@
+interface:
+  display_name: "Forgeos"
+  short_description: "Repo-specific patterns and workflows for forgeos"
+  default_prompt: "Use the forgeos repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
