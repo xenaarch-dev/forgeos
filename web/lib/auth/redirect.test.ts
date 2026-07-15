@@ -26,4 +26,12 @@ describe('getRedirectPath', () => {
   it('does not redirect authenticated, onboarded users already inside /app', () => {
     expect(getRedirectPath({ session: true, onboarded: true, pathname: '/app/agents' })).toBeNull()
   })
+
+  it('sends authenticated, onboarded users away from /onboarding to /app', () => {
+    expect(getRedirectPath({ session: true, onboarded: true, pathname: '/onboarding' })).toBe('/app')
+  })
+
+  it('does not redirect authenticated, un-onboarded users away from /onboarding', () => {
+    expect(getRedirectPath({ session: true, onboarded: false, pathname: '/onboarding' })).toBeNull()
+  })
 })

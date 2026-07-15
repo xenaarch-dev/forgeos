@@ -21,5 +21,8 @@ export function getRedirectPath({ session, onboarded, pathname }: RedirectInput)
   if (pathname.startsWith('/app') && !onboarded) {
     return '/onboarding'
   }
+  if (pathname.startsWith('/onboarding') && onboarded) {
+    return '/app'
+  }
   return null
 }
