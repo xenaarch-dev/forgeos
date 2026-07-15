@@ -691,10 +691,21 @@ export default function SignupPage() {
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Guards against open redirect: a raw `next` value like "evil.com/x"
+// concatenates with `origin` into a syntactically valid URL pointing at a
+// different, attacker-registerable hostname (https://forgeos.appevil.com/x).
+// Only a same-origin relative path is honored.
+function safeNextPath(next: string | null): string {
+  if (next && next.startsWith('/') && !next.startsWith('//')) {
+    return next
+  }
+  return '/app'
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/app'
+  const next = safeNextPath(searchParams.get('next'))
 
   if (code) {
     const supabase = createClient()
