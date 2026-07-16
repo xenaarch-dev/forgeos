@@ -1,11 +1,97 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-04
-**Day:** 176
+**Date:** 2026-07-16
+**Day:** 188
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 176 — real metrics pipeline wired into LandingV3, dead S01-S13 portal code deleted, live deploy verified serving the new bundle, README.md full rewrite (ModelRouter, live homepage, pipeline, Daemon Mode all corrected against actual code), LinkedIn account restricted (outreach channel blocked) — CLOSED past midnight into Day 177 (2026-07-05)
+**Session focus:** Day 188 — full ice-blue design-system rollout across `web/`: landing page rebuild, auth screens, app shell (MissionBar/Topbar/Sidebar/MetricsBar), War Room dashboard, and six new `/app/*` pages (Products, Product Detail, Pipeline, Agents, Artifacts, Command, Billing, Settings), built in 11 phases per Fable-5-approved spec — NOT YET PUSHED, see Open Items
+
+---
+
+## Day 188 — Completed (2026-07-16)
+
+### Ice-blue design system rollout — 11 phases, 11 local commits (not yet pushed)
+
+Full front-end rebuild of `web/` per the Fable 5 "ForgeOS-Landing_dc.html / ForgeOS-App_dc.html" spec (the
+actual HTML prototypes were never supplied — repo and `web/public/uploads/` were both empty — so this was
+built directly from the detailed text spec, confirmed with Padmaja before starting).
+
+**Phase 0 (`e1236dd`):** Replaced `globals.css`'s "Cosmic Garden" tokens (void-black/teal/gold/violet,
+Cormorant italic, Space Mono) with the locked ice-blue system (`--bg:#0C0E10`, `--accent:#A4D8FF`, Playfair
+Display 700/900 **normal** style only, DM Mono, DM Sans). New `tailwind.config.ts` color/font extensions.
+Built the global component set: `MissionBar`, `ForgeCursor`, `BootSequence`, `Scanline`, and three canvas
+effects (`SignalBloom`, `FilamentForge`, `GlyphTide`).
+
+**Phase 1 (`2055ed8`):** Replaced `components/v3/LandingV3.tsx` (1176 lines, old palette) with a
+`components/landing/` section set (Hero, FactoryFloor, HowItWorks, Proof, Mission, CTA, Footer) wired to
+the existing `useMetrics()` hook for live day-number/YC-countdown/MRR/leads. Deleted `components/fx/`
+(7 files, confirmed zero imports anywhere — orphaned since the Day-176 S01-S13 portal deletion).
+
+**Phase 2 (`fc94131`):** Reskinned login/signup/onboarding to the two-panel `AuthShell` layout. Kept the
+existing magic-link-only Supabase auth (no fabricated password field — that flow doesn't exist in this
+codebase). Onboarding became a 3-step wizard over the real `fullName`/`companyName`/`idea` fields the
+`completeOnboarding` server action already expects (not the spec's illustrative "AI Contract Generator"
+chips, which don't map to any persisted field).
+
+**Phase 3 (`cb7890d`):** Rebuilt `app/app/layout.tsx` as the spec'd flex-col shell — MissionBar (fixed,
+26px) → Topbar (48px) → {Sidebar, main} → MetricsBar as a genuine flex child, never `position:fixed`.
+Sidebar collapses to 48px icon-only on the pipeline route. MetricsBar moved out of the dashboard page into
+the shared shell so it now persists across every `/app/*` screen. This commit also landed the Phase 1
+`components/fx`/`components/v3` deletions, which had been removed from disk but never actually staged.
+
+**Phase 4 (`5696f79`):** Redesigned AgentRoster/ActivityStream/ArtifactPreview. `lib/agents/roster.ts` lost
+its per-agent accent-hue model in favor of the uniform `#A4D8FF` status-dot system — see Open Items, this
+reverses a July-7 decision that was tested against.
+
+**Phases 5-10 (`8cc73bb`, `1a34ea5`, `2a45236`, `3decdfc`, `584c80f`, `af6aa65`):** Six new `/app/*` routes
+built from scratch — Products, Product Detail, Pipeline (18-stage GStack visualization with stage-detail
+modal), Agents (status-filtered grid), Artifacts (filterable table + slide-in preview panel), Command
+(chat-style interface, client-side only — no backend chat route exists), Billing, Settings (6-section
+sub-nav incl. Danger Zone confirmation modal).
+
+Verified after every phase: `pnpm build` clean, `npx tsc --noEmit` clean, `pnpm test` (20/20 passing,
+3 test files). `pnpm lint` could not run — `web/` has never had an ESLint config despite the `lint` script
+in `package.json` (pre-existing gap, not touched this session).
+
+### A deliberate reversal, confirmed with Padmaja mid-session
+
+`lib/agents/roster.ts` carried a comment and a passing unit test (`roster.test.ts`) explicitly asserting
+ice-blue (`#A4D8FF`) must **never** appear in the agent roster — a decision from the `2026-07-07`
+app-foundations plan, made because the mockup that inspired it used ice-blue only for the landing page,
+deliberately kept separate from the App/War Room's Cosmic Garden system. This session's brief called for
+ice-blue everywhere, directly contradicting that. Stopped and confirmed before proceeding rather than
+silently overwriting tested intent — Padmaja confirmed ice-blue is the correct final decision and the old
+comment/test were stale. `roster.test.ts` was rewritten to test the new intended behavior, not deleted.
+
+### Open items (carried forward — don't lose track)
+
+1. **Not pushed to origin yet.** All 11 phases are committed locally on `main` (`e1236dd` through `af6aa65`)
+   but deliberately not pushed this session — a full design-system replacement pushed straight to `main`
+   would auto-deploy to Vercel production immediately, and Padmaja hadn't seen a rendered screenshot yet
+   (see item 3). Push after review.
+2. **Sculpture art still missing.** `web/public/art/hero-sculpture.jpg` and `mission-sculpture.jpg` don't
+   exist — every `<img>` has an `onError` hide handler so this degrades gracefully to canvas-only
+   backgrounds, but the Hero and Mission sections are visually incomplete without them.
+3. **Could not get a pixel screenshot this session.** The Browser pane's `computer` screenshot/zoom actions
+   timed out consistently (30s) on every attempt, on every route — get_page_text, read_console_messages,
+   read_network_requests, and read_page all worked fine and showed a healthy page (correct content, zero
+   console errors, all network requests 200 or expected 404s for missing art). Root cause not diagnosed —
+   worth a manual look before trusting this blind.
+4. **Local dev server can't authenticate.** No `.env.local` exists in `web/` (never has, this session
+   didn't create one) — Supabase env vars are unset, so `middleware.ts` throws on any route it protects
+   (`/login`, `/app/*`). Landing (`/`, not middleware-gated) verified working; the auth-gated pages were
+   verified by `pnpm build`'s static generation + type-check only, not by an actual browser session.
+5. **`web/.next` repeatedly hit `EINVAL: readlink` on Windows/OneDrive.** Happened 3 times this session
+   mid-build, always fixed by `rm -rf .next` and rebuilding. Looks like OneDrive's sync client racing
+   Next.js's build-output symlinks. Consider adding `web/.next` to OneDrive's "always keep on this device"
+   exclusion list, or moving the repo off the OneDrive-synced path, if this keeps recurring.
+6. **`pnpm lint` has never worked in `web/`** — no ESLint config exists despite the script being present.
+   Not this session's regression; flagging since the Verification Checklist in the brief calls for it.
+7. **Agents-page filter tabs don't include `PLANNED`,** unlike the spec's `ALL | RUNNING | LIVE | QUEUED |
+   PLANNED`. The actual agent-status set in this codebase is `running/live/active/queued` (no `planned`),
+   so `ACTIVE` (GBrain) is only reachable via `ALL`. Minor, but worth knowing if a `PLANNED` state gets
+   added later.
 
 ---
 
