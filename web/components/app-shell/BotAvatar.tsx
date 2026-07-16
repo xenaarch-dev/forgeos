@@ -1,9 +1,8 @@
-// web/components/app-shell/BotAvatar.tsx
 'use client'
 
 import { useEffect, useRef } from 'react'
 
-export function BotAvatar({ accent, size = 30, label }: { accent: string; size?: number; label?: string }) {
+export function BotAvatar({ accent = '#A4D8FF', size = 30, label }: { accent?: string; size?: number; label?: string }) {
   const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
@@ -36,15 +35,15 @@ export function BotAvatar({ accent, size = 30, label }: { accent: string; size?:
         <circle cx="32" cy="7" r="2.8" fill={accent} />
         <rect x="13" y="17" width="38" height="31" rx="11" fill={`${accent}18`} stroke={accent} strokeWidth="1.5" />
         <g>
-          <circle cx="25" cy="33" r="5.2" fill="var(--void)" stroke={accent} strokeWidth="1" />
-          <circle cx="39" cy="33" r="5.2" fill="var(--void)" stroke={accent} strokeWidth="1" />
+          <circle cx="25" cy="33" r="5.2" fill="#0C0E10" stroke={accent} strokeWidth="1" />
+          <circle cx="39" cy="33" r="5.2" fill="#0C0E10" stroke={accent} strokeWidth="1" />
           <circle data-pupil cx="25" cy="33" r="2.3" fill={accent} />
           <circle data-pupil cx="39" cy="33" r="2.3" fill={accent} />
         </g>
         <path d="M28 42.5 Q32 45.5 36 42.5" stroke={accent} strokeWidth="1.6" fill="none" strokeLinecap="round" />
       </svg>
       {label && (
-        <span style={{ font: '400 10.5px var(--font-body)', color: 'var(--w)' }}>{label}</span>
+        <span style={{ font: '400 10.5px var(--font-mono)', color: 'var(--warm-white)' }}>{label}</span>
       )}
     </div>
   )
