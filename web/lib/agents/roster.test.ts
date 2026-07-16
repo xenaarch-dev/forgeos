@@ -1,18 +1,32 @@
 // web/lib/agents/roster.test.ts
 import { describe, expect, it } from 'vitest'
-import { AGENT_ROSTER, statusDotColor } from './roster'
+import { AGENT_ROSTER, statusDotColor, statusLabel } from './roster'
 
 describe('statusDotColor', () => {
-  it('returns the agent accent when running', () => {
-    expect(statusDotColor('running', '#00E5CC')).toBe('#00E5CC')
+  it('uses the ice-blue accent when running', () => {
+    expect(statusDotColor('running')).toBe('#A4D8FF')
   })
 
-  it('returns a dim neutral when queued', () => {
-    expect(statusDotColor('queued', '#00E5CC')).toBe('rgba(240,237,232,0.35)')
+  it('uses the ice-blue accent when live', () => {
+    expect(statusDotColor('live')).toBe('#A4D8FF')
   })
 
-  it('returns a dimmer neutral when idle', () => {
-    expect(statusDotColor('idle', '#00E5CC')).toBe('rgba(240,237,232,0.15)')
+  it('dims the accent when active', () => {
+    expect(statusDotColor('active')).toBe('rgba(164,216,255,0.60)')
+  })
+
+  it('uses a dim neutral when queued', () => {
+    expect(statusDotColor('queued')).toBe('rgba(236,235,230,0.25)')
+  })
+})
+
+describe('statusLabel', () => {
+  it('appends a checkmark for live', () => {
+    expect(statusLabel('live')).toBe('LIVE ✓')
+  })
+
+  it('uppercases other statuses as-is', () => {
+    expect(statusLabel('queued')).toBe('QUEUED')
   })
 })
 
@@ -21,8 +35,7 @@ describe('AGENT_ROSTER', () => {
     expect(AGENT_ROSTER).toHaveLength(7)
   })
 
-  it('uses only Cosmic Garden accents, no ice-blue leftover from the mockup', () => {
-    const iceBlue = '#A4D8FF'
-    expect(AGENT_ROSTER.some((a) => a.accent === iceBlue)).toBe(false)
+  it('uses the locked ice-blue system — no per-agent accent field', () => {
+    expect(AGENT_ROSTER.every((a) => !('accent' in a))).toBe(true)
   })
 })
