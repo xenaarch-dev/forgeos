@@ -1,5 +1,5 @@
-import LandingV3 from '@/components/v3/LandingV3'
+import Landing from '@/components/landing/Landing'
 
 export default function Home() {
-  return <LandingV3 />
+  return <Landing />
 }
