@@ -1,11 +1,38 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-16
-**Day:** 188
+**Date:** 2026-07-20
+**Day:** 191
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 188 — full ice-blue design-system rollout across `web/`: landing page rebuild, auth screens, app shell (MissionBar/Topbar/Sidebar/MetricsBar), War Room dashboard, and six new `/app/*` pages (Products, Product Detail, Pipeline, Agents, Artifacts, Command, Billing, Settings), built in 11 phases per Fable-5-approved spec — NOT YET PUSHED, see Open Items
+**Session focus:** Day 191 — removed fabricated landing-page/App-shell activity data (see Day 191 entry below) and fixed the "276" stale test-count badges.
+
+---
+
+## Day 191 — Completed (2026-07-20)
+
+### Removed fabricated agent activity from landing + App shell
+
+Landing page hardcoded fake activity (`@PRIYA_FINTECH` DM, `@RAHUL_DEVTOOLS` proposal, `0.94` match score, `9/20` daily quota) and fake per-agent stats (`totalRuns`/`successRate`/`lastRun`) that were never wired to any real source — this is the same class of bug fixed once already on Day 175 (see that entry: "replaced every fabricated/hardcoded number on the live portal") and reintroduced by the Day 188 rebuild.
+
+- `web/app/api/metrics/route.ts` now queries `dashboard_events` (the real table the Python pipeline writes to, per `20260707000000_app_foundations.sql`) for `recent_activity`, and `product_metrics` for real MRR, instead of a hardcoded `[]`/`0`. Deliberately did **not** use `agent_logs` — that table's own as-built-reference migration (`20260707000002_agent_logs_as_built_reference.sql`) documents it as legacy with zero application code reading/writing it.
+- `Proof.tsx` renders real `recent_activity` with an honest empty state ("No agent activity yet — first live cycle pending") instead of the fabricated dashboard mock.
+- `Hero.tsx` no longer defaults missing lead counts to fake `9`/`2` (rendered as the fabricated "9/20" quota); shows "—" when data isn't loaded yet.
+- `FACTORY_AGENTS` (`web/lib/forge/agents.ts`) no longer fabricates `lastAction`/`totalRuns`/`successRate`/`lastRun` for running/live agents. QUEUED agents (MeetingForge, ReputationForge) keep their real static activation-condition text ("ACTIVATES AT N USERS") — that's a genuine roadmap fact, not a false activity claim, so it was left alone.
+
+Verified: `tsc --noEmit` clean, `next build` clean, 20/20 vitest passing.
+
+### Fixed stale "276" test-count badges — live Day-N/YC-deadline counters confirmed already correct
+
+Checked the live site (`forgeos-eight.vercel.app`) directly: `DAY 191` and `YC DEADLINE: 8 DAYS` are already computed live via `getDayNumber()`/`getYcDaysRemaining()` (`web/lib/forge/dates.ts`) and `/api/metrics` — not hardcoded, contrary to an assumption going into this session. No code change was needed there.
+
+"276 TESTS GREEN" / "276/276 ✓" / "276 ✓" *were* genuinely stale (real count per Day 174 below: 309 passing, 312 total) and hardcoded in six places: `Hero.tsx`, `Proof.tsx` (×2), `MetricsBar.tsx`, `app/app/products/page.tsx`, `app/app/products/[id]/page.tsx`. Consolidated into `web/lib/forge/testCount.ts` (`TEST_COUNT_PASSING = 309`, `TEST_COUNT_TOTAL = 312`) and wired all six.
+
+**Known follow-up — not live-computed:** unlike the day counter, the test count has no live-read path. Pytest runs against the repo root in a separate process from this Next.js app, and Vercel's build container has no Python/pytest available, so there's no way to compute this at `next build` time the way `getDayNumber()` computes live. It's hardcoded in `testCount.ts` with a comment explaining why, pending a real pipeline (e.g. CI writes the count to a Supabase row, or a checked-in report this app reads at request time) — same "compute live" treatment the day counter already has. Update the constant by hand whenever the real suite count changes until then.
+
+### Also noticed, not fixed this session (flagged for follow-up)
+
+`web/app/app/products/[id]/page.tsx` still hardcodes `{ v: '9', l: 'LEADS' }` — the same fabricated-lead-count pattern fixed on the landing page this session, left here because it's on the authenticated App product-detail page, out of this session's scope.
 
 ---
 

@@ -1,6 +1,7 @@
 // web/app/app/products/[id]/page.tsx
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { TEST_COUNT_PASSING } from '@/lib/forge/testCount'
 
 const PRODUCTS: Record<string, { name: string; tagline: string; version: string; date: string }> = {
   contractforge: { name: 'ContractForge', tagline: 'AI contracts for Indian freelancers.', version: 'v2.1', date: 'JAN 11, 2026' },
@@ -50,7 +51,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           {[
             { v: '₹0', l: 'MRR' },
-            { v: '276 ✓', l: 'TESTS' },
+            { v: `${TEST_COUNT_PASSING} ✓`, l: 'TESTS' },
             { v: '9', l: 'LEADS' },
             { v: '7', l: 'AGENTS' },
           ].map((m) => (

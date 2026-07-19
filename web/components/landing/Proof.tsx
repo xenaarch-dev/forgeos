@@ -2,6 +2,7 @@
 
 import { useMetrics } from '@/hooks/useMetrics'
 import { getDayNumber } from '@/lib/forge/dates'
+import { TEST_COUNT_PASSING, TEST_COUNT_TOTAL } from '@/lib/forge/testCount'
 
 export function Proof() {
   const metrics = useMetrics()
@@ -11,7 +12,7 @@ export function Proof() {
 
   const stats = [
     { value: String(dayNumber), label: 'DAYS IN PRODUCTION' },
-    { value: '276', label: 'TESTS GREEN' },
+    { value: String(TEST_COUNT_PASSING), label: 'TESTS GREEN' },
     { value: '7', label: 'LIVE AGENTS' },
     { value: '1', label: 'SOLO FOUNDER' },
   ]
@@ -74,7 +75,7 @@ export function Proof() {
           {[
             { v: `₹${mrr.toLocaleString('en-IN')}`, l: 'MRR' },
             { v: metrics?.leads?.sent != null ? String(metrics.leads.sent) : '—', l: 'LEADS' },
-            { v: '276 ✓', l: 'TESTS' },
+            { v: `${TEST_COUNT_PASSING} ✓`, l: 'TESTS' },
             { v: '• LIVE', l: 'CONTRACTFORGE' },
           ].map((c) => (
             <div key={c.l} style={{ padding: '14px 16px', textAlign: 'center' }}>

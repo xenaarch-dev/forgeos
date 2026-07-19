@@ -1,6 +1,7 @@
 'use client'
 
 import { useProductMetrics } from '@/hooks/useProductMetrics'
+import { TEST_COUNT_PASSING } from '@/lib/forge/testCount'
 
 export function MetricsBar() {
   const rows = useProductMetrics()
@@ -16,7 +17,7 @@ export function MetricsBar() {
   const cells = [
     { value: `₹${totals.mrr.toLocaleString('en-IN')}`, label: 'MRR', color: '#ECEBE6' },
     { value: String(totals.signups), label: 'LEADS', color: '#A4D8FF' },
-    { value: '276 ✓', label: 'TESTS', color: '#A4D8FF' },
+    { value: `${TEST_COUNT_PASSING} ✓`, label: 'TESTS', color: '#A4D8FF' },
   ]
 
   return (

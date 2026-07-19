@@ -2,6 +2,7 @@
 
 import { useMetrics } from '@/hooks/useMetrics'
 import { getDayNumber, getYcDaysRemaining } from '@/lib/forge/dates'
+import { TEST_COUNT_PASSING, TEST_COUNT_TOTAL } from '@/lib/forge/testCount'
 import { SignalBloom } from '@/components/canvas/SignalBloom'
 
 const STAGGER = [0.2, 0.35, 0.5, 0.65, 0.8]
@@ -81,7 +82,7 @@ export function Hero() {
         </div>
         {[
           { name: 'OutreachForge', status: outreachStatus === 'live' ? 'RUNNING' : outreachStatus === 'idle' ? 'IDLE' : 'RUNNING' },
-          { name: 'ContractForge', status: contractStatus === 'live' ? 'LIVE · 276/276 ✓' : 'OFFLINE' },
+          { name: 'ContractForge', status: contractStatus === 'live' ? `LIVE · ${TEST_COUNT_PASSING}/${TEST_COUNT_TOTAL} ✓` : 'OFFLINE' },
           { name: 'GBrain', status: 'ACTIVE' },
         ].map((row) => (
           <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>

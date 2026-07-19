@@ -1,5 +1,6 @@
 // web/app/app/products/page.tsx
 import Link from 'next/link'
+import { TEST_COUNT_PASSING } from '@/lib/forge/testCount'
 
 export default function ProductsPage() {
   return (
@@ -41,7 +42,7 @@ export default function ProductsPage() {
           </p>
           <div style={{ display: 'flex', gap: 20, marginBottom: 20, font: '400 10px var(--font-mono)', color: 'rgba(236,235,230,0.45)' }}>
             <span>₹0 MRR</span>
-            <span>276 TESTS ✓</span>
+            <span>{TEST_COUNT_PASSING} TESTS ✓</span>
             <span>7 AGENTS</span>
           </div>
           <span style={{ font: '400 9px var(--font-mono)', color: '#A4D8FF', letterSpacing: '0.08em' }}>VIEW DETAILS →</span>
