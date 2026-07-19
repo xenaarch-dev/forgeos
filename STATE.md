@@ -9,6 +9,16 @@
 
 ---
 
+## TOMORROW — FIRST TASK
+
+Check the ContractForge repo's `daily-agents.yml` (GitHub Actions workflow, runs `00:30 UTC / 06:00 IST`) — this is the **likely** source of the daily `active_subscriptions: 1` / `mrr_inr: 2499.0` rows written to `agent_logs`, originating from a Day 156 `ContractForgeMetricsAgent` test run whose placeholder values were apparently never replaced with real Lemon Squeezy API calls. Confirm the schedule, check run history, and either wire it to real data or disable it — **do NOT assume this is confirmed until checked directly.**
+
+**Second:** Apollo.io and Clay connectors were connected in Claude chat but tools weren't loading — needs re-verification of connection status before lead-gen work can proceed.
+
+**Third:** three CA firm outreach emails (Anam CA, N D Savla & Associates, K M GATECHA & CO LLP) still undrafted — highest-leverage revenue task, 7 days to YC deadline as of tomorrow.
+
+---
+
 ## Day 191 — Completed (2026-07-20)
 
 ### Removed fabricated agent activity from landing + App shell
