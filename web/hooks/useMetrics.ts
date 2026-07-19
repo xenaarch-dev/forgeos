@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
 
+export type ActivityEvent = {
+  id: string
+  agent: string
+  event_type: 'info' | 'action' | 'gate' | 'error'
+  message: string
+  created_at: string
+}
+
 export type Metrics = {
   day_number: number
   yc_days_remaining: number
@@ -9,7 +17,7 @@ export type Metrics = {
     contractforge: 'live' | 'offline'
     outreach: 'live' | 'queued_awaiting_approval' | 'idle'
   }
-  recent_activity: unknown[]
+  recent_activity: ActivityEvent[]
 }
 
 export function useMetrics(): Metrics | null {

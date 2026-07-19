@@ -7,6 +7,7 @@ export function Proof() {
   const metrics = useMetrics()
   const dayNumber = metrics?.day_number ?? getDayNumber()
   const mrr = metrics?.mrr_inr ?? 0
+  const activity = metrics?.recent_activity ?? []
 
   const stats = [
     { value: String(dayNumber), label: 'DAYS IN PRODUCTION' },
@@ -55,23 +56,24 @@ export function Proof() {
             <div style={{ font: '400 9px var(--font-mono)', color: '#A4D8FF' }}>▸ Dashboard</div>
           </div>
           <div style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-            {[
-              { tag: 'MATCH ✓', text: '@priya_fintech — score 0.94 → warm' },
-              { tag: 'CONTRACT', text: 'NDA generated — Indian Contract Act 1872' },
-              { tag: 'GBRAIN', text: 'Nightly loop complete · +3 lessons written' },
-              { tag: 'OUTREACH', text: 'Daily quota: 9/20 messages sent' },
-            ].map((row) => (
-              <div key={row.tag} style={{ display: 'flex', gap: 12, font: '400 10px var(--font-mono)' }}>
-                <span style={{ color: '#A4D8FF', flexShrink: 0, minWidth: 76 }}>[{row.tag}]</span>
-                <span style={{ color: 'rgba(236,235,230,0.55)' }}>{row.text}</span>
+            {activity.length > 0 ? (
+              activity.map((row) => (
+                <div key={row.id} style={{ display: 'flex', gap: 12, font: '400 10px var(--font-mono)' }}>
+                  <span style={{ color: '#A4D8FF', flexShrink: 0, minWidth: 76 }}>[{row.agent.toUpperCase()}]</span>
+                  <span style={{ color: 'rgba(236,235,230,0.55)' }}>{row.message}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ font: '400 10px var(--font-mono)', color: 'rgba(236,235,230,0.35)' }}>
+                No agent activity yet — first live cycle pending
               </div>
-            ))}
+            )}
           </div>
         </div>
         <div style={{ borderTop: '0.5px solid rgba(164,216,255,0.12)', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
           {[
             { v: `₹${mrr.toLocaleString('en-IN')}`, l: 'MRR' },
-            { v: String(metrics?.leads?.sent ?? 9), l: 'LEADS' },
+            { v: metrics?.leads?.sent != null ? String(metrics.leads.sent) : '—', l: 'LEADS' },
             { v: '276 ✓', l: 'TESTS' },
             { v: '• LIVE', l: 'CONTRACTFORGE' },
           ].map((c) => (

@@ -37,7 +37,7 @@ export function FactoryFloor() {
               {agent.description}
             </p>
             <div style={{ borderTop: '0.5px solid rgba(164,216,255,0.10)', paddingTop: 10, font: '400 7px var(--font-mono)', color: 'rgba(164,216,255,0.45)' }}>
-              {agent.lastAction}
+              {agent.lastAction ?? 'No activity logged yet'}
             </div>
           </div>
         ))}

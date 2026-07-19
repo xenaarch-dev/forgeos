@@ -10,8 +10,8 @@ export function Hero() {
   const metrics = useMetrics()
   const dayNumber = metrics?.day_number ?? getDayNumber()
   const ycDays = metrics?.yc_days_remaining ?? getYcDaysRemaining()
-  const leadsSent = metrics?.leads?.sent ?? 9
-  const leadsApproved = metrics?.leads?.approved ?? 2
+  const leadsSent = metrics?.leads?.sent ?? null
+  const leadsApproved = metrics?.leads?.approved ?? null
   const outreachStatus = metrics?.agent_status?.outreach ?? 'queued_awaiting_approval'
   const contractStatus = metrics?.agent_status?.contractforge ?? 'live'
 
@@ -58,10 +58,10 @@ export function Hero() {
           ))}
         </div>
         <div style={{ font: '400 8.5px var(--font-mono)', color: 'var(--warm-white)', marginBottom: 4 }}>
-          {leadsSent} LEADS · {leadsApproved} WARM
+          {leadsSent ?? '—'} LEADS · {leadsApproved ?? '—'} WARM
         </div>
         <div style={{ font: '400 8.5px var(--font-mono)', color: 'rgba(236,235,230,0.45)', marginBottom: 4 }}>
-          OUTREACH: DAILY {leadsSent}/20
+          OUTREACH: DAILY {leadsSent ?? '—'}/20
         </div>
         <div style={{ font: '400 8.5px var(--font-mono)', color: '#A4D8FF' }}>
           ▸ DAY {dayNumber} · LOOP ACTIVE

@@ -57,7 +57,7 @@ export default function AgentsPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ font: '400 8px var(--font-mono)', color: 'rgba(164,216,255,0.50)', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {agent.lastAction}
+                    {agent.lastAction ?? 'No activity logged yet'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 20, flexShrink: 0 }}>
@@ -74,7 +74,7 @@ export default function AgentsPage() {
                 </div>
               </div>
 
-              {queued && (
+              {queued && agent.lastAction && (
                 <div style={{ font: '300 11px var(--font-body)', color: 'rgba(236,235,230,0.30)', marginTop: 10 }}>
                   Awaiting activation / Trigger: {agent.lastAction.toLowerCase().replace('activates at ', '')}
                 </div>

@@ -6,36 +6,41 @@ export type FactoryAgent = {
   icon: string
   status: FactoryAgentStatus
   description: string
-  lastAction: string
+  lastAction: string | null
   totalRuns: number | null
   successRate: string | null
   lastRun: string | null
 }
 
+// Per-agent lastAction/totalRuns/successRate/lastRun are null unless there's
+// a real logged source — no agent-level activity feed is wired yet (see
+// /api/metrics recent_activity for the real, dashboard_events-backed feed).
+// QUEUED agents' lastAction is an exception: it's a real static activation
+// condition, not a fabricated activity claim.
 export const FACTORY_AGENTS: FactoryAgent[] = [
   {
     slug: 'outreachforge', name: 'OutreachForge', icon: '⇢', status: 'RUNNING',
     description: 'Finds warm leads. Drafts messages. Escalates to founder.',
-    lastAction: 'SENT DM → @PRIYA_FINTECH · 2H AGO',
-    totalRuns: 1204, successRate: '92%', lastRun: '2h',
+    lastAction: null,
+    totalRuns: null, successRate: null, lastRun: null,
   },
   {
     slug: 'contractforge', name: 'ContractForge', icon: '§', status: 'LIVE',
     description: 'GST-compliant contracts. Indian law. 60 seconds.',
-    lastAction: 'NDA GENERATED · 14 MIN AGO',
-    totalRuns: 276, successRate: '100%', lastRun: '14m',
+    lastAction: null,
+    totalRuns: null, successRate: null, lastRun: null,
   },
   {
     slug: 'clientforge', name: 'ClientForge', icon: '◈', status: 'RUNNING',
     description: 'Converts connections to paying clients.',
-    lastAction: 'PROPOSAL SENT @RAHUL_DEVTOOLS',
-    totalRuns: 388, successRate: '87%', lastRun: '1h',
+    lastAction: null,
+    totalRuns: null, successRate: null, lastRun: null,
   },
   {
     slug: 'specforge', name: 'SpecForge', icon: '◇', status: 'RUNNING',
     description: 'Prompt → full product spec. 18-stage pipeline.',
-    lastAction: 'SPEC INITIATED: INVOICEFORGE',
-    totalRuns: 41, successRate: '95%', lastRun: '32m',
+    lastAction: null,
+    totalRuns: null, successRate: null, lastRun: null,
   },
   {
     slug: 'meetingforge', name: 'MeetingForge', icon: '◎', status: 'QUEUED',
@@ -52,8 +57,8 @@ export const FACTORY_AGENTS: FactoryAgent[] = [
   {
     slug: 'gbrain', name: 'GBrain', icon: '◉', status: 'ACTIVE',
     description: 'Intelligence layer. Nightly reasoning. AGENTS.md updates.',
-    lastAction: 'NIGHTLY LOOP COMPLETE · 06:00 IST',
-    totalRuns: 186, successRate: '100%', lastRun: '06:00',
+    lastAction: null,
+    totalRuns: null, successRate: null, lastRun: null,
   },
 ]
 
