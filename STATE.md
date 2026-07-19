@@ -5,7 +5,7 @@
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 191 — removed fabricated landing-page/App-shell activity data (see Day 191 entry below) and fixed the "276" stale test-count badges.
+**Session focus:** Day 191 — removed fabricated landing-page/App-shell activity data, fixed the "276" stale test-count badges, pushed both fixes to `origin/main`, and confirmed the Vercel deployment live (see Day 191 entry below for full detail, including a correction to an earlier overconfident claim about the day/YC counters).
 
 ---
 
@@ -33,6 +33,30 @@ Checked the live site (`forgeos-eight.vercel.app`) directly: `DAY 191` and `YC D
 ### Also noticed, not fixed this session (flagged for follow-up)
 
 `web/app/app/products/[id]/page.tsx` still hardcodes `{ v: '9', l: 'LEADS' }` — the same fabricated-lead-count pattern fixed on the landing page this session, left here because it's on the authenticated App product-detail page, out of this session's scope.
+
+### EOD — pushed and deployment confirmed live
+
+Pushed `e4c3e6b` and `750103d` to `origin/main` (fast-forward, no divergence). Confirmed the Vercel deploy landed via raw `curl -sD -` on `forgeos-eight.vercel.app`: new `X-Vercel-Id` (`bom1::qx2l5-1784493653763-28cd0ab70efd`, was `bom1::9fjzm-1784493171089-4ecfba3143da`), `X-Vercel-Cache: PRERENDER` + `Age: 0` (fresh render, not a cache hit of the old artifact), new `Etag`. Body of the new deploy: zero occurrences of `@PRIYA_FINTECH`, `@RAHUL_DEVTOOLS`, or `276`; `309/312 ✓` and `309 ✓` present; `"No agent activity yet — first live cycle pending"` empty state rendering; `YC DEADLINE: 8 DAYS` still correct.
+
+### Correction to this entry's earlier Day-N/YC-deadline claim
+
+The "already correctly live, no bug, no code change needed" conclusion above was based on a single fetch and was overconfident. Padmaja's own fetch of the same URL, around the same time, showed stale `DAY 188`/`YC DEADLINE: 11 DAYS` — a real, reproducible discrepancy. Root cause, confirmed via raw response headers on the *pre-push* production URL: `X-Vercel-Cache: HIT`, `Age: 5165` (~86 min), served from Vercel's edge cache — and neither `web/app/page.tsx` nor `layout.tsx` export `dynamic`/`revalidate`, so that static artifact only refreshes on an actual deploy, never on a timer. This was CDN-cache/deploy-freshness staleness, not a code bug — `getDayNumber()`/`getYcDaysRemaining()` were never wrong. Resolved by the fresh deploy above.
+
+### Corrected attribution — work done in other sessions, not this one
+
+- **pg_cron/Edge Functions/triggers investigation** (not this Claude Code session — done via the Supabase dashboard + SQL editor, Padmaja + Claude chat): `cron.job` relation does not exist (pg_cron not enabled), zero Edge Functions deployed, zero triggers on `agent_logs`. Source of the daily fabricated `active_subscriptions`/`mrr_inr` rows written into `agent_logs` remained **unidentified** as of that session. **Open — next check:** live in API Gateway logs, ~9:11–9:39 AM IST (the job's observed daily run window).
+
+  **Lead for that check, found this session while reading `~/obsidian/01-daily/2026-06-11.md` for formatting reference (not yet verified — read the file, didn't check if the workflow is still active):** Day 156 (2026-06-11) shipped a `ContractForgeMetricsAgent` in the *ContractForge* repo (separate from this one) with a GitHub Actions workflow, `daily-agents.yml`, scheduled for `00:30 UTC = 06:00 IST`, and its first real run wrote exactly this shape of row to `agent_logs` — `active_subscriptions: 1`, `mrr_inr: 2499.0 (test — not real revenue)`. A SQL-only investigation (pg_cron/Edge Functions/triggers) would never surface a GitHub Actions cron job, since it runs entirely outside Postgres/Supabase. Worth checking `daily-agents.yml`'s current schedule and recent run history in the ContractForge repo before assuming the source is still unidentified — the 06:00 IST scheduled time vs. the ~9:11–9:39 AM IST observed window don't match exactly, so this isn't confirmed, just a strong, cheap lead to rule in or out first.
+
+- **Supabase table existence** — `workspaces`, `profiles`, `dashboard_events`, `product_metrics` confirmed present per migration file `20260707000000_app_foundations.sql` (this session, file-read only — no live Supabase query tool was available). `agent_logs` separately confirmed to exist via a live SQL query in a different session — but per `20260707000002_agent_logs_as_built_reference.sql`, it's a legacy table created outside version control, not part of the intended application schema.
+- **`yc/` gitignore + `.claude/scheduled_tasks.lock` untracking** (commits `05fc110`, `4b1428d`) — closed in a separate Claude Code session earlier tonight, not this session.
+
+**This session's commits:** `e4c3e6b`, `750103d` — both pushed to `origin/main`, deployment confirmed live (see above).
+
+**Next session (proposed by Claude from this session's open items — not yet confirmed by Padmaja):**
+1. Check `daily-agents.yml` in the ContractForge repo — schedule + recent runs — against the ~9:11–9:39 AM IST `agent_logs` anomaly before continuing the "unidentified source" investigation from scratch.
+2. Fix `web/app/app/products/[id]/page.tsx`'s remaining hardcoded `{ v: '9', l: 'LEADS' }`.
+3. Design a real live-read path for the test count (`web/lib/forge/testCount.ts`) — e.g. CI writes the count to a Supabase row, or a checked-in report this app reads at request time — so it stops needing hand-updates.
 
 ---
 
