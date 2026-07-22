@@ -5,7 +5,7 @@
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 194 — single scoped fix: removed the last fabricated `LEADS` stat on the authenticated product detail page (Day 191 follow-up item 2), pushed to `origin/main`, confirmed live via GitHub deployment record (auth-gated route can't be curled directly).
+**Session focus:** Day 194 — two single scoped fixes in separate sessions: (1) removed the last fabricated `LEADS` stat on the authenticated product detail page (Day 191 follow-up item 2); (2) replaced `mission-sculpture.jpg` with the correct asset, closing the Day 188 "sculpture art" item for good (third attempt at this file — first added Day 188 (`4750e03`), "fixed" once already same day (`4f557ea`), still wrong until this session). Both pushed to `origin/main` and confirmed live.
 
 ---
 
@@ -34,6 +34,16 @@ No real source exists → replaced `'9'` with the honest empty-state `'—'`, ma
 Verified: `npx tsc --noEmit` clean, `next build` clean, vitest 20/20 passing. Could not verify visually in a live browser session — confirmed via `preview_logs` that this route's middleware throws (`Your project's URL and Key are required to create a Supabase client!`) because no `.env.local` exists locally, the same pre-existing gap STATE.md already flagged (Day 188 open item 4) and unrelated to this change.
 
 **Pushed `4abfa8f` to `origin/main`.** Deployment confirmed live via `gh api repos/xenaarch-dev/forgeos/deployments` — latest Production deployment sha `4abfa8f57e44fa3b18142b8a6f7fc32fc3e8992d`, status `success`. Could not curl the product-detail page's rendered body directly (it 307-redirects to `/login` without an authenticated session, unlike the public landing page used for prior sessions' curl checks) — used the GitHub deployment record instead, same method as Day 176. Landing page (`/`) spot-checked as a general freshness sanity check: `Age: 0`, fresh `X-Vercel-Id`.
+
+### Replaced mission-sculpture.jpg — closes the Day 188 sculpture-art item, for real this time
+
+`web/public/art/mission-sculpture.jpg` had gone through two prior attempts without ever showing the right image: added Day 188 (`4750e03`), "fixed" the same day (`4f557ea`) — but the file that landed from that second commit was actually a **WebP image mislabeled with a `.jpg` extension**, 735×735, showing a deer. Confirmed via `file` before touching anything (`file` correctly identified it as `RIFF ... Web/P image data`, not JPEG, despite the extension).
+
+Replaced with the correct asset supplied at `C:\Users\PADMAJA\Downloads\forgepic2.jpg` (same physical file reachable from WSL2 at `/mnt/c/Users/PADMAJA/Downloads/forgepic2.jpg` — copied via the Windows-side path since this session runs Git Bash, not WSL2). New file verified before commit: genuine JPEG, 675×1200, 105.8 KB (108365 bytes). `git status` showed the expected binary-diff modification; `Mission.tsx` was not touched (path, grayscale filter, `objectPosition: right center`, 44%-width container, gradient overlay all already correct and unaffected by an asset-only swap).
+
+Verified: `next build` clean, no errors from the new asset. **Pushed `7844172` to `origin/main`.** Deployment confirmed live: `gh api .../deployments` shows sha `7844172` as latest Production, status `success`. Fetched the live asset directly (`curl https://forgeos-eight.vercel.app/art/mission-sculpture.jpg`) — `X-Vercel-Cache: MISS`, `Age: 0`, `Content-Length: 108365`, and the downloaded bytes `file`-checked as the same genuine 675×1200 JPEG, not the old WebP.
+
+**Day 188 open item 2 ("Sculpture art still missing") is now fully closed** — both `hero-sculpture.jpg` and `mission-sculpture.jpg` exist; visually inspected both this session (via direct image read, not just `file`/format checks) and confirmed each shows its correct intended sculpture art, no deer, no mismatched image.
 
 ---
 
