@@ -52,7 +52,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           {[
             { v: '₹0', l: 'MRR' },
             { v: `${TEST_COUNT_PASSING} ✓`, l: 'TESTS' },
-            { v: '9', l: 'LEADS' },
+            { v: '—', l: 'LEADS' },
             { v: '7', l: 'AGENTS' },
           ].map((m) => (
             <div key={m.l}>
