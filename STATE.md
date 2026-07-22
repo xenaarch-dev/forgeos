@@ -1,11 +1,11 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-20
-**Day:** 191
+**Date:** 2026-07-22
+**Day:** 194
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 191 — removed fabricated landing-page/App-shell activity data, fixed the "276" stale test-count badges, pushed both fixes to `origin/main`, and confirmed the Vercel deployment live (see Day 191 entry below for full detail, including a correction to an earlier overconfident claim about the day/YC counters).
+**Session focus:** Day 194 — single scoped fix: removed the last fabricated `LEADS` stat on the authenticated product detail page (Day 191 follow-up item 2), pushed to `origin/main`, confirmed live via GitHub deployment record (auth-gated route can't be curled directly).
 
 ---
 
@@ -15,7 +15,25 @@ Check the ContractForge repo's `daily-agents.yml` (GitHub Actions workflow, runs
 
 **Second:** Apollo.io and Clay connectors were connected in Claude chat but tools weren't loading — needs re-verification of connection status before lead-gen work can proceed.
 
-**Third:** three CA firm outreach emails (Anam CA, N D Savla & Associates, K M GATECHA & CO LLP) still undrafted — highest-leverage revenue task, 7 days to YC deadline as of tomorrow.
+**Third:** three CA firm outreach emails (Anam CA, N D Savla & Associates, K M GATECHA & CO LLP) still undrafted — highest-leverage revenue task, days to YC deadline shrinking.
+
+**Fourth (design a real live-read path for the test count):** `web/lib/forge/testCount.ts` still needs a real pipeline (CI writes the count to a Supabase row, or a checked-in report this app reads at request time) so it stops needing hand-updates — carried forward from Day 191 item 3, still open.
+
+---
+
+## Day 194 — Completed (2026-07-22)
+
+### Removed the last fabricated lead count — product detail page
+
+Single scoped fix, the Day 191 follow-up item: `web/app/app/products/[id]/page.tsx` hardcoded `{ v: '9', l: 'LEADS' }` next to the real `₹0 MRR` stat.
+
+Checked for a real per-product lead source before changing anything: `outreach_leads` (`supabase/migrations/20260622000000_outreach_leads.sql`) has no `product_slug` or any per-product column — it's a flat global queue with no product attribution. `product_metrics` has `product_slug` but tracks `mrr_inr`/`signups`/`conversions`, not leads. The products list page (`web/app/app/products/page.tsx`) doesn't show a LEADS stat at all, confirming no per-product leads concept exists anywhere else in the codebase either. Using the global `outreach_leads` count here would have silently mislabeled it as product-specific — a real bug the moment a second product exists, even though it happens to be the only product today.
+
+No real source exists → replaced `'9'` with the honest empty-state `'—'`, matching the exact fallback pattern `Hero.tsx` already uses for missing lead counts (`{leadsSent ?? '—'} LEADS`, Day 191).
+
+Verified: `npx tsc --noEmit` clean, `next build` clean, vitest 20/20 passing. Could not verify visually in a live browser session — confirmed via `preview_logs` that this route's middleware throws (`Your project's URL and Key are required to create a Supabase client!`) because no `.env.local` exists locally, the same pre-existing gap STATE.md already flagged (Day 188 open item 4) and unrelated to this change.
+
+**Pushed `4abfa8f` to `origin/main`.** Deployment confirmed live via `gh api repos/xenaarch-dev/forgeos/deployments` — latest Production deployment sha `4abfa8f57e44fa3b18142b8a6f7fc32fc3e8992d`, status `success`. Could not curl the product-detail page's rendered body directly (it 307-redirects to `/login` without an authenticated session, unlike the public landing page used for prior sessions' curl checks) — used the GitHub deployment record instead, same method as Day 176. Landing page (`/`) spot-checked as a general freshness sanity check: `Age: 0`, fresh `X-Vercel-Id`.
 
 ---
 
