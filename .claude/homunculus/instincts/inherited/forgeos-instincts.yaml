@@ -1,0 +1,583 @@
+# Instincts generated from https://github.com/xenaarch-dev/forgeos
+# Generated: 2026-07-15T18:50:21.464Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: forgeos-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, fix, docs, test
+
+## Evidence
+
+- 17 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat(db): add workspaces, profiles, agent_logs, product_metrics tables, docs: add app foundations implementation plan to branch
+
+---
+id: forgeos-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Commit Length
+
+## Action
+
+Write moderate-length commit messages (~70 characters)
+
+## Evidence
+
+- Average commit message length: 70 chars
+- Based on 17 commits
+
+---
+id: forgeos-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: forgeos-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: forgeos-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Export Style
+
+## Action
+
+Prefer mixed exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: mixed
+
+---
+id: forgeos-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Test Framework
+
+## Action
+
+Use vitest as the test framework
+
+## Evidence
+
+- Test framework detected: vitest
+- File pattern: *.test.ts
+
+---
+id: forgeos-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: forgeos-workflow-database-migration
+trigger: "when modifying the database schema or adding tables"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Workflow Database Migration
+
+## Action
+
+Follow the database-migration workflow:
+1. Create migration file
+2. Update schema definitions
+3. Generate/update types
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~7x per month
+- Files: migrations/*
+
+---
+id: forgeos-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~16x per month
+- Files: web/lib/agents/*, web/lib/auth/*, web/lib/onboarding/*
+
+---
+id: forgeos-workflow-database-schema-change-with-migration-and-plan-sync
+trigger: "when doing database schema change with migration and plan sync"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Workflow Database Schema Change With Migration And Plan Sync
+
+## Action
+
+Follow the database-schema-change-with-migration-and-plan-sync workflow:
+1. Edit or create a migration SQL file in supabase/migrations/
+2. Update the implementation plan markdown in docs/superpowers/plans/
+3. Optionally, document live schema or reference-only changes as separate migration files
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: supabase/migrations/*.sql, docs/superpowers/plans/*.md
+
+---
+id: forgeos-workflow-feature-implementation-with-test-pairing
+trigger: "when doing feature implementation with test pairing"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Workflow Feature Implementation With Test Pairing
+
+## Action
+
+Follow the feature-implementation-with-test-pairing workflow:
+1. Implement or update feature logic in web/lib/ or web/app/
+2. Add or update corresponding test files in web/lib/**/*.test.ts
+3. Update package.json, lockfile, or config if new test dependencies are introduced
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: web/lib/**/*.ts, web/lib/**/*.test.ts, web/app/**/*.ts
+
+---
+id: forgeos-workflow-feature-implementation-with-associated-hook-and-component-updates
+trigger: "when doing feature implementation with associated hook and component updates"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Workflow Feature Implementation With Associated Hook And Component Updates
+
+## Action
+
+Follow the feature-implementation-with-associated-hook-and-component-updates workflow:
+1. Implement or update React components in web/components/
+2. Implement or update custom hooks in web/hooks/
+3. Wire up components and hooks in web/app/ pages
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: web/components/**/*.tsx, web/hooks/**/*.ts, web/app/**/*.tsx
+
+---
+id: forgeos-workflow-bugfix-followed-by-plan-or-doc-sync
+trigger: "when doing bugfix followed by plan or doc sync"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xenaarch-dev/forgeos
+---
+
+# Forgeos Workflow Bugfix Followed By Plan Or Doc Sync
+
+## Action
+
+Follow the bugfix-followed-by-plan-or-doc-sync workflow:
+1. Fix bug in relevant code file(s)
+2. Update the relevant implementation plan markdown in docs/superpowers/plans/
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: web/**/*.ts, web/**/*.tsx, docs/superpowers/plans/*.md
+
+---
+id: forgeos-instinct-file-naming-camelCase
+trigger: "When creating a new file in the codebase"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct File Naming CamelCase
+
+## Action
+
+Name the file using camelCase (e.g., agentRoster.ts)
+
+## Evidence
+
+- Pattern in namingConventions.files
+- Consistent with TypeScript community practices
+
+---
+id: forgeos-instinct-function-naming-camelCase
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Function Naming CamelCase
+
+## Action
+
+Name the function using camelCase (e.g., fetchAgentData)
+
+## Evidence
+
+- Pattern in namingConventions.functions
+
+---
+id: forgeos-instinct-class-naming-PascalCase
+trigger: "When defining a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Class Naming PascalCase
+
+## Action
+
+Name the class using PascalCase (e.g., AgentRoster)
+
+## Evidence
+
+- Pattern in namingConventions.classes
+
+---
+id: forgeos-instinct-constant-naming-SCREAMING_SNAKE_CASE
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Constant Naming SCREAMING_SNAKE_CASE
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE (e.g., MAX_AGENTS)
+
+## Evidence
+
+- Pattern in namingConventions.constants
+
+---
+id: forgeos-instinct-import-alias-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Import Alias Style
+
+## Action
+
+Use path aliases for imports instead of relative paths
+
+## Evidence
+
+- Pattern in importStyle: alias
+
+---
+id: forgeos-instinct-export-mixed-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Export Mixed Style
+
+## Action
+
+Use both named and default exports as appropriate
+
+## Evidence
+
+- Pattern in exportStyle: mixed
+
+---
+id: forgeos-instinct-vitest-test-file-pattern
+trigger: "When adding a test file"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Vitest Test File Pattern
+
+## Action
+
+Name the file with the pattern *.test.ts
+
+## Evidence
+
+- Pattern in testing.filePattern
+
+---
+id: forgeos-instinct-vitest-unit-tests
+trigger: "When writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Vitest Unit Tests
+
+## Action
+
+Write unit tests using the Vitest framework
+
+## Evidence
+
+- Pattern in testing.framework
+- Pattern in testing.testTypes
+
+---
+id: forgeos-instinct-test-pairing-with-features
+trigger: "When implementing or updating a feature"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Test Pairing With Features
+
+## Action
+
+Add or update corresponding unit tests in parallel
+
+## Evidence
+
+- feature-implementation-with-test-pairing workflow
+- Commits like 'test(web): add vitest + TDD units for auth redirect...'
+
+---
+id: forgeos-instinct-conventional-commit-format
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Conventional Commit Format
+
+## Action
+
+Use the conventional commit format: <type>(<scope>): <description>
+
+## Evidence
+
+- Pattern in commits.type: conventional
+- Examples in commits.examples
+
+---
+id: forgeos-instinct-commit-prefixes
+trigger: "When choosing a commit type"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Commit Prefixes
+
+## Action
+
+Use one of the prefixes: feat, fix, docs, test
+
+## Evidence
+
+- Pattern in commits.prefixes
+- Examples in commits.examples
+
+---
+id: forgeos-instinct-database-schema-migration-plan-sync
+trigger: "When adding or modifying a database table or policy and needing to keep the implementation plan up-to-date"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Database Schema Migration Plan Sync
+
+## Action
+
+Edit or create a migration SQL file in supabase/migrations/ and update the implementation plan markdown in docs/superpowers/plans/
+
+## Evidence
+
+- database-schema-change-with-migration-and-plan-sync workflow
+- Commits involving both migration and docs updates
+
+---
+id: forgeos-instinct-feature-implementation-with-test-pairing
+trigger: "When adding a new feature or fixing a bug in the web app and ensuring it is covered by tests"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Feature Implementation With Test Pairing
+
+## Action
+
+Implement or update feature logic in web/lib/ or web/app/, and add or update corresponding test files in web/lib/**/*.test.ts
+
+## Evidence
+
+- feature-implementation-with-test-pairing workflow
+- Commits pairing feat and test
+
+---
+id: forgeos-instinct-dashboard-feature-with-hook-and-component-updates
+trigger: "When building or enhancing a dashboard or data-driven UI that requires both UI components and data-fetching logic"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Dashboard Feature With Hook And Component Updates
+
+## Action
+
+Implement or update React components in web/components/, implement or update custom hooks in web/hooks/, and wire up in web/app/
+
+## Evidence
+
+- feature-implementation-with-associated-hook-and-component-updates workflow
+
+---
+id: forgeos-instinct-bugfix-with-doc-sync
+trigger: "When fixing a bug and needing to ensure documentation or plan is up-to-date"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: xenaarch-dev/forgeos
+---
+
+# Forgeos Instinct Bugfix With Doc Sync
+
+## Action
+
+Fix the bug in relevant code file(s) and update the relevant implementation plan markdown in docs/superpowers/plans/
+
+## Evidence
+
+- bugfix-followed-by-plan-or-doc-sync workflow
+- Commits like 'fix(db): ...' followed by docs update
+
