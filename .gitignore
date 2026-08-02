@@ -26,3 +26,6 @@ builds/
 .claude/
 yc/
 .claude/*.lock
+
+# Local runtime logs
+logs/
