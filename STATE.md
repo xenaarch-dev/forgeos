@@ -1,11 +1,11 @@
 # ForgeOS — Session State
 
-**Date:** 2026-07-22
-**Day:** 194
+**Date:** 2026-08-02
+**Day:** 205
 **Day-N rule:** Computed fresh each session from `date +%Y-%m-%d` using `floor((today − 2026-01-10) / 86_400_000) + 1` — NEVER incremented from the previous session's value, regardless of how many sessions occur per calendar day.
 **Branch:** main (not master — same repo, xenaarch-dev/forgeos, default branch is main)
 **Remote:** https://github.com/xenaarch-dev/forgeos.git
-**Session focus:** Day 194 — two single scoped fixes in separate sessions: (1) removed the last fabricated `LEADS` stat on the authenticated product detail page (Day 191 follow-up item 2); (2) replaced `mission-sculpture.jpg` with the correct asset, closing the Day 188 "sculpture art" item for good (third attempt at this file — first added Day 188 (`4750e03`), "fixed" once already same day (`4f557ea`), still wrong until this session). Both pushed to `origin/main` and confirmed live.
+**Session focus:** Day 205 — repo hygiene + skills + specs, no product code touched. (1) Pulled 4 commits from `origin/main` (STATE.md updates + the real `mission-sculpture.jpg` fix). (2) Confirmed and removed two untracked leftovers: orphaned `models_pkg/` (empty `__init__.py`, zero references anywhere in the codebase) and a stale duplicate root-level `public/art/` (byte-diff confirmed `web/public/art/mission-sculpture.jpg` — 108,365B, 675×1200 — is the known-good asset; the root copy was 100,236B/735×921, pre-fix). Added `logs/` to `.gitignore`. (3) Built two new read-only Claude Code skills, `security-audit` and `secrets-rotation-check`, containing exact human-specified audit routines plus repo-grounded context notes (flagged the README/SOUL.md "Doppler" target-state vs. ADR-001's documented "`~/.bashrc` exports, no Doppler" actual-state gap). (4) Wrote two implementation specs (spec-only, no code): `docs/specs/SPEC_NightlyReasoningAgent.md` (GitHub Actions cron, 00:30 UTC, GLM-5.2 via the existing `ModelRouter`) and `docs/specs/SPEC_LocalCron_GBrainIndexing.md` (WSL2/Task Scheduler, Qwen-adjacent local Ollama embedding job). All three pushed to `origin/main`: `977d2e6` (skills), `350856a` (specs).
 
 ---
 
@@ -18,6 +18,40 @@ Check the ContractForge repo's `daily-agents.yml` (GitHub Actions workflow, runs
 **Third:** three CA firm outreach emails (Anam CA, N D Savla & Associates, K M GATECHA & CO LLP) still undrafted — highest-leverage revenue task, days to YC deadline shrinking.
 
 **Fourth (design a real live-read path for the test count):** `web/lib/forge/testCount.ts` still needs a real pipeline (CI writes the count to a Supabase row, or a checked-in report this app reads at request time) so it stops needing hand-updates — carried forward from Day 191 item 3, still open.
+
+**Fifth (new, Day 205 backlog item — blocks NightlyReasoningAgent, not urgent today):** Lemon Squeezy and Resend webhook ingestion into the platform's own Supabase project does not exist. `agents/scaffold.py` only wires a `/api/billing/webhook` handler into each *generated product's* own backend — nothing reports payment or email events back into ForgeOS's own project. `docs/specs/SPEC_NightlyReasoningAgent.md` (Day 205) confirmed this by grep and scoped its v1 to `dashboard_events` + `product_metrics` + git commits only as a result (see that spec's §0.3, §2.3, and §10 "Known Limitations"). This ingestion is a **hard prerequisite** before NightlyReasoningAgent can honestly claim to reason over payment/email signal — not something to route around later, a real gap to close first.
+
+---
+
+## Day 205 — Completed (2026-08-02)
+
+### Repo hygiene: pulled remote commits, removed two untracked leftovers
+
+Pulled 4 commits fast-forward from `origin/main` (`6a697d1..ea23454`) — STATE.md logging plus the real `mission-sculpture.jpg` fix from the prior session.
+
+Investigated two untracked directories flagged by `git status` before touching either:
+- `models_pkg/` — contained only an empty `__init__.py`. Grepped `*.py`/`*.json`/`*.toml`/`*.cfg`/`*.ini` across the full repo — zero references anywhere. Confirmed orphaned, not the known `models/` vs `models.py` shadow-import conflict (that's a different, already-documented issue). Deleted.
+- `public/art/` (root-level) — byte-diffed against `web/public/art/mission-sculpture.jpg` before deleting anything: `web/public/art/mission-sculpture.jpg` is 108,365 bytes, 675×1200, matching the known-good asset from commit `7844172`; root `public/art/mission-sculpture.jpg` was 100,236 bytes, 735×921, dated Jul 16 — the stale pre-fix duplicate. Deleted the whole root `public/` directory once confirmed unambiguous.
+
+Added `logs/` (local `drainer.log` runtime output) to `.gitignore`. Left `skills-lock.json` (ECC skill lockfile, sourced-by-hash) tracked as-is, untouched. **Pushed `4c4d270`.**
+
+### Added two new Claude Code skills: security-audit, secrets-rotation-check
+
+Built (not just specced) `.claude/skills/security-audit/SKILL.md` and `.claude/skills/secrets-rotation-check/SKILL.md`, each containing the exact human-specified read-only audit routine plus a repo-grounded "Context" section so the routine reports reality, not aspiration — notably flagging that `README.md`/`SOUL.md`/`memory/glossary.md` document Doppler as the target secrets store, while `docs/adr/ADR-001-daemon-mode.md` records the actual state as `~/.bashrc` exports, no Doppler. `secrets-rotation-check` has no static "credentials ever exposed" list to draw from (checked `STATE.md`, `SOUL.md`, `README.md`, `docs/adr/`, `memory/` — no incident record exists), so its routine rebuilds that candidate list fresh from git history and doc grep every run instead of hardcoding one.
+
+Hit a real blocker committing these: `.claude/` is gitignored wholesale (only `.claude/agents/*.md` and `.claude/settings.json` are pre-existing tracked exceptions), and gitignore negation (`!.claude/skills/...`) cannot re-include paths under a directory excluded with a trailing slash — confirmed with an isolated scratch-repo test before reporting it as a hard limitation rather than a mistake. Force-added the two files individually rather than restructuring the broader `.claude/` ignore rule. **Pushed `977d2e6`.**
+
+### Wrote two implementation specs — spec only, no code
+
+`docs/specs/SPEC_NightlyReasoningAgent.md` (GitHub Actions, 00:30 UTC cron, GLM-5.2 via the existing `llm.router.complete()`) and `docs/specs/SPEC_LocalCron_GBrainIndexing.md` (WSL2 cron / Windows Task Scheduler, local Ollama). Both opened with an explicit discrepancies/limitations pass against actual repo state rather than assuming the request's named conventions existed:
+
+- `daily-agents.yml` doesn't exist (only `ci.yml`) — spec proposes a new workflow file instead of "matching" something absent.
+- `agent_logs` is a dead table — confirmed via the as-built migration's own comment (`supabase/migrations/20260707000002_agent_logs_as_built_reference.sql`) that it has an incompatible schema and zero application code ever reads/writes it. `dashboard_events` is the real, live table; the spec reads that instead.
+- `FORGE_BRAIN.md` doesn't exist — the existing `ForgeBrain` class (`forge_brain.py`) writes to a *local* Obsidian vault path, unreachable from a GitHub Actions runner. Spec proposes `FORGE_BRAIN.md` as a new, separate, git-committed file.
+- Qwen2.5-coder:7b has no embeddings endpoint (chat/code model only) — local cron spec flags `nomic-embed-text` as a second small model that needs pulling for the embedding step.
+- Lemon Squeezy/Resend raw webhook events aren't persisted anywhere in the platform's own Supabase project today — carried into TOMORROW's Fifth item above as a named backlog item, and into the Nightly spec's own §10 "Known Limitations" section (added after a review pass specifically asked for it — the first draft only mentioned this inline, not as a dedicated section).
+
+**Pushed `350856a`.**
 
 ---
 
