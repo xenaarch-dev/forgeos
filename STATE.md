@@ -53,6 +53,20 @@ Hit a real blocker committing these: `.claude/` is gitignored wholesale (only `.
 
 **Pushed `350856a`.**
 
+### Fourth Day 205 Session — LICENSE, pydantic dependency fix, ForgeADK extraction (2026-08-03)
+
+**LICENSE added — `7b631ee`.** Added a root-level MIT `LICENSE` file to `forgeos` — the repo is public (confirmed via `gh repo view` in an earlier session) and had no license terms on file until now.
+
+**pydantic declared as a base dependency — `f9a8a47`.** Fixed a missing-dependency bug: `pydantic` is imported directly by core modules (`agents/base.py`, `forge_sdk/agent.py`, model output classes) but was never declared as a project dependency — a fresh install could fail depending on whether something else happened to pull pydantic in transitively. Declared explicitly. Full test suite re-run after, not assumed clean: **309 passed, 3 skipped** — same skip count as the Day 173/174 baseline (semgrep-binary-required integration tests), confirming the fix didn't regress anything.
+
+**ForgeADK extracted to a new standalone public repo — [github.com/xenaarch-dev/forgeadk](https://github.com/xenaarch-dev/forgeadk).** Pulled the reusable agent-development-kit substrate (`forge_sdk`'s `Agent`/`ProjectContext`/`RunLogger`/LLM-router machinery) out and shipped it as its own project, generalized and de-coupled from ForgeOS's domain types (specs, stacks, deployment, quality gates all stayed behind). Built in 9 phases — packaging, generic `Agent` base, trimmed `ProjectContext`, `RunLogger`, pluggable LLM layer, offline example, isolation tests, README, carried-over `SPEC_RepairLoop.md` — landing as 8 commits on `forgeadk`'s `main`. Isolation from this repo verified three ways, not assumed: (1) a fresh-venv editable install pulled only `forgeadk` + `pydantic` — no `forgeos`, no `agents`, no `models`; (2) the bundled offline example ran clean in that venv with zero network access; (3) a repo-wide grep confirmed no real import of `forgeos`/`forge_sdk`/`agents.base` anywhere in `forgeadk`'s runtime code, backed by 7 passing tests including a static reach-back scan that keeps this true going forward. This repo (`forgeos`) itself is untouched by the extraction — nothing was deleted or moved out of this working tree; `forgeadk`'s source was built from a separately staged copy.
+
+**Follow-up fix in the new repo — `09f1fde` (forgeadk, not forgeos).** Sonnet 5's entry in `forgeadk/config.py`'s cost table was stale at the standard $3/$15-per-million rate. Corrected to the actual current introductory rate, $2/$10/million — expires 2026-08-31, reverts to $3/$15 on 2026-09-01 — and added a dated comment above the whole cost table pointing at the live Anthropic pricing page so a future reader re-verifies instead of trusting a hardcoded number silently. `forgeadk`'s test suite re-run after: 7/7 passing.
+
+**Open item — not yet done.** Padmaja has not personally read through the forgeadk README yet. Do that before treating the repo as portfolio-ready to share — it's live, public, and green, but that's not the same bar as the founder having read every claim it makes about itself, especially the provenance section and the "why this isn't a Google ADK wrapper" section.
+
+**Known unrelated backlog, unchanged tonight.** This repo's own `CLAUDE.md` agent-migration table is stale — it lists `ScaffoldAgent`, `CoderAgent`, `SecurityAgent`, `EvalAgent`, and all GStack gates as "pending migration" to `ForgeAgent`. Checked this session: all five already inherit `ForgeAgent` in actual code (`agents/scaffold.py`, `agents/coder.py`, `agents/security.py`, `agents/eval_agent.py`, `agents/gstack.py`'s `GStackGate` and its subclasses). Not fixed tonight — flagged here so the doc drift isn't lost track of; a separate small fix.
+
 ---
 
 ## Day 194 — Completed (2026-07-22)
