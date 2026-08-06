@@ -23,6 +23,36 @@ Check the ContractForge repo's `daily-agents.yml` (GitHub Actions workflow, runs
 
 ---
 
+## Day 209 — Completed (2026-08-06)
+
+Session close-out spanning everything since the last logged entry (Day 205, commit `23a4159`) through today — not a single-day session, so Day-N computed fresh via `date` against the 2026-01-10 baseline (`(2026-08-06 − 2026-01-10) + 1 = 209`), not incremented from Day 205.
+
+### CLAUDE.md agent-migration table fixed — `c5478cf`
+
+Closed the backlog item Day 205 flagged and left open (line 68 above): `ScaffoldAgent`, `CoderAgent`, `SecurityAgent`, `EvalAgent`, and all GStack gates were listed as "pending migration" to `ForgeAgent` but had already migrated. Re-verified via `grep "^class.*Agent"` across `agents/scaffold.py`, `coder.py`, `security.py`, `eval_agent.py`, `gstack.py` before editing — moved all five to "Migrated." Pushed.
+
+### models.py / models/ shadow-import conflict resolved — `89bd7a9`
+
+Investigated first as a report-only pass, then fixed on explicit instruction. Confirmed `import models` under this repo's `PYTHONPATH=.` convention always resolves to the package `models/__init__.py`, never the git-tracked flat `models.py` — every import site in the codebase (30+ files) uses `from models import X`, so `models.py` was dead code, never executed at runtime. Diffed the two: `models/__init__.py` is a strict superset (6 extra dataclasses — `GStackResult`, `SecurityReport`, `FailureRecord`, `SandboxResult`, `BrowserResult`, `PipelineBlockedError` — plus a `build_id` param on `ProjectContext.new()` and `.forgeos/` mirroring in `.save()`); nothing in `models.py` was missing from the package. Deleted `models.py`, corrected the three stale `CLAUDE.md` references (lines 192, 212, 244) documenting it as canonical, and appended a superseding correction note directly below this file's own prior writeup at lines 444-450 — that writeup's diagnosis (`models/` untracked) and its recommended fix (delete `models/`, keep `models.py`) were both wrong by this point: `models/` had been canonical-and-tracked since commits `f6669da`/`708f634`, and following the old recommendation would have broken `models.outputs.*` imports across 8+ agent files. Full test suite re-run after: **309 passed, 3 skipped** — identical to the Day 205 baseline, no regression. Pushed.
+
+### CA firm outreach — no replies yet
+
+Anam, Nainit, and Milap contacted; no replies as of last check.
+
+### LinkedIn — 4 new connection requests sent
+
+Sampada Kale, Rashi Chitanvis, Prakash Rawal, Pratik Kumbhar.
+
+### Discord webhook — false alarm, closed
+
+The webhook flagged Day 188 as a possible compromise was confirmed by the founder to not actually be compromised. Removed from the active security-flag list; no rotation performed.
+
+### forgeadk README — read and confirmed
+
+Closes the Day 205 open item (line 66 above): Padmaja personally read through the `forgeadk` README end-to-end and confirmed it's accurate — the repo can now be treated as portfolio-ready to share.
+
+---
+
 ## Day 205 — Completed (2026-08-02)
 
 ### Repo hygiene: pulled remote commits, removed two untracked leftovers
