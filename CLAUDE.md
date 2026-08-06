@@ -106,8 +106,7 @@ class MyAgent(ForgeAgent):
 - If an agent calls Claude structured output directly, log the call yourself: `self._logger.log_event("structured_llm", {...})`
 - `capabilities` / `requires` / `tools` are read by agent-organizer — keep them accurate
 
-**Migrated to ForgeAgent:** ArchitectAgent, PMAgent
-**Pending migration:** ScaffoldAgent, CoderAgent, SecurityAgent, EvalAgent, all GStack gates
+**Migrated to ForgeAgent:** ArchitectAgent, PMAgent, ScaffoldAgent, CoderAgent, SecurityAgent, EvalAgent, all GStack gates
 **Planned (not yet implemented):** DesignAgent (`phase=design`), MediaAgent (`phase=media`)
 
 **GBrainLogger** (`forge_sdk/glogger.py`) — per-agent event log:
