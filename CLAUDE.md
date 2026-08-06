@@ -189,7 +189,7 @@ ForgeBrain appends new patterns post-build.
 - Python 3.11, FastAPI, Pydantic v2
 - No relative imports — all absolute (`from models import X`, not `from .models import X`)
 - `PYTHONPATH=.` must be set when running any module directly
-- `models.py` is the canonical home for `LLMClient`, `LLMError`, `LLMResponse`
+- `models/` (package) is the canonical home for `LLMClient`, `LLMError`, `LLMResponse`
 - New agents inherit from `forge_sdk.agent.ForgeAgent` (not `agents.base.BaseAgent` directly)
 
 **Frontend (ForgeOS UI)**
@@ -209,7 +209,7 @@ ForgeBrain appends new patterns post-build.
 forgeos/
 ├── orchestrator.py        # entry point — V1 legacy pipeline
 ├── api.py                 # FastAPI server with SSE streaming (agent_event + log)
-├── models.py              # LLMClient, LLMError, LLMResponse (canonical)
+├── models/                # LLMClient, LLMError, LLMResponse (canonical) — see below
 ├── config.py              # LLM, Stack, Deploy dataclasses + cost table
 ├── forge_brain.py         # Obsidian knowledge accumulation (post-build)
 ├── healer.py              # self-healing daemon (Sentry + UptimeRobot)
@@ -241,7 +241,7 @@ forgeos/
 │   ├── mission.py         # MissionOrchestrator, MissionWorkerLoop, MissionValidator
 │   └── hermes.py          # HermesOrchestrator (V2 pipeline coordinator)
 ├── llm/
-│   ├── base.py            # re-exports from models.py (thin shim)
+│   ├── base.py            # re-exports from models/ (thin shim)
 │   ├── router.py          # route() — picks Ollama or Claude
 │   ├── ollama.py          # OllamaClient
 │   └── claude.py          # ClaudeClient (sonnet-4-6 default)

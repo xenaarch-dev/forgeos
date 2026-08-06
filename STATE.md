@@ -449,6 +449,8 @@ WSL2 clone (`~/forge/forgeos`) contains an **untracked** `models/` directory (a 
 
 **Correct fix (deferred — do not touch in next session):** Either delete `models/` from WSL2 (so Python uses `models.py`) or merge the two files and commit `models/` to git as the canonical location. Pick one structure; do not do both.
 
+**SUPERSEDED (2026-08-06):** The diagnosis above is stale. `models/` has been canonical-and-tracked since commits `f6669da` and `708f634` — it is no longer untracked, and it is no longer a shadow of `models.py`. The recommendation to "delete `models/` from WSL2" was wrong and, had it been followed, would have broken `models.outputs.*` imports across 8+ agent files (`models/outputs/` only works because `models/` is a package). Re-investigated this session: confirmed `import models` resolves to `models/__init__.py` under the repo's `PYTHONPATH=.` convention, confirmed `models/__init__.py` is a strict superset of `models.py` (6 extra dataclasses, `build_id` param, `.forgeos/` mirroring), and confirmed zero import sites reach `models.py`. `models.py` has been deleted; `CLAUDE.md` updated to point at `models/` as canonical. See this session's investigation for the full finding.
+
 **Two-clone drift (decision deferred):** The Windows OneDrive clone (`C:\Users\PADMAJA\OneDrive\...`) is the Claude Code working directory. The WSL2 clone (`~/forge/forgeos`) is the runtime build environment. They are separate git clones of the same origin. This has caused state drift twice (Day 161 vs Day 173-174; Day 174 `.content` patch). Before the next build, establish a protocol: either always `git pull` in WSL2 before running builds, or designate one clone as canonical and stop using the other for reads.
 
 ---
