@@ -89,6 +89,11 @@ class ContractCapability(ForgeAgent):
                 "artifact_type": artifact.artifact_type.value,
                 "title": artifact.title,
                 "preview": artifact.preview(),
+                # Enough for the persistence layer to write the artifacts row
+                # from this event alone; the body is read off disk rather than
+                # shipped down every SSE frame.
+                "slug": artifact.slug,
+                "workdir_path": artifact.workdir_path,
             },
         )
 

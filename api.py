@@ -55,6 +55,7 @@ from config import RUNTIME  # noqa: E402
 from mesh.models import MESH_ARGS_KEY, Capability  # noqa: E402
 from mesh.registry import default_registry  # noqa: E402
 from mesh.router import MeshRouter  # noqa: E402
+from mesh.store import MeshStore  # noqa: E402
 from models import AgentStatus, ProjectContext  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -465,6 +466,31 @@ async def get_log(build_id: str) -> dict:
 
 _commands: dict[str, dict] = {}
 
+#: Write-through persistence (§7a). Disabled and harmless without Supabase.
+_store = MeshStore()
+
+#: Strong refs to in-flight persistence tasks — asyncio only holds weak ones,
+#: so without this the GC can collect a task mid-write.
+_persist_tasks: set[asyncio.Task] = set()
+
+
+def _persist_async(fn, *args, **kwargs) -> None:
+    """Fire-and-forget a blocking store write without stalling the event loop.
+
+    Persistence is a side effect of a command, never a precondition: a stalled
+    or failing database must not slow the SSE stream or fail the command.
+    """
+    if not _store.enabled:
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        fn(*args, **kwargs)  # no loop (CLI / sync caller) — just do it inline
+        return
+    task = loop.create_task(asyncio.to_thread(fn, *args, **kwargs))
+    _persist_tasks.add(task)
+    task.add_done_callback(_persist_tasks.discard)
+
 
 class CommandRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=_MAX_COMMAND_LENGTH)
@@ -492,12 +518,13 @@ def _new_command_record(command_id: str, text: str, workdir: str) -> dict:
         "output": None,
         "detail": None,
         "error": None,
+        "thread_row_id": None,
         "queue": asyncio.Queue(maxsize=_COMMAND_QUEUE_MAX),
     }
 
 
 def _emit_command(record: dict, payload: dict) -> None:
-    """Record one SSE payload and wake any live stream.
+    """Record one SSE payload, wake any live stream, and mirror it to Postgres.
 
     events[] is authoritative; the queue is only a wake-up signal. A dropped
     wake-up (queue full because nobody is listening) therefore loses nothing —
@@ -508,6 +535,56 @@ def _emit_command(record: dict, payload: dict) -> None:
         record["queue"].put_nowait(payload)
     except asyncio.QueueFull:
         pass
+    _mirror_event(record, payload)
+
+
+def _mirror_event(record: dict, payload: dict) -> None:
+    """Every mesh event lands in dashboard_events (§5d); artifacts get a row.
+
+    dashboard_events is what the Dashboard ActivityStream and the /app/agents
+    activity fields already read, so this is what lights them up with real mesh
+    data and no frontend change at all.
+    """
+    _persist_async(_store.record_event, record["id"], payload)
+    if payload.get("type") == "agent_event" and payload.get("event") == "artifact_ready":
+        _persist_async(_persist_artifact, record, dict(payload))
+
+
+def _read_artifact_body(record: dict, payload: dict) -> str:
+    """The artifact body, off disk. Falls back to the preview.
+
+    The SSE payload deliberately carries only a preview (§5a), so the body is
+    read from the file the capability already wrote (§7a writes it twice: file
+    then row). Same workdir-escape guard as ForgeAgent._write.
+    """
+    relpath = payload.get("workdir_path")
+    if relpath:
+        try:
+            workdir = Path(record["workdir"]).resolve()
+            path = (workdir / relpath).resolve()
+            if path.is_relative_to(workdir) and path.exists():
+                return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            sys.stderr.write(f"[api] could not read artifact body: {exc}\n")
+    return str(payload.get("preview") or "")
+
+
+def _persist_artifact(record: dict, payload: dict) -> None:
+    """Insert one artifacts row from an artifact_ready event. Blocking; threaded."""
+    thread_row_id = record.get("thread_row_id")
+    if not thread_row_id:
+        return
+    _store.insert_artifact(
+        thread_row_id,
+        {
+            "agent": payload.get("agent", ""),
+            "artifact_type": payload.get("artifact_type", ""),
+            "title": payload.get("title", ""),
+            "body": _read_artifact_body(record, payload),
+            "status": "pending",
+            "workdir_path": payload.get("workdir_path"),
+        },
+    )
 
 
 def _command_event_callback(record: dict, loop: asyncio.AbstractEventLoop):
@@ -535,6 +612,9 @@ def _finish_command(
         record["detail"] = detail
     if error is not None:
         record["error"] = error
+    _persist_async(
+        _store.update_thread, record["id"], status=status, detail=detail, error=error
+    )
     _emit_command(record, {"type": "done", "status": status})
 
 
@@ -550,7 +630,47 @@ def _command_out(record: dict, *, dispatched: bool) -> dict:
 
 def _public_command(record: dict) -> dict:
     """The record minus the live queue, which is neither public nor serialisable."""
-    return {k: v for k, v in record.items() if k != "queue"}
+    public = {k: v for k, v in record.items() if k != "queue"}
+    public["source"] = "memory"
+    return public
+
+
+def _command_from_store(command_id: str) -> dict | None:
+    """Rebuild a command from Postgres. Blocking; call from a thread.
+
+    This is what makes a reconnect work after a restart or from a second tab
+    (§6a): the in-memory record dies with the process, the rows do not. The
+    transcript is replayed from the dashboard_events mirror, the artifacts from
+    their own table.
+    """
+    thread = _store.get_thread(command_id)
+    if thread is None:
+        return None
+
+    artifacts = _store.get_artifacts(thread.get("id", ""))
+    events = [row.get("metadata") or {} for row in _store.get_events(command_id)]
+    confidence = thread.get("confidence")
+
+    return {
+        "id": command_id,
+        "text": thread.get("input_text", ""),
+        "status": thread.get("status", ""),
+        "route": {
+            "capability": thread.get("routed_capability"),
+            "confidence": float(confidence) if confidence is not None else None,
+        },
+        "created_at": thread.get("created_at"),
+        "finished_at": thread.get("updated_at"),
+        "workdir": thread.get("workdir"),
+        "events": events,
+        "artifact": artifacts[-1] if artifacts else None,
+        "artifacts": artifacts,
+        "output": None,
+        "detail": thread.get("detail"),
+        "error": thread.get("error"),
+        "thread_row_id": thread.get("id"),
+        "source": "postgres",
+    }
 
 
 def _require_command(command_id: str) -> dict:
@@ -602,6 +722,14 @@ async def start_command(req: CommandRequest) -> dict:
     record = _new_command_record(command_id, req.text, workdir)
     _commands[command_id] = record
 
+    # Awaited, not fire-and-forget: the row id it returns is the FK every
+    # artifacts row for this command needs, and "created on submit" is only
+    # true if it happens before anything else can reference it.
+    if _store.enabled:
+        record["thread_row_id"] = await asyncio.to_thread(
+            _store.create_thread, command_id, req.text, workdir=workdir
+        )
+
     loop = asyncio.get_running_loop()
     on_event = _command_event_callback(record, loop)
 
@@ -609,6 +737,12 @@ async def start_command(req: CommandRequest) -> dict:
     router = MeshRouter(event_callback=on_event)
     decision = await asyncio.to_thread(router.route, context, req.text)
     record["route"] = decision.model_dump(mode="json")
+    _persist_async(
+        _store.update_thread,
+        command_id,
+        routed_capability=decision.capability.value,
+        confidence=decision.confidence,
+    )
 
     if not decision.should_dispatch:
         terminal = (
@@ -637,8 +771,23 @@ async def start_command(req: CommandRequest) -> dict:
 
 @app.get("/command/{command_id}")
 async def get_command(command_id: str) -> dict:
-    """Full transcript, for a page reload or a late join."""
-    return _public_command(_require_command(command_id))
+    """Full transcript, for a page reload or a late join.
+
+    Serves the live in-memory record when this process still holds it, and
+    falls back to Postgres otherwise — so a reconnect after a restart, or from
+    a second browser tab, actually sees history (§6a).
+    """
+    if not command_id.isalnum():
+        raise HTTPException(status_code=400, detail="Invalid command ID")
+
+    record = _commands.get(command_id)
+    if record is not None:
+        return _public_command(record)
+
+    stored = await asyncio.to_thread(_command_from_store, command_id)
+    if stored is None:
+        raise HTTPException(status_code=404, detail="Command not found")
+    return stored
 
 
 @app.get("/command/{command_id}/stream")

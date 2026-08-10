@@ -23,7 +23,7 @@ import json
 import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -138,13 +138,27 @@ def _stream(client: TestClient, command_id: str) -> tuple[int, list[dict]]:
 
 @pytest.fixture(autouse=True)
 def isolate(monkeypatch, tmp_path):
-    """Fresh command registry, temp workdir root, and NO real adapters bound."""
+    """Fresh command registry, temp workdir root, no real adapters, no real DB.
+
+    The store is stubbed disabled so these tests never construct a Supabase
+    client or write to a real database off ambient .env credentials —
+    persistence has its own file (test_mesh_persistence.py).
+    """
     api._commands.clear()
     _RAN_ON_EVENT_LOOP.clear()
     monkeypatch.setattr(
         api, "RUNTIME", dataclasses.replace(api.RUNTIME, workdir_root=str(tmp_path))
     )
     monkeypatch.setattr(api, "default_registry", lambda: CapabilityRegistry())
+
+    disabled_store = MagicMock()
+    disabled_store.enabled = False
+    # Mirror what a genuinely disabled MeshStore returns, so reads fall through
+    # to 404 rather than handing back a truthy MagicMock.
+    disabled_store.get_thread.return_value = None
+    disabled_store.get_artifacts.return_value = []
+    disabled_store.get_events.return_value = []
+    monkeypatch.setattr(api, "_store", disabled_store)
     yield
     api._commands.clear()
 

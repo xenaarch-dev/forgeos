@@ -493,6 +493,14 @@ class TestMeshRunCLI:
     def stub_transport(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
         monkeypatch.setattr(ClaudeClient, "complete", _fake_complete)
+        # The CLI persists write-through like the API does. Tests must not
+        # depend on ambient .env credentials or touch a real database.
+        import mesh.run
+
+        disabled = MagicMock()
+        disabled.enabled = False
+        disabled.create_thread.return_value = None
+        monkeypatch.setattr(mesh.run, "MeshStore", lambda *a, **kw: disabled)
 
     def _run(self, tmp_path, *argv) -> int:
         from mesh.run import main

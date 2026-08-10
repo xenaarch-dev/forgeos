@@ -22,13 +22,20 @@ import uuid
 from pathlib import Path
 from typing import Any, Sequence
 
+from config import RUNTIME
 from mesh.models import MESH_ARGS_KEY, Capability, RouteDecision
 from mesh.registry import default_registry
 from mesh.router import MeshRouter
+from mesh.store import MeshStore
 from models import AgentStatus, ProjectContext
 
-#: §7a — builds/commands/<command_id>/artifacts/<slug>.md
-COMMANDS_ROOT = "builds/commands"
+#: <workdir_root>/commands/<command_id>/artifacts/<slug>.md
+#:
+#: RUNTIME.workdir_root is what the API and production actually use, so the CLI
+#: follows it rather than the other way round. Phase 3 shipped these diverged
+#: (CLI wrote a relative builds/commands/); one command should not land in two
+#: different places depending on how it was submitted.
+COMMANDS_ROOT = str(Path(RUNTIME.workdir_root) / "commands")
 
 
 def _out(line: str = "") -> None:
@@ -88,14 +95,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     workdir = Path(args.workdir or f"{COMMANDS_ROOT}/{command_id}")
     context = ProjectContext.new(idea=text, workdir=str(workdir), build_id=command_id)
 
+    # Same write-through as the HTTP surface: a command submitted from the CLI
+    # is still a command, and should not be invisible to the dashboard.
+    store = MeshStore()
+    thread_row_id = store.create_thread(command_id, text, workdir=str(workdir))
+
     _out(f"> {text}")
     decision = MeshRouter(event_callback=_print_event).route(context, text)
     _render_route(decision)
+    store.update_thread(
+        command_id,
+        routed_capability=decision.capability.value,
+        confidence=decision.confidence,
+    )
 
     if decision.capability is Capability.CLARIFY:
+        store.update_thread(command_id, status="clarify", detail=decision.rationale)
         return 0
     if decision.capability is Capability.UNSUPPORTED:
         _out(f"  {decision.unsupported_reason}")
+        store.update_thread(
+            command_id, status="unsupported", detail=decision.unsupported_reason
+        )
         return 0
     if not decision.should_dispatch:
         return 0
@@ -105,9 +126,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     adapter_cls = default_registry().get(decision.capability)
     if adapter_cls is None:
-        _out(
-            f"  {decision.display_name} has no adapter wired yet. Nothing ran."
-        )
+        detail = f"{decision.display_name} has no adapter wired yet. Nothing ran."
+        _out(f"  {detail}")
+        store.update_thread(command_id, status="unwired", detail=detail)
         return 2
 
     context.metadata[MESH_ARGS_KEY] = dict(decision.args)
@@ -115,7 +136,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if result.status != AgentStatus.SUCCESS.value:
         _out(f"  FAILED: {result.error}")
+        store.update_thread(command_id, status="failed", error=result.error)
         return 1
+
+    if thread_row_id:
+        stored_artifact = (result.output or {}).get("artifact")
+        if stored_artifact:
+            store.insert_artifact(thread_row_id, stored_artifact)
+    store.update_thread(command_id, status="success")
 
     artifact = result.output.get("artifact") or {}
     _out("")
