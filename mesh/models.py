@@ -14,8 +14,12 @@ fields the spec defines.
 from __future__ import annotations
 
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    from models import ProjectContext
 
 
 class Capability(str, Enum):
@@ -120,11 +124,80 @@ class RouteDecision(BaseModel):
         return f'Routing to {self.display_name} — say "no, I meant …" to redirect.'
 
 
+# ---------------------------------------------------------------------------
+# Artifacts (§4c, §7a)
+# ---------------------------------------------------------------------------
+
+#: context.metadata key carrying RouteDecision.args through to a capability.
+MESH_ARGS_KEY = "mesh_args"
+
+
+class ArtifactType(str, Enum):
+    """Mirrors the artifacts.artifact_type check constraint in §7a."""
+
+    CONTRACT = "CONTRACT"
+    SPEC = "SPEC"
+    EMAIL = "EMAIL"
+    PROPOSAL = "PROPOSAL"
+
+
+class ArtifactStatus(str, Enum):
+    """Mirrors the artifacts.status check constraint in §7a."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REVISION_REQUESTED = "revision_requested"
+    REJECTED = "rejected"
+
+
+class MeshArtifact(BaseModel):
+    """One reviewable output of a capability run.
+
+    The field names track the `artifacts` table §7a specifies, so Phase 4 is a
+    persistence layer over this object rather than a second representation.
+    Columns that only exist once rows do — id, command_id, parent_artifact_id,
+    timestamps — arrive with that migration.
+
+    Everything starts PENDING. Nothing here is approved, and nothing that has
+    an external effect may act on it until a founder says so (§7b).
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    agent: str
+    artifact_type: ArtifactType
+    title: str
+    body: str
+    slug: str
+    status: ArtifactStatus = ArtifactStatus.PENDING
+    workdir_path: str | None = None
+
+    def preview(self, limit: int = 400) -> str:
+        """Short excerpt for the `artifact_ready` event payload (§5a)."""
+        body = self.body.strip()
+        if len(body) <= limit:
+            return body
+        return body[:limit].rstrip() + "..."
+
+
+def mesh_args(context: "ProjectContext") -> dict[str, str]:
+    """RouteDecision.args as handed to a capability, or {} when absent."""
+    raw = (context.metadata or {}).get(MESH_ARGS_KEY) or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(k): str(v) for k, v in raw.items()}
+
+
 __all__ = [
     "CLARIFY_THRESHOLD",
     "DISPATCHABLE",
     "DISPATCH_THRESHOLD",
     "DISPLAY_NAMES",
+    "MESH_ARGS_KEY",
+    "ArtifactStatus",
+    "ArtifactType",
     "Capability",
+    "MeshArtifact",
     "RouteDecision",
+    "mesh_args",
 ]

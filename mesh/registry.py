@@ -6,9 +6,12 @@ in once the router has answered.
 
 Routing and dispatch are deliberately separate concerns. The router always
 answers from the closed Capability enum (§3a); whether an adapter is bound yet
-is the registry's business, not the classifier's. Phase 1 therefore ships the
-registry empty — adapters land in mesh/capabilities/ in Phase 2 — and `get()`
-returning None is the honest answer until they do.
+is the registry's business, not the classifier's. `get()` returning None stays
+the honest answer for anything not wired.
+
+Phase 2 binds CONTRACT and OUTREACH. SPEC and BUILD remain unbound: SPEC waits
+on the §10.2 measurement of whether a full ArchitectAgent run fits inside a
+conversational turn, and BUILD delegates to POST /builds, which is Phase 3.
 """
 
 from __future__ import annotations
@@ -73,4 +76,23 @@ class CapabilityRegistry:
         return f"<CapabilityRegistry {bound}>"
 
 
-__all__ = ["CapabilityRegistry"]
+def default_registry() -> CapabilityRegistry:
+    """The registry the CLI and, from Phase 3, the HTTP layer dispatch through.
+
+    Adapter *classes* are registered, not instances: each command constructs its
+    own so it can be handed a per-command event_callback for the SSE stream.
+
+    Imports are local to keep `import mesh` cheap and to keep the adapters —
+    which pull in agents, llm and forge_sdk — off the import path of anything
+    that only needs the routing contracts.
+    """
+    from mesh.capabilities.contract import ContractCapability
+    from mesh.capabilities.outreach import OutreachCapability
+
+    registry = CapabilityRegistry()
+    registry.register(Capability.CONTRACT, ContractCapability)
+    registry.register(Capability.OUTREACH, OutreachCapability)
+    return registry
+
+
+__all__ = ["CapabilityRegistry", "default_registry"]
