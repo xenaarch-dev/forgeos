@@ -84,7 +84,9 @@ class ContractCapability(ForgeAgent):
             "artifact_ready",
             {
                 "agent": self.name,
-                "type": artifact.artifact_type.value,
+                # Not "type": that key is the SSE envelope's shape discriminator
+                # (api.py). It also matches the §7a artifacts column name.
+                "artifact_type": artifact.artifact_type.value,
                 "title": artifact.title,
                 "preview": artifact.preview(),
             },

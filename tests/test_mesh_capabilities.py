@@ -154,7 +154,9 @@ class TestContractEndToEnd:
         events = {e for e, _ in seen}
         assert "artifact_ready" in events
         payload = next(p for e, p in seen if e == "artifact_ready")
-        assert payload["type"] == "CONTRACT"
+        # Not "type": that key is the SSE envelope's shape discriminator in
+        # api.py, so a payload field of the same name would overwrite it.
+        assert payload["artifact_type"] == "CONTRACT"
         assert payload["preview"]
 
     def test_india_law_content_survives_the_adapter(self, run, tmp_path):

@@ -6,6 +6,9 @@ FastAPI backend that wraps the orchestrator and exposes:
   GET  /builds          → list all builds (active + from filesystem)
   GET  /builds/{id}     → build details + status
   GET  /builds/{id}/stream → SSE stream of live output
+  POST /command         → route one free-text command through the agent mesh
+  GET  /command/{id}    → full transcript (reload / late join)
+  GET  /command/{id}/stream → SSE stream of the live command
   GET  /healthz         → liveness check
 
 Authentication
@@ -49,6 +52,10 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
 from config import RUNTIME  # noqa: E402
+from mesh.models import MESH_ARGS_KEY, Capability  # noqa: E402
+from mesh.registry import default_registry  # noqa: E402
+from mesh.router import MeshRouter  # noqa: E402
+from models import AgentStatus, ProjectContext  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -57,6 +64,13 @@ from config import RUNTIME  # noqa: E402
 _MAX_LOG_LINES = 5_000          # cap per-build in-memory log
 _MAX_IDEA_LENGTH = 2_000        # characters
 _ALLOWED_METHODS = ["GET", "POST", "OPTIONS"]
+
+_MAX_COMMAND_LENGTH = 2_000     # characters
+_COMMANDS_SUBDIR = "commands"   # <workdir_root>/commands/<command_id>  (SPEC §7a)
+_COMMAND_QUEUE_MAX = 1_000      # wake-up buffer; events[] is authoritative
+_STREAM_KEEPALIVE_SECONDS = 15.0
+
+_COMMAND_RUNNING = "running"
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -433,6 +447,259 @@ async def get_log(build_id: str) -> dict:
         return {"log": summary_file.read_text(encoding="utf-8").splitlines()}
 
     raise HTTPException(status_code=404, detail="Build not found")
+
+
+# ---------------------------------------------------------------------------
+# Agent mesh — SPEC_AgentMesh.md §5
+#
+# Unlike /builds, a mesh command runs IN-PROCESS (§5b): a command is seconds
+# rather than half an hour, so process-spawn overhead is a real fraction of its
+# latency, and ForgeAgent._emit() already hands over a typed dict that would
+# otherwise have to survive a round trip through subprocess stdout and be
+# re-parsed.
+#
+# ForgeAgent.run() is blocking, so it goes to a worker thread and its
+# event_callback fires there too — hence call_soon_threadsafe to hand events
+# back to the loop. Everything else reuses the /builds SSE contract unchanged.
+# ---------------------------------------------------------------------------
+
+_commands: dict[str, dict] = {}
+
+
+class CommandRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=_MAX_COMMAND_LENGTH)
+
+
+class CommandOut(BaseModel):
+    command_id: str
+    status: str          # running | success | failed | clarify | unsupported | unwired
+    route: dict
+    dispatched: bool     # false => do not open a stream, nothing is running
+    detail: str | None = None
+
+
+def _new_command_record(command_id: str, text: str, workdir: str) -> dict:
+    return {
+        "id": command_id,
+        "text": text,
+        "status": _COMMAND_RUNNING,
+        "route": None,
+        "created_at": _now(),
+        "finished_at": None,
+        "workdir": workdir,
+        "events": [],
+        "artifact": None,
+        "output": None,
+        "detail": None,
+        "error": None,
+        "queue": asyncio.Queue(maxsize=_COMMAND_QUEUE_MAX),
+    }
+
+
+def _emit_command(record: dict, payload: dict) -> None:
+    """Record one SSE payload and wake any live stream.
+
+    events[] is authoritative; the queue is only a wake-up signal. A dropped
+    wake-up (queue full because nobody is listening) therefore loses nothing —
+    a late joiner still replays the full transcript by cursor.
+    """
+    record["events"].append(payload)
+    try:
+        record["queue"].put_nowait(payload)
+    except asyncio.QueueFull:
+        pass
+
+
+def _command_event_callback(record: dict, loop: asyncio.AbstractEventLoop):
+    """Bridge ForgeAgent events from the worker thread onto the event loop."""
+
+    def _callback(event: str, payload: dict) -> None:
+        # Envelope keys go last: `type` is the shape discriminator every client
+        # filters on, so a payload field of the same name must never win.
+        item = {**payload, "type": "agent_event", "event": event}
+        loop.call_soon_threadsafe(_emit_command, record, item)
+
+    return _callback
+
+
+def _finish_command(
+    record: dict,
+    status: str,
+    *,
+    detail: str | None = None,
+    error: str | None = None,
+) -> None:
+    record["status"] = status
+    record["finished_at"] = _now()
+    if detail is not None:
+        record["detail"] = detail
+    if error is not None:
+        record["error"] = error
+    _emit_command(record, {"type": "done", "status": status})
+
+
+def _command_out(record: dict, *, dispatched: bool) -> dict:
+    return {
+        "command_id": record["id"],
+        "status": record["status"],
+        "route": record["route"],
+        "dispatched": dispatched,
+        "detail": record["detail"],
+    }
+
+
+def _public_command(record: dict) -> dict:
+    """The record minus the live queue, which is neither public nor serialisable."""
+    return {k: v for k, v in record.items() if k != "queue"}
+
+
+def _require_command(command_id: str) -> dict:
+    if not command_id.isalnum():
+        raise HTTPException(status_code=400, detail="Invalid command ID")
+    record = _commands.get(command_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Command not found")
+    return record
+
+
+def _was_dispatched(record: dict) -> bool:
+    return record["status"] in (_COMMAND_RUNNING, "success", "failed")
+
+
+async def _run_command(record: dict, adapter_cls, context, on_event) -> None:
+    """Run one capability in a worker thread, streaming its events as they land."""
+    try:
+        agent = adapter_cls(event_callback=on_event)
+        result = await asyncio.to_thread(agent.run, context)
+    except Exception as exc:  # adapter construction or an escape from run()
+        msg = f"{type(exc).__name__}: {exc}"
+        _emit_command(record, {"type": "log", "text": f"[command] {msg}"})
+        _finish_command(record, "failed", error=msg)
+        return
+
+    if result.status == AgentStatus.SUCCESS.value:
+        record["output"] = result.output
+        record["artifact"] = (result.output or {}).get("artifact")
+        _finish_command(record, "success")
+    else:
+        _finish_command(record, "failed", error=result.error)
+
+
+@app.post("/command", response_model=CommandOut, status_code=201)
+async def start_command(req: CommandRequest) -> dict:
+    """Route one free-text command. Dispatches only when the router says to.
+
+    The router runs synchronously (§5e) so the response carries the real
+    RouteDecision — the UI can render a truthful routing line immediately and,
+    on UNSUPPORTED, render nothing further and never open a stream.
+    """
+    command_id = uuid.uuid4().hex[:12]
+    # Server-controlled workdir; the client never supplies a path.
+    workdir = str(Path(RUNTIME.workdir_root) / _COMMANDS_SUBDIR / command_id)
+    Path(workdir).mkdir(parents=True, exist_ok=True)
+
+    context = ProjectContext.new(idea=req.text, workdir=workdir, build_id=command_id)
+    record = _new_command_record(command_id, req.text, workdir)
+    _commands[command_id] = record
+
+    loop = asyncio.get_running_loop()
+    on_event = _command_event_callback(record, loop)
+
+    # to_thread keeps the classify call (blocking HTTP) off the event loop.
+    router = MeshRouter(event_callback=on_event)
+    decision = await asyncio.to_thread(router.route, context, req.text)
+    record["route"] = decision.model_dump(mode="json")
+
+    if not decision.should_dispatch:
+        terminal = (
+            "clarify" if decision.capability is Capability.CLARIFY else "unsupported"
+        )
+        _finish_command(
+            record,
+            terminal,
+            detail=decision.unsupported_reason or decision.rationale,
+        )
+        return _command_out(record, dispatched=False)
+
+    adapter_cls = default_registry().get(decision.capability)
+    if adapter_cls is None:
+        _finish_command(
+            record,
+            "unwired",
+            detail=f"{decision.display_name} has no adapter wired yet. Nothing ran.",
+        )
+        return _command_out(record, dispatched=False)
+
+    context.metadata[MESH_ARGS_KEY] = dict(decision.args)
+    asyncio.create_task(_run_command(record, adapter_cls, context, on_event))
+    return _command_out(record, dispatched=True)
+
+
+@app.get("/command/{command_id}")
+async def get_command(command_id: str) -> dict:
+    """Full transcript, for a page reload or a late join."""
+    return _public_command(_require_command(command_id))
+
+
+@app.get("/command/{command_id}/stream")
+async def stream_command(command_id: str) -> StreamingResponse:
+    """SSE stream for one command. Same three event shapes as /builds/{id}/stream:
+
+        {"type": "log",          "text": "<line>"}
+        {"type": "agent_event",  "event": "<name>", "agent": "<name>", ...}
+        {"type": "done",         "status": "success"|"failed"|...}
+
+    The mesh adds two agent_event names to the set /builds already emits (§5a):
+      route          — {capability, confidence, rationale, dispatch}
+      artifact_ready — {agent, artifact_type, title, preview}
+
+    Note on coverage: this stream carries what ForgeAgent's event_callback
+    delivers — route, start, artifact_ready, success/error, plus anything a
+    capability emits itself. It does NOT carry llm_call / artifact / gate /
+    finish: GBrainLogger writes those straight to its JSONL without going
+    through _emit(), which is why /builds (which tails that file) sees them and
+    an in-process listener does not. Closing that gap means changing
+    GBrainLogger fan-out, which is not this phase's business.
+    """
+    record = _require_command(command_id)
+    if not _was_dispatched(record):
+        # Nothing ran, so there is no stream to open (§5e). Saying so beats
+        # holding a connection open that will never carry an event.
+        raise HTTPException(
+            status_code=409,
+            detail=record["detail"] or "Command was not dispatched — nothing is running",
+        )
+
+    async def _events() -> AsyncGenerator[str, None]:
+        queue = record["queue"]
+        cursor = 0
+        while True:
+            while cursor < len(record["events"]):
+                yield _sse_event(json.dumps(record["events"][cursor]))
+                cursor += 1
+            if record["status"] != _COMMAND_RUNNING:
+                break
+            try:
+                # The item is discarded — this is a wake-up, not the transport.
+                await asyncio.wait_for(queue.get(), timeout=_STREAM_KEEPALIVE_SECONDS)
+            except asyncio.TimeoutError:
+                yield ": keepalive\n\n"
+
+        # Final flush: catches anything appended between the last drain and the
+        # status check, including the terminal `done`.
+        while cursor < len(record["events"]):
+            yield _sse_event(json.dumps(record["events"][cursor]))
+            cursor += 1
+
+    return StreamingResponse(
+        _events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
