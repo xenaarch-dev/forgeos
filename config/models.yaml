@@ -26,6 +26,10 @@ stages:
   # Tier 2 — Sonnet (legal/compliance: precision over cost)
   legal:        "claude-sonnet-4-6"
 
+  # Tier 2 — Sonnet (mesh intent router: short, latency-sensitive, schema-critical;
+  # a malformed response is a hard failure, so not the place to economise)
+  router:       "claude-sonnet-4-6"
+
   # Tier 1 default for architect/security (overridden by frontier section below
   # when FORGEOS_FRONTIER_TIER=true)
   architect:    "openrouter/z-ai/glm-5.2"

@@ -102,12 +102,18 @@ class BaseAgent(abc.ABC):
         *,
         system_extra: str = "",
         max_tokens: int = 4096,
+        stage: str | None = None,
     ) -> _T:
         """Call claude-sonnet-4-6 with tool_use to get a validated Pydantic output.
 
         Always uses ClaudeClient directly — bypasses Ollama since Ollama does
         not support the Anthropic tool_use protocol. Raises LLMError if
         ANTHROPIC_API_KEY is not set or Claude returns an unexpected response.
+
+        stage — models.yaml `stages:` key used to resolve the model. Defaults to
+        the class name with "agent" stripped, which is what every existing
+        caller relies on; pass it explicitly when the class name and the stage
+        key differ.
         """
         from llm.claude import ClaudeClient
 
@@ -115,7 +121,7 @@ class BaseAgent(abc.ABC):
         if not api_key:
             raise LLMError("ANTHROPIC_API_KEY not set — cannot use structured output")
 
-        stage = self.__class__.__name__.lower().replace("agent", "").strip()
+        stage = stage or self.__class__.__name__.lower().replace("agent", "").strip()
         client = ClaudeClient(model="claude-sonnet-4-6")
         system = _build_system_prompt(context, system_extra)
         result = client.complete_structured(
