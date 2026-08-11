@@ -146,6 +146,9 @@ def isolate(monkeypatch, tmp_path):
     """
     api._commands.clear()
     _RAN_ON_EVENT_LOOP.clear()
+    # §6e limits are per-user and the limiter is module-level, so without this
+    # the 10/minute cap leaks across tests and trips partway through the file.
+    api._rate_limiter.reset()
     monkeypatch.setattr(
         api, "RUNTIME", dataclasses.replace(api.RUNTIME, workdir_root=str(tmp_path))
     )
@@ -197,7 +200,14 @@ class TestPostCommand:
     def test_response_carries_the_spec_5e_shape(self, client, monkeypatch):
         _bind(monkeypatch, contract=_StubCapability)
         body = client.post("/command", json={"text": "GENERATE NDA"}).json()
-        assert set(body) == {"command_id", "status", "route", "dispatched", "detail"}
+        assert set(body) == {
+            "command_id",
+            "status",
+            "route",
+            "dispatched",
+            "detail",
+            "stream_token",  # §5e; None in open mode, minted when auth is on
+        }
 
     def test_prefilter_costs_zero_llm_calls_over_http(self, client, monkeypatch):
         _bind(monkeypatch, contract=_StubCapability)

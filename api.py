@@ -52,6 +52,15 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
 from config import RUNTIME  # noqa: E402
+from mesh.auth import (  # noqa: E402
+    AuthError,
+    RateLimiter,
+    auth_required,
+    issue_stream_token,
+    user_id_from_claims,
+    verify_bearer,
+    verify_stream_token,
+)
 from mesh.models import MESH_ARGS_KEY, Capability  # noqa: E402
 from mesh.registry import default_registry  # noqa: E402
 from mesh.router import MeshRouter  # noqa: E402
@@ -83,10 +92,20 @@ app = FastAPI(
     description="Autonomous AI product factory",
 )
 
-# CORS — restrict to localhost UI only; allow only the methods we expose.
+# CORS — explicit allowlist (SPEC_AgentMesh.md §6d). Never "*": credentials
+# are in play, and a wildcard with allow_credentials is both unsafe and
+# rejected by browsers. The regex covers Vercel preview deployments.
+_ALLOWED_ORIGINS = [
+    "https://forgeos-eight.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_ALLOWED_ORIGIN_REGEX = r"^https://forgeos-[a-z0-9\-]+\.vercel\.app$"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=_ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=_ALLOWED_METHODS,
     allow_headers=["Authorization", "Content-Type", "Accept"],
@@ -474,6 +493,32 @@ _store = MeshStore()
 _persist_tasks: set[asyncio.Task] = set()
 
 
+#: §6e — per-user command quotas, enforced server-side.
+_rate_limiter = RateLimiter()
+
+#: Identity used when MESH_REQUIRE_AUTH is off (localhost development only).
+_ANONYMOUS_USER = "local-dev"
+
+
+def _authenticate(request: Request) -> str:
+    """Supabase JWT -> user id, for POST /command and GET /command/{id} (§6c).
+
+    Open mode when MESH_REQUIRE_AUTH is unset, matching how this file's
+    existing FORGEOS_API_KEY behaves. The deployed service sets it; running
+    without it on a public host is not a supported configuration.
+    """
+    if not auth_required():
+        return _ANONYMOUS_USER
+    claims = verify_bearer(request.headers.get("Authorization"))
+    return user_id_from_claims(claims)
+
+
+@app.exception_handler(AuthError)
+async def _auth_error_handler(request: Request, exc: AuthError) -> JSONResponse:
+    """One shape for 401/403/429 so the transcript can render any of them."""
+    return JSONResponse(status_code=exc.status, content={"detail": exc.detail})
+
+
 def _persist_async(fn, *args, **kwargs) -> None:
     """Fire-and-forget a blocking store write without stalling the event loop.
 
@@ -502,12 +547,19 @@ class CommandOut(BaseModel):
     route: dict
     dispatched: bool     # false => do not open a stream, nothing is running
     detail: str | None = None
+    # §6c — EventSource cannot send an Authorization header, so the stream is
+    # authorised by a one-time 5-minute token scoped to this command and user.
+    # None when nothing was dispatched: there is no stream to authorise.
+    stream_token: str | None = None
 
 
-def _new_command_record(command_id: str, text: str, workdir: str) -> dict:
+def _new_command_record(
+    command_id: str, text: str, workdir: str, user_id: str = _ANONYMOUS_USER
+) -> dict:
     return {
         "id": command_id,
         "text": text,
+        "user_id": user_id,
         "status": _COMMAND_RUNNING,
         "route": None,
         "created_at": _now(),
@@ -625,6 +677,14 @@ def _command_out(record: dict, *, dispatched: bool) -> dict:
         "route": record["route"],
         "dispatched": dispatched,
         "detail": record["detail"],
+        # Only meaningful when the stream endpoint actually checks it. In open
+        # mode there is nothing to authorise, and minting one would require a
+        # secret that localhost development has no reason to configure.
+        "stream_token": (
+            issue_stream_token(record["id"], record["user_id"])
+            if dispatched and auth_required()
+            else None
+        ),
     }
 
 
@@ -706,20 +766,23 @@ async def _run_command(record: dict, adapter_cls, context, on_event) -> None:
 
 
 @app.post("/command", response_model=CommandOut, status_code=201)
-async def start_command(req: CommandRequest) -> dict:
+async def start_command(req: CommandRequest, request: Request) -> dict:
     """Route one free-text command. Dispatches only when the router says to.
 
     The router runs synchronously (§5e) so the response carries the real
     RouteDecision — the UI can render a truthful routing line immediately and,
     on UNSUPPORTED, render nothing further and never open a stream.
     """
+    user_id = _authenticate(request)
+    _rate_limiter.check(user_id)
+
     command_id = uuid.uuid4().hex[:12]
     # Server-controlled workdir; the client never supplies a path.
     workdir = str(Path(RUNTIME.workdir_root) / _COMMANDS_SUBDIR / command_id)
     Path(workdir).mkdir(parents=True, exist_ok=True)
 
     context = ProjectContext.new(idea=req.text, workdir=workdir, build_id=command_id)
-    record = _new_command_record(command_id, req.text, workdir)
+    record = _new_command_record(command_id, req.text, workdir, user_id)
     _commands[command_id] = record
 
     # Awaited, not fire-and-forget: the row id it returns is the FK every
@@ -727,7 +790,11 @@ async def start_command(req: CommandRequest) -> dict:
     # true if it happens before anything else can reference it.
     if _store.enabled:
         record["thread_row_id"] = await asyncio.to_thread(
-            _store.create_thread, command_id, req.text, workdir=workdir
+            _store.create_thread,
+            command_id,
+            req.text,
+            workdir=workdir,
+            user_id=user_id if auth_required() else None,
         )
 
     loop = asyncio.get_running_loop()
@@ -770,13 +837,14 @@ async def start_command(req: CommandRequest) -> dict:
 
 
 @app.get("/command/{command_id}")
-async def get_command(command_id: str) -> dict:
+async def get_command(command_id: str, request: Request) -> dict:
     """Full transcript, for a page reload or a late join.
 
     Serves the live in-memory record when this process still holds it, and
     falls back to Postgres otherwise — so a reconnect after a restart, or from
     a second browser tab, actually sees history (§6a).
     """
+    _authenticate(request)
     if not command_id.isalnum():
         raise HTTPException(status_code=400, detail="Invalid command ID")
 
@@ -791,7 +859,7 @@ async def get_command(command_id: str) -> dict:
 
 
 @app.get("/command/{command_id}/stream")
-async def stream_command(command_id: str) -> StreamingResponse:
+async def stream_command(command_id: str, t: str | None = None) -> StreamingResponse:
     """SSE stream for one command. Same three event shapes as /builds/{id}/stream:
 
         {"type": "log",          "text": "<line>"}
@@ -810,6 +878,11 @@ async def stream_command(command_id: str) -> StreamingResponse:
     an in-process listener does not. Closing that gap means changing
     GBrainLogger fan-out, which is not this phase's business.
     """
+    if auth_required():
+        # EventSource sends no headers, so the query-string token is the only
+        # credential available here (§6c).
+        verify_stream_token(t, command_id)
+
     record = _require_command(command_id)
     if not _was_dispatched(record):
         # Nothing ran, so there is no stream to open (§5e). Saying so beats

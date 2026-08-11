@@ -1,0 +1,27 @@
+# Runtime dependencies for the ForgeOS API server (api.py).
+#
+# Render's Python environment runs `pip install -r requirements.txt` by
+# default, so this file is what makes the mesh backend deployable. It is
+# deliberately the *serving* set, not the full dev/build set — pytest,
+# semgrep and litellm are not needed to answer a request. Versions are
+# pinned to a floor matching what this repo is developed against.
+#
+# Keep in step with pyproject.toml's [project.optional-dependencies].
+
+fastapi>=0.111
+uvicorn[standard]>=0.29
+pydantic>=2.0
+
+# tools/http.py is urllib-only, but agents/outreach.py imports httpx at
+# module scope and the mesh outreach capability imports that agent.
+httpx>=0.27
+
+# llm/router.py's ModelRouter reads config/models.yaml at import time.
+PyYAML>=6.0
+
+# mesh/store.py — command_threads / artifacts / dashboard_events write-through.
+supabase>=2.0
+
+# mesh/auth.py — Supabase JWT verification against the project's JWKS (ES256).
+PyJWT>=2.8
+cryptography>=42.0

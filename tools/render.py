@@ -53,31 +53,67 @@ class RenderClient:
         build_cmd: str = "pip install -r requirements.txt",
         start_cmd: str = "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
         root_dir: str = "backend",
+        plan: str = "free",
+        region: str = "oregon",
+        env_vars: dict[str, str] | None = None,
+        health_check_path: str | None = None,
     ) -> dict[str, Any]:
-        """POST /services — creates a web service from a GitHub repo."""
+        """POST /services — creates a web service from a GitHub repo.
+
+        Defaults are unchanged so existing callers (agents/deploy.py) behave
+        exactly as before. plan / region / env_vars / health_check_path were
+        added for the mesh backend, which needs a paid Singapore instance with
+        its secrets set at creation time rather than a free Oregon one.
+        """
         owner_id = self.owner_id or self.get_owner_id()
+        service_details: dict[str, Any] = {
+            "env": "python",
+            "plan": plan,
+            "region": region,
+            "rootDir": root_dir,
+            "envSpecificDetails": {
+                "buildCommand": build_cmd,
+                "startCommand": start_cmd,
+            },
+        }
+        if health_check_path:
+            service_details["healthCheckPath"] = health_check_path
+
         body: dict[str, Any] = {
             "type": "web_service",
             "name": name,
             "ownerId": owner_id,
             "repo": repo_url,
             "branch": branch,
-            "serviceDetails": {
-                "env": "python",
-                "plan": "free",
-                "region": "oregon",
-                "rootDir": root_dir,
-                "envSpecificDetails": {
-                    "buildCommand": build_cmd,
-                    "startCommand": start_cmd,
-                },
-            },
+            "serviceDetails": service_details,
         }
+        if env_vars:
+            body["envVars"] = [
+                {"key": k, "value": v} for k, v in sorted(env_vars.items())
+            ]
         return http_request(
             f"{self.api}/services",
             method="POST",
             headers=self._headers(),
             json_body=body,
+        )
+
+    def list_services(self, limit: int = 50) -> list[dict[str, Any]]:
+        """GET /services — every service this API key can see."""
+        data = http_request(
+            f"{self.api}/services",
+            headers=self._headers(),
+            params={"limit": limit},
+        )
+        return [item.get("service", item) for item in (data or [])]
+
+    def set_env_vars(self, service_id: str, env_vars: dict[str, str]) -> Any:
+        """PUT /services/{id}/env-vars — replaces the full env-var set."""
+        return http_request(
+            f"{self.api}/services/{service_id}/env-vars",
+            method="PUT",
+            headers=self._headers(),
+            json_body=[{"key": k, "value": v} for k, v in sorted(env_vars.items())],
         )
 
     def get_service(self, service_id: str) -> dict[str, Any]:

@@ -125,6 +125,7 @@ def store() -> MagicMock:
 @pytest.fixture(autouse=True)
 def isolate(monkeypatch, tmp_path, store):
     api._commands.clear()
+    api._rate_limiter.reset()
     monkeypatch.setattr(
         api, "RUNTIME", dataclasses.replace(api.RUNTIME, workdir_root=str(tmp_path))
     )
@@ -749,7 +750,12 @@ class TestRealRoundTrip:
             events = real.get_events(command_id)
             assert any(e["metadata"].get("event") == "route" for e in events)
         finally:
-            # Cascade removes the artifact row with the thread.
+            # Cascade removes the artifact row with the thread. dashboard_events
+            # has no FK, so it must be swept explicitly — otherwise every test
+            # run leaves junk in the feed the live Dashboard reads.
             real.client.table("command_threads").delete().eq(
                 "command_id", command_id
+            ).execute()
+            real.client.table("dashboard_events").delete().eq(
+                "metadata->>command_id", command_id
             ).execute()

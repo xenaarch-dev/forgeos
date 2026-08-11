@@ -1079,3 +1079,106 @@ The mobile grid fix (Seven Agents grid, Agent Dashboard mockup, Command Interfac
 - **YC application draft Version B** — still not committed (`yc/application_draft.md`). Deadline context: July 27, 2026 is now 23 days away.
 
 ### Everything else from Day 174's HANDOFF (models/ WSL2 shadow, semgrep on PATH, RepairLoop, YC video script) is unchanged — see the Day 174 HANDOFF above, still open.
+
+---
+
+# Day 213 — Agent Mesh Phase 5 (deploy + auth + CORS)
+
+**Date:** 2026-08-10
+**Commit:** `5a3d8b3` feat(deploy): agent mesh backend on Render with Supabase JWT auth
+**Spec:** `SPEC_AgentMesh.md` §6
+
+## Cold-start measurement — REQUIRED BY SPEC, NOT YET OBTAINABLE
+
+The spec's Phase 5 test calls for "a cold-start timing measurement recorded
+in STATE.md". **There is no deployed service to measure.** Render refused to
+create it:
+
+```
+POST /services  (plan=starter, region=singapore)  ->  HTTP 402
+{"message":"Payment information is required to complete this request.
+            To add a card, visit https://dashboard.render.com/billing"}
+```
+
+Render team `tea-d6105724d50c73ffnosg` (My Workspace, padmajakotoky73@gmail.com)
+has no payment method. The Free tier was deliberately NOT used as a fallback:
+§6a argues at length that a sleeping free instance is *worse than the current
+mock* for a feature whose whole purpose is proving the system responds.
+
+**What was measured instead (a floor, not the real number):**
+
+| Measurement | Value | Notes |
+|---|---|---|
+| Local uvicorn boot -> first HTTP 200 on `/healthz` | **0.59 s** | WSL2, warm page cache, deps already installed |
+| Render Starter cold start | **NOT MEASURED** | blocked on billing |
+
+0.59 s is the application's own import+boot cost with the full agent stack
+loaded. It is a lower bound on Render and says nothing about container
+scheduling, image pull, or `pip install` time. **Re-measure on Render once a
+card is added** — that is the number §6a's cost decision actually turns on.
+
+Note that on Starter there is no recurring idle sleep, so the figure to
+capture is first-request-after-deploy, not first-request-after-idle. The
+idle-sleep problem §6a describes is a Free-tier property.
+
+## Verified working (local server, deployed configuration)
+
+Run with `MESH_REQUIRE_AUTH=true` against the **real** Supabase JWKS
+(`vcjicrqfnwdegggkrlpd`, ES256, kid `5eda54ca-…`):
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Unauthenticated `POST /command` | **401** `{"detail":"Missing bearer token"}` |
+| 2 | Garbage bearer token | **401** `{"detail":"Invalid token: DecodeError"}` |
+| 3 | `GET /command/{id}/stream` without `?t=` | **401** `{"detail":"Missing stream token"}` |
+| 4 | CORS preflight, `https://forgeos-eight.vercel.app` | **200**, origin echoed, `allow-credentials: true` |
+| 5 | CORS preflight, `https://evil.example.com` | **400**, no `access-control-allow-origin` |
+| 6 | `/healthz` | **200** (public) |
+| 7 | Authenticated `POST /command`, real Supabase ES256 JWT | **201** |
+| 8 | Authenticated dispatched command | **201**, `unwired` for BUILD as expected |
+| 9 | Authenticated `GET /command/{id}` | **200** |
+
+The token for 7–9 was a genuine Supabase session JWT minted via a throwaway
+`auth.users` row (created and deleted in the same script).
+
+## Known gap found during this test
+
+Deleting the temp user *before* issuing the requests made
+`command_threads.user_id` violate its FK, so no thread rows were written:
+
+```
+create_thread failed: insert or update on table "command_threads" violates
+foreign key constraint "command_threads_user_id_fkey" (code 23503)
+```
+
+This is a test-ordering artefact, not a code defect — and it usefully
+confirms the Phase 4 degradation contract: persistence failed, the command
+still returned 201. Worth knowing that a deleted user silently loses
+persistence for in-flight commands.
+
+## Phase 4 migration is now APPLIED
+
+`command_threads` and `artifacts` exist on `vcjicrqfnwdegggkrlpd`.
+`TestRealRoundTrip` no longer skips — it inserts, reads back, and cleans up.
+All test rows written during this session were swept; the live tables are
+back to 0 threads / 0 artifacts / 0 dashboard_events.
+
+## To finish Phase 5
+
+1. Add a card at https://dashboard.render.com/billing
+2. Re-run the provisioning call (all values are ready, nothing to retype):
+   `RenderClient().create_web_service(name="forgeos-mesh-api",
+   repo_url="https://github.com/xenaarch-dev/forgeos", branch="main",
+   root_dir=".", plan="starter", region="singapore",
+   start_cmd="uvicorn api:app --host 0.0.0.0 --port $PORT",
+   health_check_path="/healthz", env_vars={...})`
+   Env vars: `ANTHROPIC_API_KEY`, `GLM_API_KEY`, `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MESH_STREAM_SECRET`
+   (Doppler `contractforge/prd`), `MESH_REQUIRE_AUTH=true`, `PYTHON_VERSION`.
+3. Measure first-request-after-deploy and replace the table above.
+4. `ANTHROPIC_API_KEY` is still out of credit — the contract capability will
+   404 at the LLM until that is topped up. Routing, auth and persistence do
+   not depend on it.
+
+**Phase 6 (wire the Command UI / `NEXT_PUBLIC_FORGEOS_API`) is deliberately
+untouched — nothing points at this backend yet, by design.**
