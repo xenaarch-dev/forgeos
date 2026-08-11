@@ -1085,14 +1085,37 @@ The mobile grid fix (Seven Agents grid, Agent Dashboard mockup, Command Interfac
 # Day 213 — Agent Mesh Phase 5 (deploy + auth + CORS)
 
 **Date:** 2026-08-10
-**Commit:** `5a3d8b3` feat(deploy): agent mesh backend on Render with Supabase JWT auth
+**Commit:** `fde14a1` feat(deploy): agent mesh backend on Render with Supabase JWT auth
+(this entry previously cited `5a3d8b3` — an orphaned pre-rebase duplicate of
+the same commit, unreachable from `main` and therefore unresolvable on a
+fresh clone; `fde14a1` is the one that actually shipped)
+**Latest on this work:** `4db2a481` fix(mesh): auth required by default
 **Spec:** `SPEC_AgentMesh.md` §6
 
-## Cold-start measurement — REQUIRED BY SPEC, NOT YET OBTAINABLE
+## DEPLOYED — 2026-08-11, on the Free tier
 
-The spec's Phase 5 test calls for "a cold-start timing measurement recorded
-in STATE.md". **There is no deployed service to measure.** Render refused to
-create it:
+Re-verified against the Render API at `2026-08-11T10:02Z`, not carried over
+from a previous session's notes:
+
+| | |
+|---|---|
+| URL | **https://forgeos-mesh-api.onrender.com** |
+| Service id | `srv-d9tcucbncjis73901o0g` |
+| Plan / region | **free** / **singapore** |
+| Deployed commit | `4db2a481` (= current `HEAD`) |
+| Created → `deploy_ended` | `07:28:50Z` → `07:29:39Z` (49 s) |
+| Health check path | `/healthz` |
+| Service state | `not_suspended`, 1 instance |
+| Auth | enforced — `MESH_ALLOW_UNAUTH` is not set on the service |
+
+### Free instead of the spec's Starter — a budget decision, not an oversight
+
+§6a recommends **Starter (paid)** and argues at length that a sleeping Free
+instance is worse than the current mock for a feature whose whole purpose is
+proving the system responds. **We shipped Free anyway, with that trade-off
+understood and accepted.**
+
+Starter was attempted first and refused:
 
 ```
 POST /services  (plan=starter, region=singapore)  ->  HTTP 402
@@ -1101,25 +1124,66 @@ POST /services  (plan=starter, region=singapore)  ->  HTTP 402
 ```
 
 Render team `tea-d6105724d50c73ffnosg` (My Workspace, padmajakotoky73@gmail.com)
-has no payment method. The Free tier was deliberately NOT used as a fallback:
-§6a argues at length that a sleeping free instance is *worse than the current
-mock* for a feature whose whole purpose is proving the system responds.
+has no payment method. Rather than block the whole phase on adding a card
+before there is any revenue, we took Free and recorded the cost here instead
+of pretending it isn't one.
 
-**What was measured instead (a floor, not the real number):**
+**Revisit trigger: the first paying customer.** Starter (~$7/mo) is trivially
+justified at that point, and the upgrade is a plan change on the existing
+service — no re-provisioning, no URL change, no code change. Until then the
+mitigations, in order of preference, are (a) upgrade, (b) an external
+keep-warm ping every ~10 minutes, (c) accept it and warm the service by hand
+before a demo.
+
+## Cold-start measurement — NOT YET MEASURED
+
+The spec's Phase 5 test calls for "a cold-start timing measurement recorded
+in STATE.md". The service now exists, so the measurement is finally
+obtainable — but **it has not been taken yet.** Nothing below is a substitute
+for it.
 
 | Measurement | Value | Notes |
 |---|---|---|
-| Local uvicorn boot -> first HTTP 200 on `/healthz` | **0.59 s** | WSL2, warm page cache, deps already installed |
-| Render Starter cold start | **NOT MEASURED** | blocked on billing |
+| Local uvicorn boot → first HTTP 200 on `/healthz` | **0.59 s** | WSL2, warm page cache, deps already installed. Carried forward from the 2026-08-10 session; not re-measured since. |
+| **Render Free — first request after idle sleep** | **NOT YET MEASURED** | **this is the number that matters — see below** |
 
 0.59 s is the application's own import+boot cost with the full agent stack
-loaded. It is a lower bound on Render and says nothing about container
-scheduling, image pull, or `pip install` time. **Re-measure on Render once a
-card is added** — that is the number §6a's cost decision actually turns on.
+loaded. It is a floor and nothing more: it excludes container scheduling,
+image pull, dependency install, and every other cost Render actually pays on
+a cold start. **Do not quote it as the deployed latency.**
 
-Note that on Starter there is no recurring idle sleep, so the figure to
-capture is first-request-after-deploy, not first-request-after-idle. The
-idle-sleep problem §6a describes is a Free-tier property.
+### Which number matters — correcting the earlier Starter-vs-Free reasoning
+
+An earlier version of this section reasoned that "on Starter there is no
+recurring idle sleep, so the figure to capture is first-request-after-deploy,
+not first-request-after-idle." That was sound for Starter, and it is **wrong
+for what we actually shipped.**
+
+Idle sleep is the *defining property* of the Free tier. The instance spins
+down after ~15 minutes without traffic, so the spin-up is not a one-time cost
+paid once per deploy — it is paid again on every founder visit, every demo,
+and every request that follows a quiet stretch. The figure to capture here is
+therefore **first-request-after-idle, repeatedly incurred**, and
+first-request-after-deploy is the irrelevant one. This is precisely the number
+§6a's whole cost argument turns on, and it is precisely the number still
+missing.
+
+**Measurement protocol.** Any request resets the ~15-minute idle timer, so
+this has to be taken against a genuinely sleeping service:
+
+1. Confirm nobody has touched `forgeos-mesh-api.onrender.com` for ≥15 min.
+   Render's `/v1/services/{id}/events` API is safe to poll for this; the
+   service URL itself is not — polling it destroys the very state being
+   measured.
+2. Cold reading:
+   `curl -o /dev/null -s -w 'ttfb=%{time_starttransfer} total=%{time_total}\n' https://forgeos-mesh-api.onrender.com/healthz`
+3. Warm follow-up immediately after, identical command, for contrast.
+4. Replace the `NOT YET MEASURED` row above with both figures.
+
+The reading self-validates: a cold start on Render Free runs tens of seconds,
+while a warm one is sub-second. **A sub-second "cold" reading means the
+instance was already awake and the measurement is void** — wait out a full
+idle window and repeat.
 
 ## Verified working (local server, deployed configuration)
 
@@ -1165,22 +1229,34 @@ back to 0 threads / 0 artifacts / 0 dashboard_events.
 
 ## To finish Phase 5
 
-1. Add a card at https://dashboard.render.com/billing
-2. Re-run the provisioning call (all values are ready, nothing to retype):
-   `RenderClient().create_web_service(name="forgeos-mesh-api",
-   repo_url="https://github.com/xenaarch-dev/forgeos", branch="main",
-   root_dir=".", plan="starter", region="singapore",
-   start_cmd="uvicorn api:app --host 0.0.0.0 --port $PORT",
-   health_check_path="/healthz", env_vars={...})`
-   Env vars: `ANTHROPIC_API_KEY`, `GLM_API_KEY`, `SUPABASE_URL`,
-   `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MESH_STREAM_SECRET`
-   (Doppler `contractforge/prd`), `PYTHON_VERSION`. **No auth flag is
-   needed** — auth is required by default; `MESH_ALLOW_UNAUTH=true` is the
-   local-dev opt-out and must never be set on the service.
-3. Measure first-request-after-deploy and replace the table above.
-4. `ANTHROPIC_API_KEY` is still out of credit — the contract capability will
+Provisioning is **done** — the service is live on Free (see the DEPLOYED
+table above). The steps that previously stood here ("add a card", "re-run the
+provisioning call") are obsolete and have been removed; re-running
+`create_web_service` now would create a *second* service, not fix anything.
+What actually remains:
+
+1. **Take the idle cold-start measurement** and fill in the `NOT YET
+   MEASURED` row — follow the protocol in the cold-start section above.
+   Note this is first-request-after-**idle**, not first-request-after-deploy;
+   see that section for why the earlier framing was wrong for Free tier.
+2. `ANTHROPIC_API_KEY` is still out of credit — the contract capability will
    404 at the LLM until that is topped up. Routing, auth and persistence do
-   not depend on it.
+   not depend on it. *(Carried forward from 2026-08-10; not re-verified this
+   session.)*
+3. Optional, not blocking: upgrade to Starter to remove idle sleep entirely.
+   Gated on the first paying customer — see the revisit trigger above.
+
+For reference, the service was created with:
+`RenderClient().create_web_service(name="forgeos-mesh-api",
+repo_url="https://github.com/xenaarch-dev/forgeos", branch="main",
+root_dir=".", plan="free", region="singapore",
+start_cmd="uvicorn api:app --host 0.0.0.0 --port $PORT",
+health_check_path="/healthz", env_vars={...})` — env vars
+`ANTHROPIC_API_KEY`, `GLM_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `MESH_STREAM_SECRET` (Doppler
+`contractforge/prd`), `PYTHON_VERSION`. **No auth flag is set** — auth is
+required by default; `MESH_ALLOW_UNAUTH=true` is the local-dev opt-out and
+must never be set on the service.
 
 **Phase 6 (wire the Command UI / `NEXT_PUBLIC_FORGEOS_API`) is deliberately
 untouched — nothing points at this backend yet, by design.**
