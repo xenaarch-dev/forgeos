@@ -496,16 +496,16 @@ _persist_tasks: set[asyncio.Task] = set()
 #: §6e — per-user command quotas, enforced server-side.
 _rate_limiter = RateLimiter()
 
-#: Identity used when MESH_REQUIRE_AUTH is off (localhost development only).
+#: Identity used only when auth has been explicitly waived for local dev.
 _ANONYMOUS_USER = "local-dev"
 
 
 def _authenticate(request: Request) -> str:
     """Supabase JWT -> user id, for POST /command and GET /command/{id} (§6c).
 
-    Open mode when MESH_REQUIRE_AUTH is unset, matching how this file's
-    existing FORGEOS_API_KEY behaves. The deployed service sets it; running
-    without it on a public host is not a supported configuration.
+    Enforced unless MESH_ALLOW_UNAUTH=true is set, which is for localhost
+    development only. The default is closed, so a deployment that forgets to
+    configure anything rejects requests rather than serving them openly.
     """
     if not auth_required():
         return _ANONYMOUS_USER

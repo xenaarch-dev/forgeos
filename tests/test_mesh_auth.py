@@ -65,7 +65,8 @@ def _make_token(private_key, **overrides) -> str:
 def base_env(monkeypatch):
     monkeypatch.setenv("SUPABASE_URL", SUPABASE_URL)
     monkeypatch.setenv("MESH_STREAM_SECRET", "test-secret-not-a-real-one")
-    monkeypatch.delenv("MESH_REQUIRE_AUTH", raising=False)
+    # Auth is on by default now; the opt-out must be absent for that to hold.
+    monkeypatch.delenv("MESH_ALLOW_UNAUTH", raising=False)
     mesh_auth.reset_jwks_cache()
     mesh_auth._used_tokens.clear()
     yield
@@ -88,6 +89,39 @@ def jwks(monkeypatch, keypair):
 # ---------------------------------------------------------------------------
 # §6c — Supabase JWT
 # ---------------------------------------------------------------------------
+
+
+class TestAuthDefaultsClosed:
+    """The flag fails closed: only an affirmative opt-out disables auth."""
+
+    def test_required_when_nothing_is_set(self, monkeypatch):
+        monkeypatch.delenv("MESH_ALLOW_UNAUTH", raising=False)
+        assert mesh_auth.auth_required() is True
+
+    @pytest.mark.parametrize("value", ["true", "TRUE", "1", "yes", "on", "On"])
+    def test_explicit_opt_out_disables_it(self, monkeypatch, value):
+        monkeypatch.setenv("MESH_ALLOW_UNAUTH", value)
+        assert mesh_auth.auth_required() is False
+
+    @pytest.mark.parametrize(
+        "value", ["", "false", "0", "no", "off", "maybe", "TRUEISH", " true"]
+    )
+    def test_anything_else_leaves_auth_on(self, monkeypatch, value):
+        """Empty, negative, misspelled or whitespace-padded must not open it."""
+        monkeypatch.setenv("MESH_ALLOW_UNAUTH", value)
+        assert mesh_auth.auth_required() is True
+
+    def test_the_old_opt_in_flag_no_longer_grants_anything(self, monkeypatch):
+        """MESH_REQUIRE_AUTH is gone; setting or omitting it changes nothing."""
+        monkeypatch.delenv("MESH_ALLOW_UNAUTH", raising=False)
+        monkeypatch.setenv("MESH_REQUIRE_AUTH", "false")
+        assert mesh_auth.auth_required() is True
+
+    def test_a_deployment_that_configures_nothing_is_closed(self, monkeypatch):
+        """The whole point of the inversion: forgetting to configure = 401."""
+        for key in ("MESH_ALLOW_UNAUTH", "MESH_REQUIRE_AUTH"):
+            monkeypatch.delenv(key, raising=False)
+        assert mesh_auth.auth_required() is True
 
 
 class TestVerifyBearer:
@@ -283,9 +317,7 @@ def client(monkeypatch, tmp_path):
 
 
 class TestAuthEnforcedOverHttp:
-    @pytest.fixture(autouse=True)
-    def require_auth(self, monkeypatch):
-        monkeypatch.setenv("MESH_REQUIRE_AUTH", "true")
+    """No fixture needed: base_env clears the opt-out, so auth is on."""
 
     def test_post_command_without_a_token_is_401(self, client):
         r = client.post("/command", json={"text": "RUN MORNING METRICS"})
@@ -363,6 +395,10 @@ class TestAuthEnforcedOverHttp:
 
 
 class TestOpenModeForLocalDevelopment:
+    @pytest.fixture(autouse=True)
+    def allow_unauth(self, monkeypatch):
+        monkeypatch.setenv("MESH_ALLOW_UNAUTH", "true")
+
     def test_no_token_needed_when_auth_is_off(self, client):
         r = client.post("/command", json={"text": "RUN MORNING METRICS"})
         assert r.status_code == 201

@@ -126,6 +126,8 @@ def store() -> MagicMock:
 def isolate(monkeypatch, tmp_path, store):
     api._commands.clear()
     api._rate_limiter.reset()
+    # Auth is required by default; this file tests persistence, not auth.
+    monkeypatch.setenv("MESH_ALLOW_UNAUTH", "true")
     monkeypatch.setattr(
         api, "RUNTIME", dataclasses.replace(api.RUNTIME, workdir_root=str(tmp_path))
     )

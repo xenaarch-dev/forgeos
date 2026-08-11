@@ -149,6 +149,10 @@ def isolate(monkeypatch, tmp_path):
     # §6e limits are per-user and the limiter is module-level, so without this
     # the 10/minute cap leaks across tests and trips partway through the file.
     api._rate_limiter.reset()
+    # Auth is required by default; this file tests the mesh surface, not auth,
+    # so it takes the explicit local-dev opt-out. test_mesh_auth.py covers the
+    # authenticated path.
+    monkeypatch.setenv("MESH_ALLOW_UNAUTH", "true")
     monkeypatch.setattr(
         api, "RUNTIME", dataclasses.replace(api.RUNTIME, workdir_root=str(tmp_path))
     )

@@ -21,9 +21,11 @@ issuer) would have to be tightened back up by hand. hmac + compare_digest is
 signature-verification idiom this repo already generates in
 agents/scaffold.py. The secret lives in MESH_STREAM_SECRET.
 
-Auth is opt-in via MESH_REQUIRE_AUTH, mirroring how api.py's existing
-FORGEOS_API_KEY works: unset means open mode for localhost development, and
-the deployed service sets it. Production must never run without it.
+Auth is REQUIRED BY DEFAULT. Disabling it takes an explicit
+MESH_ALLOW_UNAUTH=true, which is for localhost development only. This is
+deliberately the opposite of api.py's older FORGEOS_API_KEY flag: a missing
+or misspelled environment variable should fail closed, not quietly serve an
+unauthenticated public endpoint.
 """
 
 from __future__ import annotations
@@ -63,8 +65,17 @@ class AuthError(Exception):
 
 
 def auth_required() -> bool:
-    """True when Supabase JWT verification is enforced."""
-    return os.environ.get("MESH_REQUIRE_AUTH", "").lower() in {"1", "true", "yes", "on"}
+    """True unless auth has been explicitly waived for local development.
+
+    Fails closed: anything other than an affirmative MESH_ALLOW_UNAUTH — unset,
+    empty, misspelled, "false" — leaves Supabase JWT verification enforced.
+    """
+    return os.environ.get("MESH_ALLOW_UNAUTH", "").lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _supabase_url() -> str:

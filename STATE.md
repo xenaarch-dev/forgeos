@@ -1123,7 +1123,7 @@ idle-sleep problem §6a describes is a Free-tier property.
 
 ## Verified working (local server, deployed configuration)
 
-Run with `MESH_REQUIRE_AUTH=true` against the **real** Supabase JWKS
+Run with auth enforced (the default) against the **real** Supabase JWKS
 (`vcjicrqfnwdegggkrlpd`, ES256, kid `5eda54ca-…`):
 
 | # | Check | Result |
@@ -1174,7 +1174,9 @@ back to 0 threads / 0 artifacts / 0 dashboard_events.
    health_check_path="/healthz", env_vars={...})`
    Env vars: `ANTHROPIC_API_KEY`, `GLM_API_KEY`, `SUPABASE_URL`,
    `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MESH_STREAM_SECRET`
-   (Doppler `contractforge/prd`), `MESH_REQUIRE_AUTH=true`, `PYTHON_VERSION`.
+   (Doppler `contractforge/prd`), `PYTHON_VERSION`. **No auth flag is
+   needed** — auth is required by default; `MESH_ALLOW_UNAUTH=true` is the
+   local-dev opt-out and must never be set on the service.
 3. Measure first-request-after-deploy and replace the table above.
 4. `ANTHROPIC_API_KEY` is still out of credit — the contract capability will
    404 at the LLM until that is topped up. Routing, auth and persistence do
