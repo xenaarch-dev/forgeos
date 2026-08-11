@@ -1135,22 +1135,53 @@ mitigations, in order of preference, are (a) upgrade, (b) an external
 keep-warm ping every ~10 minutes, (c) accept it and warm the service by hand
 before a demo.
 
-## Cold-start measurement — NOT YET MEASURED
+## Cold-start measurement — MEASURED 2026-08-11
 
 The spec's Phase 5 test calls for "a cold-start timing measurement recorded
-in STATE.md". The service now exists, so the measurement is finally
-obtainable — but **it has not been taken yet.** Nothing below is a substitute
-for it.
+in STATE.md". **Taken 2026-08-11T10:05:34Z**, against `GET /healthz` on the
+live Free instance after ~2h35m of confirmed idle (last Render event was
+`deploy_ended` at `07:29:39Z`; no request had been issued to the service by
+anyone in the interim).
 
 | Measurement | Value | Notes |
 |---|---|---|
-| Local uvicorn boot → first HTTP 200 on `/healthz` | **0.59 s** | WSL2, warm page cache, deps already installed. Carried forward from the 2026-08-10 session; not re-measured since. |
-| **Render Free — first request after idle sleep** | **NOT YET MEASURED** | **this is the number that matters — see below** |
+| **Render Free — first request after idle sleep** | **43.26 s** | HTTP 200, `{"status":"ok","version":"0.1.0"}`. TTFB 43.262 s, total 43.263 s — i.e. essentially all of it is spin-up wait, not transfer. |
+| Render Free — warm, steady state | **0.47 s** | Two consecutive readings: 0.469 s / 0.465 s |
+| Render Free — first warm request after the cold one | 2.93 s | Instance still settling immediately post-spin-up |
+| Local uvicorn boot → first HTTP 200 on `/healthz` | 0.59 s | WSL2, warm page cache, deps installed. Carried forward from 2026-08-10; not re-measured. |
 
-0.59 s is the application's own import+boot cost with the full agent stack
-loaded. It is a floor and nothing more: it excludes container scheduling,
-image pull, dependency install, and every other cost Render actually pays on
-a cold start. **Do not quote it as the deployed latency.**
+Network overhead is not a meaningful part of this. From WSL2/India to the
+Singapore region, DNS+TCP+TLS handshake accounted for ~0.2 s of the warm
+requests, so steady-state application response is roughly **0.26 s**.
+
+**The cold/warm ratio is ~93×.** The instance is not slow when awake — it is
+absent while asleep.
+
+### What this does to the 0.59 s figure
+
+The local boot floor is **73× smaller than reality**. 0.59 s captured only
+the app's own import+boot cost; the measured 43.26 s is dominated by
+everything that figure structurally excluded — container scheduling, image
+pull, and dependency install on Render's side. This is the clearest possible
+confirmation that 0.59 s should never have been quoted as deployed latency,
+and it is now retained only as a historical floor.
+
+### What this does to §6a's cost argument
+
+§6a argued a sleeping Free instance is *worse than the current mock* for a
+feature whose purpose is proving the system responds. **The measurement
+supports that.** A founder or demo viewer arriving after any quiet stretch
+waits **43 seconds** on a blank request — comfortably inside the range where
+a user concludes the system is broken and leaves. The Free-tier choice
+remains the right call under the current budget (see the revisit trigger
+above), but it is now a quantified cost, not an assumed one.
+
+**Flagged for Phase 6 (not verified, do not treat as settled):** if the
+Command UI reaches this backend through a Next.js route handler or serverless
+function rather than directly from the browser, a 43 s upstream response may
+exceed that function's execution timeout and surface as a platform error
+rather than a slow load. Worth checking the Vercel function timeout against
+this number before wiring `NEXT_PUBLIC_FORGEOS_API`.
 
 ### Which number matters — correcting the earlier Starter-vs-Free reasoning
 
@@ -1168,17 +1199,25 @@ first-request-after-deploy is the irrelevant one. This is precisely the number
 §6a's whole cost argument turns on, and it is precisely the number still
 missing.
 
-**Measurement protocol.** Any request resets the ~15-minute idle timer, so
-this has to be taken against a genuinely sleeping service:
+**Measurement protocol** — this is what was followed above, and what to
+repeat if the number needs re-checking (e.g. after a plan change, a region
+change, or a dependency-weight increase). Any request resets the ~15-minute
+idle timer, so it has to be taken against a genuinely sleeping service:
 
 1. Confirm nobody has touched `forgeos-mesh-api.onrender.com` for ≥15 min.
    Render's `/v1/services/{id}/events` API is safe to poll for this; the
    service URL itself is not — polling it destroys the very state being
-   measured.
+   measured. Note the events API logs lifecycle events only, not HTTP
+   traffic, so it can establish "no deploy or restart" but cannot by itself
+   prove no one issued a request; that part needs human confirmation.
 2. Cold reading:
-   `curl -o /dev/null -s -w 'ttfb=%{time_starttransfer} total=%{time_total}\n' https://forgeos-mesh-api.onrender.com/healthz`
-3. Warm follow-up immediately after, identical command, for contrast.
-4. Replace the `NOT YET MEASURED` row above with both figures.
+   `curl -o /dev/null -s -w 'ttfb=%{time_starttransfer} total=%{time_total}\n' --max-time 240 https://forgeos-mesh-api.onrender.com/healthz`
+   Use a generous `--max-time`; the measured value is 43 s, so a default
+   30 s timeout would abort mid-spin-up and silently look like an outage.
+3. Warm follow-up immediately after, identical command, for contrast. Take
+   at least three — the first warm request is still elevated (2.93 s
+   measured) and only the second onward reflects steady state.
+4. Update the table above with both figures.
 
 The reading self-validates: a cold start on Render Free runs tens of seconds,
 while a warm one is sub-second. **A sub-second "cold" reading means the
@@ -1235,10 +1274,9 @@ provisioning call") are obsolete and have been removed; re-running
 `create_web_service` now would create a *second* service, not fix anything.
 What actually remains:
 
-1. **Take the idle cold-start measurement** and fill in the `NOT YET
-   MEASURED` row — follow the protocol in the cold-start section above.
-   Note this is first-request-after-**idle**, not first-request-after-deploy;
-   see that section for why the earlier framing was wrong for Free tier.
+1. ~~Take the idle cold-start measurement~~ — **DONE 2026-08-11: 43.26 s**
+   cold vs 0.47 s warm. See the cold-start section above. This closes the
+   last spec-required item for Phase 5.
 2. `ANTHROPIC_API_KEY` is still out of credit — the contract capability will
    404 at the LLM until that is topped up. Routing, auth and persistence do
    not depend on it. *(Carried forward from 2026-08-10; not re-verified this
