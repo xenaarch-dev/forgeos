@@ -123,6 +123,18 @@ class TestCatalog:
         assert [t.id for t in resolved.tools] == ["workspace", "browser"]
         assert [m.name for m in resolved.mcp_servers] == ["playwright"]
 
+    def test_web_static_catalog_is_in_sync(self):
+        """web/lib/agents/builderCatalog.json is the UI's offline fallback.
+
+        Regenerate with:
+          PYTHONPATH=. python3 -c "import json; from agent_builder.catalog import catalog_payload; \\
+          json.dump(catalog_payload(), open('web/lib/agents/builderCatalog.json','w'), indent=2, ensure_ascii=False)"
+        """
+        import json
+
+        static = Path(api.__file__).parent / "web/lib/agents/builderCatalog.json"
+        assert json.loads(static.read_text(encoding="utf-8")) == json.loads(json.dumps(catalog_payload()))
+
     def test_clean_room_skill_refuses_paywall_bypass(self):
         body = skills()["clean-room-analyst"].body.lower()
         assert "paywall" in body and "drm" in body

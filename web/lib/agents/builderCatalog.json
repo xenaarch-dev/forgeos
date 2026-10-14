@@ -1,0 +1,253 @@
+{
+  "skills": [
+    {
+      "id": "clean-room-analyst",
+      "name": "clean-room-analyst",
+      "description": "Study how an existing product works from the outside (public docs, its UI, its public API, open-source code under its licence) and turn that into an original feature-parity spec ForgeOS can build. Use when a founder says \"build something like X\" or wants an open-source alternative.",
+      "source": "skills/clean-room-analyst/SKILL.md"
+    },
+    {
+      "id": "code-reviewer",
+      "name": "code-reviewer",
+      "description": "Review a diff or a codebase for correctness bugs, security holes and needless complexity, and report findings ranked by severity with file:line references. Use after features are written and before the ship gate.",
+      "source": "skills/code-reviewer/SKILL.md"
+    },
+    {
+      "id": "india-compliance",
+      "name": "india-compliance",
+      "description": "India-first defaults for products ForgeOS builds - INR pricing with 18% GST and SAC codes, DPDP Act 2023 privacy requirements, Indian Contract Act 1872 terms and Mumbai jurisdiction. Use for any product sold to Indian users.",
+      "source": "skills/india-compliance/SKILL.md"
+    },
+    {
+      "id": "spec-writer",
+      "name": "spec-writer",
+      "description": "Turn an idea or a clean-room analysis into a buildable product spec with user stories, acceptance criteria, data model and a stack recommendation. Use before any code is written.",
+      "source": "skills/spec-writer/SKILL.md"
+    },
+    {
+      "id": "test-writer",
+      "name": "test-writer",
+      "description": "Write automated tests from a spec's acceptance criteria - unit tests for logic, API tests for endpoints, and Playwright end-to-end tests for the core user flows. Use when a feature is implemented or when QA finds a gap.",
+      "source": "skills/test-writer/SKILL.md"
+    },
+    {
+      "id": "secrets-rotation-check",
+      "name": "secrets-rotation-check",
+      "description": "Monthly read-only re-verification of credentials that have known exposure risk — the Discord webhook used by agents/outreach.py, plus any credential ever exposed in a screenshot, chat log, or commit (discovered fresh each run from git history and session notes, since no static exposure list exists in this repo). Confirms whether each one is still live/unrotated. Never modifies files, never rotates anything itself — flags for human rotation. Use monthly, or immediately after any suspected exposur",
+      "source": ".claude/skills/secrets-rotation-check/SKILL.md"
+    },
+    {
+      "id": "security-audit",
+      "name": "security-audit",
+      "description": "Read-only security audit of the ForgeOS repo. Searches full git history for leaked secrets, verifies .gitignore coverage and that no .env is tracked, runs npm audit / pip-audit for HIGH+CRITICAL CVEs, flags risky GitHub Actions workflow patterns (pull_request_target + untrusted checkout), flags hardcoded IPs/URLs/credentials, and confirms secrets are Doppler-backed rather than ad hoc os.environ/process.env reads. Reports CRITICAL/HIGH/LOW findings with file:line references. Never modifies files.",
+      "source": ".claude/skills/security-audit/SKILL.md"
+    }
+  ],
+  "tools": [
+    {
+      "id": "workspace",
+      "name": "Workspace files",
+      "description": "Read the build context and write artifacts into the build workdir.",
+      "module": "forge_sdk.agent",
+      "env": []
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "Create repos, push code, branches and pull requests.",
+      "module": "tools.github",
+      "env": [
+        "GITHUB_TOKEN"
+      ]
+    },
+    {
+      "id": "vercel",
+      "name": "Vercel",
+      "description": "Create projects and deploy frontends.",
+      "module": "tools.vercel",
+      "env": [
+        "VERCEL_TOKEN"
+      ]
+    },
+    {
+      "id": "render",
+      "name": "Render",
+      "description": "Deploy and inspect backend services.",
+      "module": "tools.render",
+      "env": [
+        "RENDER_API_KEY"
+      ]
+    },
+    {
+      "id": "supabase",
+      "name": "Supabase admin",
+      "description": "Service-role database and auth administration.",
+      "module": "tools.supabase_admin",
+      "env": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY"
+      ]
+    },
+    {
+      "id": "sentry",
+      "name": "Sentry",
+      "description": "Read production errors for the self-healing loop.",
+      "module": "tools.sentry",
+      "env": [
+        "SENTRY_DSN"
+      ]
+    },
+    {
+      "id": "uptime",
+      "name": "UptimeRobot",
+      "description": "Create and read uptime monitors.",
+      "module": "tools.uptimerobot",
+      "env": [
+        "UPTIMEROBOT_API_KEY"
+      ]
+    },
+    {
+      "id": "http",
+      "name": "HTTP fetch",
+      "description": "Fetch public web pages and APIs.",
+      "module": "tools.http",
+      "env": []
+    },
+    {
+      "id": "browser",
+      "name": "Browser agent",
+      "description": "Drive a headless browser for QA and research.",
+      "module": "tools.browser_agent",
+      "env": []
+    },
+    {
+      "id": "media",
+      "name": "Media generation",
+      "description": "Generate images and video through fal.ai.",
+      "module": "tools.fal_client",
+      "env": [
+        "FAL_KEY"
+      ]
+    }
+  ],
+  "mcp_presets": [
+    {
+      "name": "supabase",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
+    },
+    {
+      "name": "context7",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
+    },
+    {
+      "name": "playwright",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    {
+      "name": "github",
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    }
+  ],
+  "plugins": [
+    {
+      "id": "ship-kit",
+      "name": "Ship Kit",
+      "description": "Everything to push and deploy: GitHub, Vercel, Render.",
+      "skills": [],
+      "tools": [
+        "github",
+        "vercel",
+        "render"
+      ],
+      "mcp": [
+        "github"
+      ]
+    },
+    {
+      "id": "qa-kit",
+      "name": "QA Kit",
+      "description": "Write tests, drive the browser, review code.",
+      "skills": [
+        "test-writer",
+        "code-reviewer"
+      ],
+      "tools": [
+        "browser"
+      ],
+      "mcp": [
+        "playwright"
+      ]
+    },
+    {
+      "id": "research-kit",
+      "name": "Research Kit",
+      "description": "Study how existing products work and turn it into an original spec.",
+      "skills": [
+        "clean-room-analyst",
+        "spec-writer"
+      ],
+      "tools": [
+        "http",
+        "browser"
+      ],
+      "mcp": [
+        "context7"
+      ]
+    },
+    {
+      "id": "india-stack",
+      "name": "India Stack",
+      "description": "INR, GST, DPDP and Indian Contract Act defaults.",
+      "skills": [
+        "india-compliance"
+      ],
+      "tools": [
+        "supabase"
+      ],
+      "mcp": [
+        "supabase"
+      ]
+    },
+    {
+      "id": "ops-kit",
+      "name": "Ops Kit",
+      "description": "Watch production: errors, uptime, self-healing.",
+      "skills": [],
+      "tools": [
+        "sentry",
+        "uptime"
+      ],
+      "mcp": []
+    }
+  ],
+  "model_tiers": [
+    "fast",
+    "balanced",
+    "deep"
+  ],
+  "props": [
+    "wrench",
+    "clipboard",
+    "shield",
+    "megaphone",
+    "scroll",
+    "magnifier",
+    "rocket",
+    "brain"
+  ]
+}
