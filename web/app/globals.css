@@ -179,6 +179,25 @@ select {
 .fg-sprite--asleep .fg-sprite-zz text { animation: fg-zz 2.8s ease-out infinite; }
 .fg-sprite--asleep .fg-sprite-zz text + text { animation-delay: 1.4s; }
 
+/* Landing nav (components/landing/Nav.tsx) */
+.fg-nav { padding: 0 32px; }
+.fg-nav-links,
+.fg-nav-actions { display: flex; }
+.fg-nav-toggle { display: none; }
+.fg-nav-menu { display: none; }
+
+@media (max-width: 859px) {
+  .fg-nav { padding: 0 16px; }
+  .fg-nav-links,
+  .fg-nav-actions { display: none; }
+  .fg-nav-toggle { display: inline-flex; }
+  .fg-nav-menu { display: flex; }
+}
+
+@media (max-width: 360px) {
+  .fg-nav-badge { display: none !important; }
+}
+
 /* Factory floor */
 @keyframes fg-belt { from { transform: translateX(-50%); } to { transform: translateX(0); } }
 @keyframes fg-belt-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }
