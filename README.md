@@ -162,6 +162,37 @@ Not a default — a choice made at every layer.
 
 ---
 
+## Agent Builder
+
+Build your own agents from the dashboard (`/app/agents/builder`) or the API, without writing a class.
+
+- **Skills**: any `SKILL.md` folder in `skills/` or `.claude/skills/`. Bundled: `clean-room-analyst`,
+  `spec-writer`, `code-reviewer`, `test-writer`, `india-compliance`. Drop a skill folder from any
+  GitHub skills repo into `skills/` and it appears in the builder.
+- **Tools**: the integrations in `tools/` (GitHub, Vercel, Render, Supabase, Sentry, UptimeRobot,
+  HTTP, browser, media). The agent is told which ones are configured.
+- **MCP servers**: presets (Supabase, Context7, Playwright, GitHub) or your own. Stored as config
+  only; ForgeOS never launches them. They run when you export the agent to Claude Code.
+- **Plugins**: bundles of the above (Ship Kit, QA Kit, Research Kit, India Stack, Ops Kit).
+
+A spec becomes a real `ForgeAgent` subclass (`agent_builder/runtime.py`), so it gets GBrain
+logging, budgets and SSE like the built-in crew.
+
+| Endpoint | |
+| --- | --- |
+| `GET /agent-builder/catalog` | skills, tools, MCP presets, plugins |
+| `GET/POST /agents/custom` | list / create |
+| `GET/POST /agents/custom/{slug}` | read / update |
+| `POST /agents/custom/{slug}/delete` | delete |
+| `POST /agents/custom/{slug}/run` | run one task |
+| `GET /agents/custom/{slug}/export` | Claude Code subagent + `.mcp.json` |
+
+The web builder saves through the API when `NEXT_PUBLIC_FORGEOS_API_URL` is set; otherwise it
+downloads the spec as JSON. If you change the catalog, regenerate
+`web/lib/agents/builderCatalog.json` (the command is in `tests/test_agent_builder.py`).
+
+---
+
 ## ForgeADK — writing agents
 
 ```python

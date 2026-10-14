@@ -51,6 +51,13 @@ except ImportError:
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
+from agent_builder import (  # noqa: E402
+    AgentSpec,
+    AgentStore,
+    AgentStoreError,
+    catalog_payload,
+    validate_spec,
+)
 from config import RUNTIME  # noqa: E402
 from mesh.auth import (  # noqa: E402
     AuthError,
@@ -801,8 +808,16 @@ async def start_command(req: CommandRequest, request: Request) -> dict:
     on_event = _command_event_callback(record, loop)
 
     # to_thread keeps the classify call (blocking HTTP) off the event loop.
-    router = MeshRouter(event_callback=on_event)
+    # Routing events are buffered and emitted here, on the loop, in order:
+    # bridging them through call_soon_threadsafe let the `route` event land
+    # after the `done` event below, so a stream could close before it arrived.
+    route_events: list[tuple[str, dict]] = []
+    router = MeshRouter(
+        event_callback=lambda event, payload: route_events.append((event, payload))
+    )
     decision = await asyncio.to_thread(router.route, context, req.text)
+    for event, payload in route_events:
+        _emit_command(record, {**payload, "type": "agent_event", "event": event})
     record["route"] = decision.model_dump(mode="json")
     _persist_async(
         _store.update_thread,
@@ -922,6 +937,129 @@ async def stream_command(command_id: str, t: str | None = None) -> StreamingResp
             "Connection": "keep-alive",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Agent Builder — user-defined agents (agent_builder/)
+#
+# Specs are data; nothing here launches an MCP server or a tool on a spec's
+# say-so. Updates and deletes are POSTs so the CORS method allowlist stays
+# GET/POST (pinned by tests/test_mesh_auth.py).
+# ---------------------------------------------------------------------------
+
+_agent_store = AgentStore(Path(RUNTIME.workdir_root) / "custom_agents")
+
+
+class CustomAgentRun(BaseModel):
+    task: str = Field(..., min_length=1, max_length=_MAX_COMMAND_LENGTH)
+
+
+def _checked_spec(payload: dict) -> AgentSpec:
+    try:
+        spec = AgentSpec.model_validate(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    problems = validate_spec(spec)
+    if problems:
+        raise HTTPException(status_code=422, detail="; ".join(problems))
+    return spec
+
+
+def _owned_spec(user_id: str, slug: str) -> AgentSpec:
+    try:
+        spec = _agent_store.get(user_id, slug)
+    except AgentStoreError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if spec is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return spec
+
+
+@app.get("/agent-builder/catalog")
+async def agent_builder_catalog() -> dict:
+    """Skills, tools, MCP presets and plugins the builder UI can offer."""
+    return catalog_payload()
+
+
+@app.get("/agents/custom")
+async def list_custom_agents(request: Request) -> list[dict]:
+    user_id = _authenticate(request)
+    return [s.model_dump(mode="json") for s in _agent_store.list(user_id)]
+
+
+@app.post("/agents/custom", status_code=201)
+async def create_custom_agent(payload: dict, request: Request) -> dict:
+    user_id = _authenticate(request)
+    spec = _checked_spec(payload)
+    try:
+        _agent_store.save(user_id, spec, create=True)
+    except AgentStoreError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return spec.model_dump(mode="json")
+
+
+@app.get("/agents/custom/{slug}")
+async def get_custom_agent(slug: str, request: Request) -> dict:
+    user_id = _authenticate(request)
+    return _owned_spec(user_id, slug).model_dump(mode="json")
+
+
+@app.post("/agents/custom/{slug}")
+async def update_custom_agent(slug: str, payload: dict, request: Request) -> dict:
+    user_id = _authenticate(request)
+    _owned_spec(user_id, slug)
+    spec = _checked_spec({**payload, "slug": slug})
+    _agent_store.save(user_id, spec, create=False)
+    return spec.model_dump(mode="json")
+
+
+@app.post("/agents/custom/{slug}/delete", status_code=204)
+async def delete_custom_agent(slug: str, request: Request) -> None:
+    user_id = _authenticate(request)
+    _owned_spec(user_id, slug)
+    _agent_store.delete(user_id, slug)
+
+
+@app.get("/agents/custom/{slug}/export")
+async def export_custom_agent(slug: str, request: Request) -> dict:
+    """The agent as a Claude Code subagent file + .mcp.json entries."""
+    from agent_builder.runtime import export_bundle
+
+    user_id = _authenticate(request)
+    return export_bundle(_owned_spec(user_id, slug))
+
+
+@app.post("/agents/custom/{slug}/run")
+async def run_custom_agent(slug: str, body: CustomAgentRun, request: Request) -> dict:
+    """Run one task through the agent. Same ForgeAgent path as built-in agents."""
+    from agent_builder.runtime import TASK_KEY, build_agent_class
+
+    user_id = _authenticate(request)
+    _rate_limiter.check(user_id)
+    spec = _owned_spec(user_id, slug)
+
+    run_id = uuid.uuid4().hex[:12]
+    workdir = Path(RUNTIME.workdir_root) / "custom_runs" / run_id
+    workdir.mkdir(parents=True, exist_ok=True)
+    context = ProjectContext.new(idea=body.task, workdir=str(workdir), build_id=run_id)
+    context.metadata[TASK_KEY] = body.task
+
+    agent = build_agent_class(spec)()
+    result = await asyncio.to_thread(agent.run, context)
+    output = result.output or {}
+    text = None
+    artifact = output.get("artifact")
+    if artifact:
+        path = (workdir / artifact).resolve()
+        if path.is_relative_to(workdir.resolve()) and path.exists():
+            text = path.read_text(encoding="utf-8")
+    return {
+        "run_id": run_id,
+        "status": result.status.value if hasattr(result.status, "value") else str(result.status),
+        "error": result.error,
+        "output": text,
+        "model": output.get("model"),
+    }
 
 
 # ---------------------------------------------------------------------------

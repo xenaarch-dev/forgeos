@@ -15,17 +15,17 @@ const ITEMS = [
 
 export function HowItWorks() {
   return (
-    <section id="how" style={{ minHeight: '100vh', background: '#0C0E10', padding: '120px 56px', display: 'flex', gap: '8%', flexWrap: 'wrap' }}>
-      <div style={{ flex: '0 0 40%', minWidth: 280, position: 'sticky', top: 120, alignSelf: 'flex-start' }}>
+    <section id="how" style={{ minHeight: '100vh', background: '#0C0E10', padding: '120px clamp(16px, 4vw, 56px)', display: 'flex', gap: '8%', rowGap: 48, flexWrap: 'wrap' }}>
+      <div style={{ flex: '0 0 40%', minWidth: 'min(280px, 100%)', position: 'sticky', top: 120, alignSelf: 'flex-start' }}>
         <div style={{ font: '400 8px var(--font-mono)', color: '#A4D8FF', letterSpacing: '0.16em', marginBottom: 20 }}>
           HOW IT WORKS
         </div>
-        <h2 style={{ font: '900 56px/1.0 var(--font-display)', letterSpacing: '-0.053em', color: '#ECEBE6', fontStyle: 'normal' }}>
+        <h2 style={{ font: '900 clamp(40px, 6vw, 56px)/1.0 var(--font-display)', letterSpacing: '-0.053em', color: '#ECEBE6', fontStyle: 'normal' }}>
           One prompt. Full business.
         </h2>
       </div>
 
-      <div style={{ flex: '1 1 52%', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 56 }}>
+      <div style={{ flex: '1 1 52%', minWidth: 'min(280px, 100%)', display: 'flex', flexDirection: 'column', gap: 56 }}>
         {ITEMS.map((item) => (
           <div key={item.n} style={{ borderTop: '0.5px solid rgba(164,216,255,0.12)', paddingTop: 28 }}>
             <div style={{ font: '400 8px var(--font-mono)', color: 'rgba(164,216,255,0.50)', letterSpacing: '0.20em', marginBottom: 12 }}>

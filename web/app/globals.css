@@ -135,6 +135,82 @@ select {
 }
 
 /* ============================================================
+   Agent sprites (components/agents/AgentSprite.tsx)
+   Limbs swing from their top edge; every mode is pure CSS.
+   ============================================================ */
+.fg-sprite-leg,
+.fg-sprite-arm,
+.fg-sprite-head,
+.fg-sprite-body,
+.fg-sprite-shadow {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+}
+.fg-sprite-shadow { transform-origin: 50% 50%; }
+
+@keyframes fg-leg-swing { 0%, 100% { transform: rotate(22deg); } 50% { transform: rotate(-22deg); } }
+@keyframes fg-arm-swing { 0%, 100% { transform: rotate(-24deg); } 50% { transform: rotate(24deg); } }
+@keyframes fg-walk-bob  { 0%, 50%, 100% { transform: translateY(0); } 25%, 75% { transform: translateY(-1.6px); } }
+@keyframes fg-hammer    { 0%, 100% { transform: rotate(10deg); } 40% { transform: rotate(-70deg); } 55% { transform: rotate(18deg); } }
+@keyframes fg-breath    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(0.8px); } }
+@keyframes fg-blink     { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes fg-nod       { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(6deg); } }
+@keyframes fg-zz        { 0% { opacity: 0; transform: translateY(2px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+@keyframes fg-antenna   { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes fg-shadow-walk { 0%, 50%, 100% { transform: scaleX(1); } 25%, 75% { transform: scaleX(0.86); } }
+
+.fg-sprite-eyes { transform-box: fill-box; transform-origin: 50% 50%; animation: fg-blink 4.2s infinite; }
+.fg-sprite-antenna { animation: fg-antenna 1.8s ease-in-out infinite; }
+
+.fg-sprite--idle .fg-sprite-body { animation: fg-breath 2.6s ease-in-out infinite; }
+
+.fg-sprite--walking .fg-sprite-body { animation: fg-walk-bob 0.62s linear infinite; }
+.fg-sprite--walking .fg-sprite-shadow { animation: fg-shadow-walk 0.62s linear infinite; }
+.fg-sprite--walking .fg-sprite-leg--front { animation: fg-leg-swing 0.62s ease-in-out infinite; }
+.fg-sprite--walking .fg-sprite-leg--back { animation: fg-leg-swing 0.62s ease-in-out -0.31s infinite; }
+.fg-sprite--walking .fg-sprite-arm--back { animation: fg-arm-swing 0.62s ease-in-out infinite; }
+.fg-sprite--walking .fg-sprite-arm--front { animation: fg-arm-swing 0.62s ease-in-out -0.31s infinite; }
+
+.fg-sprite--working .fg-sprite-arm--front { animation: fg-hammer 0.9s cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+.fg-sprite--working .fg-sprite-head { animation: fg-nod 0.9s ease-in-out infinite; }
+.fg-sprite--working .fg-sprite-body { animation: fg-breath 0.9s ease-in-out infinite; }
+
+.fg-sprite--asleep .fg-sprite-head { animation: fg-nod 3.4s ease-in-out infinite; }
+.fg-sprite--asleep .fg-sprite-zz text { animation: fg-zz 2.8s ease-out infinite; }
+.fg-sprite--asleep .fg-sprite-zz text + text { animation-delay: 1.4s; }
+
+/* Landing nav (components/landing/Nav.tsx) */
+.fg-nav { padding: 0 32px; }
+.fg-nav-links,
+.fg-nav-actions { display: flex; }
+.fg-nav-toggle { display: none; }
+.fg-nav-menu { display: none; }
+
+@media (max-width: 859px) {
+  .fg-nav { padding: 0 16px; }
+  .fg-nav-links,
+  .fg-nav-actions { display: none; }
+  .fg-nav-toggle { display: inline-flex; }
+  .fg-nav-menu { display: flex; }
+}
+
+@media (max-width: 360px) {
+  .fg-nav-badge { display: none !important; }
+}
+
+/* Factory floor */
+@keyframes fg-belt { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@keyframes fg-belt-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }
+@keyframes fg-bubble-in { from { opacity: 0; transform: translate(-50%, 4px) scale(0.92); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes fg-spark { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.3); } }
+
+.fg-floor-bubble { animation: fg-bubble-in 0.35s var(--ease) both; }
+.fg-floor-agent[data-facing='-1'] .fg-floor-flip { transform: scaleX(-1); }
+.fg-floor-flip { transition: transform 0.18s ease; }
+.fg-floor-agent button:focus-visible { outline-offset: 2px; border-radius: 6px; }
+.fg-floor-spark { animation: fg-spark 0.7s ease-out infinite; }
+
+/* ============================================================
    Reduced motion — non-negotiable.
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {

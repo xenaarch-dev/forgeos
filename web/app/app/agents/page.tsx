@@ -1,7 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
+import { AgentSprite } from '@/components/agents/AgentSprite'
 import { FACTORY_AGENTS, statusColor, type FactoryAgentStatus } from '@/lib/forge/agents'
+import { CREW } from '@/lib/forge/crew'
+
+const CREW_BY_SLUG = Object.fromEntries(CREW.map((c) => [c.slug, c]))
 
 const FILTERS: (FactoryAgentStatus | 'ALL')[] = ['ALL', 'RUNNING', 'LIVE', 'QUEUED']
 
@@ -19,9 +24,9 @@ export default function AgentsPage() {
             SEVEN IN MESH · {activeCount} ACTIVE NOW
           </p>
         </div>
-        <button className="glass" data-magnetic style={{ padding: '10px 18px', borderRadius: 3, font: '400 9px var(--font-mono)', color: '#A4D8FF', letterSpacing: '0.10em' }}>
+        <Link href="/app/agents/builder" className="glass" data-magnetic style={{ padding: '10px 18px', borderRadius: 3, font: '400 9px var(--font-mono)', color: '#A4D8FF', letterSpacing: '0.10em' }}>
           + NEW AGENT
-        </button>
+        </Link>
       </div>
 
       <div style={{ display: 'flex', gap: 4, margin: '28px 0 24px', borderBottom: '0.5px solid rgba(164,216,255,0.10)' }}>
@@ -47,7 +52,17 @@ export default function AgentsPage() {
           return (
             <div key={agent.slug} className="glass" style={{ borderRadius: 4, padding: 22, borderTop: `2px solid ${statusColor(agent.status)}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                <span style={{ font: '700 24px var(--font-display)', color: '#ECEBE6', fontStyle: 'normal' }}>{agent.name}</span>
+                <span style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                  {CREW_BY_SLUG[agent.slug] && (
+                    <AgentSprite
+                      color={CREW_BY_SLUG[agent.slug].suit}
+                      prop={CREW_BY_SLUG[agent.slug].prop}
+                      mode={queued ? 'asleep' : 'working'}
+                      size={34}
+                    />
+                  )}
+                  <span style={{ font: '700 24px var(--font-display)', color: '#ECEBE6', fontStyle: 'normal' }}>{agent.name}</span>
+                </span>
                 <span style={{ font: '400 8px var(--font-mono)', color: statusColor(agent.status) }}>• {agent.status} v2.1</span>
               </div>
               <p style={{ font: '300 13px var(--font-body)', color: 'rgba(236,235,230,0.55)', marginBottom: 16 }}>
