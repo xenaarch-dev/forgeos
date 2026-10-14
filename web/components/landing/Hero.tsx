@@ -91,9 +91,11 @@ export function Hero() {
             <span style={{ font: '400 7px var(--font-mono)', color: '#A4D8FF', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{row.status}</span>
           </div>
         ))}
-        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid rgba(164,216,255,0.12)', font: '400 8px var(--font-mono)', color: 'rgba(164,216,255,0.45)' }}>
-          YC DEADLINE: {ycDays} DAYS
-        </div>
+        {ycDays > 0 && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid rgba(164,216,255,0.12)', font: '400 8px var(--font-mono)', color: 'rgba(164,216,255,0.45)' }}>
+            YC DEADLINE: {ycDays} DAYS
+          </div>
+        )}
       </div>
 
       {/* hero text block */}

@@ -801,8 +801,16 @@ async def start_command(req: CommandRequest, request: Request) -> dict:
     on_event = _command_event_callback(record, loop)
 
     # to_thread keeps the classify call (blocking HTTP) off the event loop.
-    router = MeshRouter(event_callback=on_event)
+    # Routing events are buffered and emitted here, on the loop, in order:
+    # bridging them through call_soon_threadsafe let the `route` event land
+    # after the `done` event below, so a stream could close before it arrived.
+    route_events: list[tuple[str, dict]] = []
+    router = MeshRouter(
+        event_callback=lambda event, payload: route_events.append((event, payload))
+    )
     decision = await asyncio.to_thread(router.route, context, req.text)
+    for event, payload in route_events:
+        _emit_command(record, {**payload, "type": "agent_event", "event": event})
     record["route"] = decision.model_dump(mode="json")
     _persist_async(
         _store.update_thread,

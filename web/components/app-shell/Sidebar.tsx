@@ -64,7 +64,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         })}
       </div>
 
-      {!collapsed && (
+      {!collapsed && ycDays > 0 && (
         <div style={{ marginTop: 'auto', paddingTop: 16 }}>
           <div style={{ font: '400 7px var(--font-mono)', color: 'rgba(164,216,255,0.45)', letterSpacing: '0.14em' }}>
             YC DEADLINE
